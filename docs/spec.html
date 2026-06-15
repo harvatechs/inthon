@@ -34,15 +34,19 @@ goal_decl:    "goal" STRING
 policy_block: "policy" "{" policy_entry+ "}"
 plan_block:   "plan" block</code></pre>
 
-    <h3>B. Bytecode VM Opcodes</h3>
-    <p>The bytecode interpreter runs a custom instruction set. Key opcodes include:</p>
+    <h3>B. Bytecode VM Opcodes & Execution Loop</h3>
+    <p>The bytecode interpreter runs a custom instruction set on a stack-based virtual machine. Key opcodes include:</p>
     <ul>
-      <li><code>LOAD_CONST</code> / <code>STORE_NAME</code>: Load constants and bind scope variables.</li>
-      <li><code>CALL_FUNCTION</code>: Executes custom user functions.</li>
+      <li><code>LOAD_CONST</code>: Pushes a constant value onto the execution stack.</li>
+      <li><code>STORE_NAME</code>: Pops a value from the stack and binds it to a local name.</li>
+      <li><code>CALL_FUNCTION</code>: Pops parameters, executes user functions, and pushes the result.</li>
       <li><code>CALL_TOOL</code>: Triggers the tool registry validator and invokes external services.</li>
       <li><code>APPLY_POLICY</code>: Intercepts execution to apply capability restrictions at the scope boundary.</li>
       <li><code>APPROVE_GATE</code>: Blocks execution waiting for human confirmation.</li>
     </ul>
+
+    <h3>C. Intermediate Representation (IR)</h3>
+    <p>Lowered AST is compiled into serialized JSON-compatible Intermediate Representation containing instructions and constants. This IR is highly auditable and allows execution playback for diagnostics.</p>
   </section>
 
   <!-- Section 2: Security & Sandbox Design -->
@@ -50,16 +54,34 @@ plan_block:   "plan" block</code></pre>
     <h2>2. Safety Sandbox & PyBridge Architecture</h2>
     <p>A primary design goal of INTHON is safety during execution of LLM-generated code. PyBridge bridges the host Python ecosystem while protecting the underlying OS using a two-layer isolation defense:</p>
     
-    <div class="sandbox-diagram">
-      <div class="diagram-block border-red">
-        <h4>1. Import Hook Filter</h4>
-        <p>Overrides <code>sys.meta_path</code>. Rejects OS, sys, subprocess, socket, and eval modules before compilation.</p>
-      </div>
-      <div class="diagram-arrow">&rarr;</div>
-      <div class="diagram-block border-green">
-        <h4>2. Secure Proxy wrappers</h4>
-        <p>Wraps allowed libraries in <code>InthonPyObject</code> proxy objects, intercepting attribute lookup dynamically.</p>
-      </div>
+    <div class="sandbox-diagram-container">
+      <svg viewBox="0 0 650 180" class="spec-img" style="background: #fafbfc; border: 1px solid var(--border-color); border-radius: 8px; margin: 15px 0;">
+        <rect x="15" y="45" width="130" height="70" rx="6" fill="#f6f8fa" stroke="#e1e4e8" stroke-width="2"/>
+        <text x="80" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">use py.subprocess</text>
+        <text x="80" y="98" font-family="var(--font-body)" font-size="11" fill="#d73a49" text-anchor="middle">Malicious Request</text>
+
+        <path d="M145 80 L205 80" stroke="#6a737d" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="215" y="45" width="150" height="70" rx="6" fill="#d73a49" fill-opacity="0.08" stroke="#d73a49" stroke-width="2"/>
+        <text x="290" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">sys.meta_path Hook</text>
+        <text x="290" y="98" font-family="var(--font-body)" font-size="11" fill="#d73a49" text-anchor="middle">Blocked: NOT Allowed</text>
+
+        <path d="M290 115 L290 145" stroke="#d73a49" stroke-width="2" stroke-dasharray="2" marker-end="url(#arrow)"/>
+        <text x="295" y="135" font-family="var(--font-mono)" font-size="11" fill="#d73a49">PyBridgeError</text>
+
+        <rect x="480" y="45" width="150" height="70" rx="6" fill="#28a745" fill-opacity="0.08" stroke="#28a745" stroke-width="2"/>
+        <text x="555" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">InthonPyObject Proxy</text>
+        <text x="555" y="98" font-family="var(--font-body)" font-size="11" fill="#28a745" text-anchor="middle">Safe Attribute Wrapper</text>
+
+        <!-- Back-route for clean code -->
+        <path d="M80 35 L80 15 L555 15 L555 35" fill="none" stroke="#28a745" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="317" y="30" font-family="var(--font-heading)" font-size="11" fill="#28a745" text-anchor="middle">use py.numpy (Allowed)</text>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#6a737d" />
+          </marker>
+        </defs>
+      </svg>
     </div>
 
     <h3>A. Module Policy Matrix</h3>

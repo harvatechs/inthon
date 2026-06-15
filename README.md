@@ -2,9 +2,10 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
-[![Tests Status](https://img.shields.io/badge/tests-60%20passed-success)](tests/)
+[![Tests Status](https://img.shields.io/badge/tests-109%20passed-success)](tests/)
 [![Type Checking: Mypy](https://img.shields.io/badge/type--checking-mypy--clean-success)](pyproject.toml)
 [![Code Style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Website Portal](https://img.shields.io/badge/website-live-success)](https://harvatechs.github.io/inthon/)
 
 **INTHON** (Intelligent + Python) is a Python-hosted language layer designed specifically for AI-native workflows, tool orchestration, and capability-bounded execution. By representing agent execution intent as structured, deterministic code rather than unstructured natural language or verbose JSON/XML, INTHON reduces token footprint, validates schemas statically, and guarantees absolute sandbox safety.
 
@@ -244,13 +245,15 @@ inthon run agent.inth
 
 ## 6. Learner Documentation & Tutorials
 
-If you want to learn INTHON step-by-step, we have created an **[Official Learner Documentation](learn/README.md)** directory. Follow the tutorials sequentially to master the language:
+If you want to learn INTHON step-by-step, we have created an **[Interactive Developer Guide Portal](https://harvatechs.github.io/inthon/guide.html)** and an offline **[Official Learner Documentation](learn/README.md)** directory. Follow the tutorials sequentially to master the language:
 
-1. **[Part 1: Getting Started](learn/01_getting_started.md)**: Prerequisites, environment setup, and CLI reference guide.
-2. **[Part 2: Syntax Basics & Types](learn/02_syntax_basics.md)**: Variables (`let`), constants (`const`), basic types, functions, and implicit returns.
-3. **[Part 3: Agents & Tools](learn/03_agents_and_tools.md)**: Creating structured agent blocks, goal definitions, and security policies.
-4. **[Part 4: PyBridge Interoperability](learn/04_pybridge_interop.md)**: Safe Python library imports, allowable namespaces, and sandbox mechanics.
-5. **[Part 5: Advanced Features](learn/05_advanced_features.md)**: Approval gateways, episodic memory systems, and exponential backoff retry loops.
+* **[Part 1: Getting Started](https://harvatechs.github.io/inthon/guide.html#guide-part1)**: Prerequisites, environment setup, and CLI reference guide.
+* **[Part 2: Syntax Basics & Types](https://harvatechs.github.io/inthon/guide.html#guide-part2)**: Variables (`let`), constants (`const`), basic types, functions, and implicit returns.
+* **[Part 3: Agents & Tools](https://harvatechs.github.io/inthon/guide.html#guide-part3)**: Creating structured agent blocks, goal definitions, and security policies.
+* **[Part 4: PyBridge Interoperability](https://harvatechs.github.io/inthon/guide.html#guide-part4)**: Safe Python library imports, allowable namespaces, and sandbox mechanics.
+* **[Part 5: Advanced Features](https://harvatechs.github.io/inthon/guide.html#guide-part5)**: Approval gateways, episodic memory systems, and exponential backoff retry loops.
+
+For the deep compiler mechanics, Lark parsing grammar, and security wraps, refer to the **[Technical Specification & Benchmarks Report](https://harvatechs.github.io/inthon/spec.html)**.
 
 ---
 

@@ -209,6 +209,12 @@ h1, h2, h3, h4 {
   border: 1px solid var(--border-color);
 }
 
+.badge-success {
+  background-color: rgba(34, 134, 58, 0.08);
+  color: #22863a;
+  border: 1px solid rgba(34, 134, 58, 0.15);
+}
+
 .hero-title {
   font-size: clamp(2.2rem, 4.5vw, 3.6rem);
   line-height: 1.15;

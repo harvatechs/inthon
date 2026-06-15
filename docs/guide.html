@@ -1,19 +1,19 @@
 ---
 layout: default
-title: "INTHON - Developer Guide & Tutorials"
-description: "A complete step-by-step developer guide and tutorials course to master the INTHON programming language."
+title: "INTHON - Developer Guide & Technical Specifications"
+description: "A complete step-by-step developer guide and comprehensive language specification to master the INTHON programming language."
 ---
 
 <div class="guide-layout">
   <!-- Sidebar -->
   <aside class="guide-sidebar">
     <ul class="sidebar-list">
-      <li class="sidebar-item active" data-target="guide-intro">Overview</li>
-      <li class="sidebar-item" data-target="guide-part1">1. Getting Started</li>
-      <li class="sidebar-item" data-target="guide-part2">2. Syntax Basics & Types</li>
-      <li class="sidebar-item" data-target="guide-part3">3. Agents & Tools</li>
-      <li class="sidebar-item" data-target="guide-part4">4. PyBridge Interop</li>
-      <li class="sidebar-item" data-target="guide-part5">5. Advanced Features</li>
+      <li class="sidebar-item active" data-target="guide-intro">Overview & Scope</li>
+      <li class="sidebar-item" data-target="guide-part1">1. Getting Started & Tooling</li>
+      <li class="sidebar-item" data-target="guide-part2">2. Scoping, Operators & Closures</li>
+      <li class="sidebar-item" data-target="guide-part3">3. Agents, Tools & Policies</li>
+      <li class="sidebar-item" data-target="guide-part4">4. PyBridge Sandbox & Security</li>
+      <li class="sidebar-item" data-target="guide-part5">5. Advanced Primitives & Resiliency</li>
     </ul>
   </aside>
   
@@ -22,12 +22,12 @@ description: "A complete step-by-step developer guide and tutorials course to ma
     
     <!-- OVERVIEW SECTION -->
     <section id="guide-intro" class="guide-section active">
-      <h1 class="guide-title">Official Developer Guide & Course</h1>
-      <p class="guide-lead">Welcome to the official learning portal for the INTHON programming language layer!</p>
+      <h1 class="guide-title">Official Developer Guide & Specification</h1>
+      <p class="guide-lead">Welcome to the complete language reference and learning portal for the INTHON programming language layer.</p>
       
       <div class="doc-block">
-        <p><strong>INTHON</strong> (Intelligent + Python) is a domain-specific language layer built for AI agents. By combining the readability of Python with sandbox guarantees, tool schemas, and cost policies, INTHON enables you to write secure, deterministic, and token-efficient agent plans.</p>
-        <p>This guide is structured to take you from a complete beginner to writing advanced, capability-bounded autonomous agents.</p>
+        <p><strong>INTHON</strong> (Intelligent + Python) is a domain-specific language layer designed for AI-native workflows. By representing agent execution intent as structured, deterministic code rather than unstructured natural language or verbose JSON/XML, INTHON reduces token footprint, validates schemas statically, and guarantees absolute sandbox safety.</p>
+        <p>This guide serves as both a step-by-step learning course and a technical manual, detailing language mechanics, compiler behavior, scoping rules, and safety boundaries.</p>
       </div>
 
       <h2>The Learning Path</h2>
@@ -35,68 +35,63 @@ description: "A complete step-by-step developer guide and tutorials course to ma
       
       <div class="guide-cards">
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part1\']').click()">
-          <h3>1. Getting Started</h3>
-          <p>Prerequisites, environment setup, writing hello.inth, and CLI reference (run, check, fmt, ast, ir).</p>
+          <h3>1. Getting Started & Tooling</h3>
+          <p>Prerequisites, environment setup, CLI reference, and compiling standalone Windows installer binaries.</p>
         </div>
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part2\']').click()">
-          <h3>2. Syntax Basics & Types</h3>
-          <p>Scoping rules (let, const), basic types (list, dict), conditionals, functions, and implicit returns.</p>
+          <h3>2. Scoping, Operators & Closures</h3>
+          <p>Variable scoping, typing details, mathematical operators, lexical closures, and implicit return pipelines.</p>
         </div>
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part3\']').click()">
-          <h3>3. Agents & Tools</h3>
-          <p>Creating agent blocks, configuring goals/io, importing tools, and setting capability policies.</p>
+          <h3>3. Agents, Tools & Policies</h3>
+          <p>Creating agent blocks, configuring goals, static tool validation, and capability policy constraints.</p>
         </div>
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part4\']').click()">
-          <h3>4. PyBridge Interoperability</h3>
-          <p>Importing python modules safely, allowable namespaces, and secure proxy wrapper mechanics.</p>
+          <h3>4. PyBridge Sandbox & Security</h3>
+          <p>Module allowlists, custom import hook interception, and secure proxy wrapper mechanics.</p>
         </div>
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part5\']').click()">
-          <h3>5. Advanced Agent Primitives</h3>
-          <p>Approval gateways (HITL), episodic/semantic memory, and resilient exponential backoff retry loops.</p>
+          <h3>5. Advanced Primitives & Resiliency</h3>
+          <p>Human-in-the-loop approval gates, semantic memory stores, and exponential backoff retry math.</p>
         </div>
       </div>
 
       <h2>Why Learn INTHON?</h2>
-      <p>Traditional agent patterns involve writing complex natural language prompts or passing verbose, fragile JSON structures back and forth. This is prone to errors, has high latency, and is vulnerable to security exploits.</p>
-      <p>By learning INTHON, you acquire the tools to build:</p>
-      <ul>
-        <li><strong>Cost-Efficient Systems</strong>: Reduce LLM prompt token sizes by up to <strong>75%</strong>.</li>
-        <li><strong>Ironclad Sandboxes</strong>: Execute generated actions safely, knowing that unauthorised operating system access is blocked.</li>
-        <li><strong>Fully Replayable Runs</strong>: Every INTHON program logs a JSON trace graph showing exactly which tool was called, what was computed, and how much it cost.</li>
-      </ul>
+      <p>Traditional agent architectures rely on Large Language Models (LLMs) outputting fragile JSON schemas or raw code blocks to trigger actions. These approaches lead to:
+      <ol>
+        <li><strong>Token Bloat</strong>: Verbose JSON syntax consumes excessive tokens, increasing prompt costs.</li>
+        <li><strong>Side-Effect Risks</strong>: Running raw python/shell code exposes the host filesystem and network to compromises.</li>
+        <li><strong>Audit Hardness</strong>: Non-deterministic agent loops cannot be easily replayed or restricted.</li>
+      </ol>
+      <p>INTHON solves these issues by introducing an optimized domain grammar, capability sandboxing, and deterministic JSON trace logging.</p>
     </section>
 
     <!-- PART 1 SECTION -->
     <section id="guide-part1" class="guide-section">
-      <h1 class="guide-title">Part 1: Getting Started with INTHON</h1>
-      <p class="guide-lead">This tutorial gets you set up with INTHON and guides you through writing and executing your very first INTHON script.</p>
+      <h1 class="guide-title">Part 1: Getting Started & Tooling</h1>
+      <p class="guide-lead">Set up your local environment, run your first program, and explore CLI compiler commands.</p>
 
       <h2>1. Prerequisites</h2>
-      <p>Before installing, ensure your machine has:</p>
-      <ul>
-        <li><strong>Python</strong>: Version 3.11 or higher.</li>
-        <li><strong>Pip</strong>: Python package manager.</li>
-      </ul>
-      <p>Verify your installation:</p>
+      <p>Ensure your local host has Python version 3.11 or higher and the `pip` package manager installed. Verify your environment:</p>
       <pre><code class="language-bash">python --version</code></pre>
 
-      <h2>2. Installation</h2>
-      <p>Clone the repository and install INTHON in developer mode. We recommend using a virtual environment.</p>
+      <h2>2. Setup & Installation</h2>
+      <p>Clone the INTHON repository and install it in editable/developer mode to make the CLI available system-wide:</p>
       <pre><code class="language-bash"># Clone the repository
 git clone https://github.com/harvatechs/inthon.git
 cd inthon
 
-# Create and activate virtual environment
+# Set up virtual environment
 python -m venv .venv
 # On Windows:
 .venv\Scripts\activate
 # On Unix/macOS:
 source .venv/bin/activate
 
-# Install the package and optional dependencies
+# Install with development dependencies
 pip install -e .[dev,data,ml]</code></pre>
 
-      <p>To verify the installation, query the CLI help:</p>
+      <p>Verify that the command line tool is registered on the system PATH:</p>
       <pre><code class="language-bash">inthon --help</code></pre>
 
       <h2>3. Your First Program: <code>hello.inth</code></h2>
@@ -108,361 +103,340 @@ fn greet(name: str) -> str {
     return "Hello, " + name + "!"
 }
 
-let message = greet("INTHON Learner")
+let message = greet("INTHON Developer")
 message</code></pre>
 
-      <h2>4. Running the Program</h2>
-      <p>To run your program, use the <code>inthon run</code> command:</p>
+      <h2>4. Executing code</h2>
+      <p>Use the CLI to run the program via the AST-walking interpreter:</p>
       <pre><code class="language-bash">inthon run hello.inth</code></pre>
       <p><strong>Output:</strong></p>
-      <pre><code class="language-text">Hello, INTHON Learner!</code></pre>
+      <pre><code class="language-text">Hello, INTHON Developer!</code></pre>
 
-      <h2>5. Command Line Interface (CLI) Reference</h2>
-      <p>The <code>inthon</code> command line tool provides several utilities for analyzing, validating, formatting, and executing code.</p>
-      
-      <h3>A. Static Verification (<code>check</code>)</h3>
-      <p>Before running, you can verify that your syntax is correct and types are valid without executing the file:</p>
-      <pre><code class="language-bash">inthon check hello.inth</code></pre>
-      
-      <h3>B. Formatting Source Code (<code>fmt</code>)</h3>
-      <p>INTHON features a built-in code formatter that standardizes spacing, newlines, and brackets.</p>
-      <pre><code class="language-bash"># Preview formatting changes
-inthon fmt hello.inth
+      <h2>5. CLI Tooling Reference</h2>
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>Command</th>
+            <th>Usage</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>run</code></td>
+            <td><code>inthon run &lt;file.inth&gt;</code></td>
+            <td>Executes the file in the sandboxed runtime. Supports cost caps and trace exports.</td>
+          </tr>
+          <tr>
+            <td><code>check</code></td>
+            <td><code>inthon check &lt;file.inth&gt;</code></td>
+            <td>Lints and statically verifies type safety and tool references without executing.</td>
+          </tr>
+          <tr>
+            <td><code>fmt</code></td>
+            <td><code>inthon fmt &lt;file.inth&gt; --write</code></td>
+            <td>Formats spacing, brackets, and newlines. <code>--write</code> updates the file.</td>
+          </tr>
+          <tr>
+            <td><code>ast</code></td>
+            <td><code>inthon ast &lt;file.inth&gt;</code></td>
+            <td>Prints the parsed Abstract Syntax Tree output as a structured JSON object.</td>
+          </tr>
+          <tr>
+            <td><code>ir</code></td>
+            <td><code>inthon ir &lt;file.inth&gt;</code></td>
+            <td>Prints the lowered Intermediate Representation tree serialized as JSON.</td>
+          </tr>
+        </tbody>
+      </table>
 
-# Write formatting changes directly to the file
-inthon fmt hello.inth --write</code></pre>
-
-      <h3>C. Viewing the AST (<code>ast</code>)</h3>
-      <p>Prints the Abstract Syntax Tree parsed by Lark:</p>
-      <pre><code class="language-bash">inthon ast hello.inth</code></pre>
-
-      <h3>D. Viewing the Intermediate Representation (<code>ir</code>)</h3>
-      <p>Prints the lowered IR tree serialized as JSON:</p>
-      <pre><code class="language-bash">inthon ir hello.inth</code></pre>
-
-      <h3>E. Specifying Execution Limits via CLI</h3>
-      <p>You can override policy rules (like cost budgets) directly from the command line:</p>
-      <pre><code class="language-bash">inthon run hello.inth --max-cost 0.25 --trace-out run_trace.json</code></pre>
+      <h3>Specifying Execution Budgets</h3>
+      <p>You can override default interpreter cost limits directly from the CLI:</p>
+      <pre><code class="language-bash">inthon run hello.inth --max-cost 0.50 --trace-out trace_log.json</code></pre>
     </section>
 
     <!-- PART 2 SECTION -->
     <section id="guide-part2" class="guide-section">
-      <h1 class="guide-title">Part 2: Syntax Basics & Type System</h1>
-      <p class="guide-lead">This guide introduces the core building blocks of the INTHON language syntax, including variable scoping, static types, branch controls, and functions.</p>
+      <h1 class="guide-title">Part 2: Scoping, Operators & Closures</h1>
+      <p class="guide-lead">Deep-dive into INTHON scoping rules, data types, operators precedence, and call frame stacks.</p>
 
-      <h2>1. Variables and Constants</h2>
-      <p>INTHON enforces block-scoped variable declarations using <code>let</code> (mutable) and <code>const</code> (immutable).</p>
+      <h2>1. Block Scoping (<code>let</code> and <code>const</code>)</h2>
+      <p>INTHON implements strict block scoping. Variables declared within a block <code>{}</code> are invisible outside of it.</p>
       
-      <h3>Mutable Variables (<code>let</code>)</h3>
-      <p>Variables declared with <code>let</code> can be reassigned:</p>
-      <pre><code class="language-inth">let score = 10
-score = score + 5</code></pre>
+      <h3>Variable Scope Lifespans</h3>
+      <ul>
+        <li><strong>Mutable Scope (<code>let</code>)</strong>: Can be declared with or without type annotations. Value bindings can be changed.</li>
+        <li><strong>Immutable Scope (<code>const</code>)</strong>: Must be bound at declaration time. Value bindings are read-only; attempts to assign a new value to a constant trigger compile-time checking failures.</li>
+      </ul>
+      <pre><code class="language-inth">let x = 10
+const y: float = 3.14
 
-      <h3>Immutable Constants (<code>const</code>)</h3>
-      <p>Constants declared with <code>const</code> cannot be reassigned once bound. Attempts to reassign them will fail during static checking.</p>
-      <pre><code class="language-inth">const pi = 3.14159
-// pi = 3.0 // ERROR: Cannot assign to constant 'pi'</code></pre>
+if x > 5 {
+    let z = "inner scope"
+    x = x + 1 // OK: reassigning let variable
+    // y = 2.71 // ERROR: Cannot reassign const variable 'y'
+}
+// z // ERROR: Variable 'z' is undefined in this scope</code></pre>
 
-      <h2>2. Type System</h2>
-      <p>INTHON is a statically-typed language with type inference. While you can omit type annotations, providing them increases script readability and safety.</p>
+      <h2>2. Complete Operators Reference</h2>
+      <p>INTHON v0.1 evaluates operators using left-to-right precedence. Brackets are recommended to enforce specific mathematical precedence.</p>
       
-      <h3>Core Data Types</h3>
-      <table class="guide-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Example</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>int</code></td>
-            <td>Integer numbers</td>
-            <td><code>let age: int = 25</code></td>
-          </tr>
-          <tr>
-            <td><code>float</code></td>
-            <td>Floating-point numbers</td>
-            <td><code>let price: float = 19.99</code></td>
-          </tr>
-          <tr>
-            <td><code>str</code></td>
-            <td>Text string</td>
-            <td><code>let name: str = "INTHON"</code></td>
-          </tr>
-          <tr>
-            <td><code>bool</code></td>
-            <td>Boolean value</td>
-            <td><code>let active: bool = true</code></td>
-          </tr>
-          <tr>
-            <td><code>list[T]</code></td>
-            <td>Dynamic array of type <code>T</code></td>
-            <td><code>let tags: list[str] = ["ai", "compiler"]</code></td>
-          </tr>
-          <tr>
-            <td><code>dict[K, V]</code></td>
-            <td>Hash map of key <code>K</code> to value <code>V</code></td>
-            <td><code>let meta: dict[str, float] = {"temp": 0.7}</code></td>
-          </tr>
-          <tr>
-            <td><code>any</code></td>
-            <td>Bypasses type-check for the variable</td>
-            <td><code>let payload: any = fetch_data()</code></td>
-          </tr>
-        </tbody>
-      </table>
+      <h3>Mathematical Operators</h3>
+      <ul>
+        <li><code>+</code> (Addition / String Concatenation): Adds numbers or merges text.</li>
+        <li><code>-</code> (Subtraction): Subtracts numbers.</li>
+        <li><code>*</code> (Multiplication): Multiplies numbers.</li>
+        <li><code>/</code> (Division): Divides floats.</li>
+      </ul>
 
-      <h3>Collections Syntax</h3>
-      <pre><code class="language-inth">let numbers: list[int] = [1, 2, 3, 4]
-let info: dict[str, any] = {
-    "title": "Agent Research",
-    "retries": 3,
-    "completed": false
-}</code></pre>
+      <h3>Comparison & Logical Operators</h3>
+      <ul>
+        <li><code>==</code> (Equality), <code>!=</code> (Inequality).</li>
+        <li><code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>: Relational comparisons.</li>
+        <li><code>&&</code> (Logical AND), <code>||</code> (Logical OR), <code>!</code> (Logical NOT).</li>
+      </ul>
 
-      <h2>3. Conditionals (<code>if</code> / <code>else</code>)</h2>
-      <p>Control flow branches are constructed using standard <code>if</code> and <code>else</code> blocks. Braces <code>{}</code> are required around the conditional body:</p>
-      <pre><code class="language-inth">let temperature = 38.5
+      <h2>3. Collections & Custom Types</h2>
+      <p>INTHON lists and dicts are dynamic and strictly checked. Typing annotations are declared using brackets: <code>list[T]</code> and <code>dict[K, V]</code>.</p>
+      <pre><code class="language-inth">let items: list[str] = ["gpt-4o", "gemini-3.5"]
+let data: dict[str, float] = {"latency": 45.2, "cost": 0.001}</code></pre>
+      
+      <p>Use standard index notation to query and modify values:</p>
+      <pre><code class="language-inth">let first_item = items[0]
+data["cost"] = 0.002</code></pre>
 
-if temperature > 39.0 {
-    let warning = "Critical heat alert"
-} else {
-    let warning = "Temperature is stable"
-}</code></pre>
-
-      <h2>4. Functions (<code>fn</code>)</h2>
-      <p>Functions are declared using the <code>fn</code> keyword, with parameter type annotations and optional return type declarations.</p>
-      <pre><code class="language-inth">// Function with return type annotation
-fn compute_cost(input_tokens: int, output_tokens: int) -> float {
-    let cost = (input_tokens * 0.00001) + (output_tokens * 0.00003)
-    return cost
+      <h2>4. Functions & Closures</h2>
+      <p>Functions are declared with <code>fn</code>, parameter names, type signatures, and an optional return type.</p>
+      
+      <h3>Activation Call Frames</h3>
+      <p>When a function is called, the VM spawns a new frame containing the parameters. Variables in the outer lexical scope remain accessible to nested helper functions, forming closures.</p>
+      
+      <h3>Implicit Return Pipeline</h3>
+      <p>If the last statement in a function body is an expression (not terminated by a semicolon or keyword), the VM automatically pops it from the evaluation stack and returns it as the function's output.</p>
+      <pre><code class="language-inth">fn multiplier(factor: int) -> fn(int) -> int {
+    fn inner(x: int) -> int {
+        x * factor // Implicit return of evaluation
+    }
+    return inner
 }
 
-let session_cost = compute_cost(1500, 350)</code></pre>
-
-      <h3>Implicit Returns</h3>
-      <p>If a function block (or a file) ends with an expression statement without an explicit <code>return</code> keyword, INTHON will implicitly return the evaluation of that statement.</p>
-      <pre><code class="language-inth">fn double(x: int) -> int {
-    x * 2 // Implicitly returns x * 2
-}</code></pre>
+let double = multiplier(2)
+let result = double(10) // Returns 20</code></pre>
     </section>
 
     <!-- PART 3 SECTION -->
     <section id="guide-part3" class="guide-section">
-      <h1 class="guide-title">Part 3: Structured Agent Blocks & Tool Integration</h1>
-      <p class="guide-lead">INTHON's defining feature is the Structured Agent Block. Instead of passing raw, unstructured text to an AI, INTHON allows you to encapsulate the agent's target goal, its inputs/outputs, its safety permissions, and its operational plan directly in code.</p>
+      <h1 class="guide-title">Part 3: Agents, Tools & Policies</h1>
+      <p class="guide-lead">Learn how to declare structured agent containers, import capabilities, and apply sandbox constraints.</p>
 
-      <h2>1. Importing Tools (<code>use tool</code>)</h2>
-      <p>Tools represent external operations (such as calling web searches, sending database queries, or writing files). To use a tool inside an agent, you must declare it at the top of the file:</p>
+      <h2>1. Structured Agent Container</h2>
+      <p>The <code>agent</code> block maps an execution lifecycle. It encapsulates a goals directive, boundary interfaces, sandboxing policies, and the tool workflow code.</p>
+      
+      <h3>SVG Diagram: Policy Guard Enforcement</h3>
+      <div class="sandbox-diagram-container">
+        <svg viewBox="0 0 650 160" class="spec-img" style="background: #fafbfc; border: 1px solid var(--border-color); border-radius: 8px; margin: 15px 0;">
+          <!-- Blocks -->
+          <rect x="20" y="40" width="130" height="70" rx="6" fill="#0969da" fill-opacity="0.08" stroke="#0969da" stroke-width="2"/>
+          <text x="85" y="75" font-family="var(--font-heading)" font-size="13" font-weight="600" fill="#1b1f23" text-anchor="middle">Agent Execution</text>
+          <text x="85" y="93" font-family="var(--font-body)" font-size="11" fill="#586069" text-anchor="middle">Plan Instructions</text>
+
+          <path d="M150 75 L220 75" stroke="#6a737d" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrow)"/>
+
+          <rect x="230" y="40" width="160" height="70" rx="6" fill="#f6f8fa" stroke="#e1e4e8" stroke-width="2"/>
+          <text x="310" y="75" font-family="var(--font-heading)" font-size="13" font-weight="600" fill="#1b1f23" text-anchor="middle">Policy Guard</text>
+          <text x="310" y="93" font-family="var(--font-body)" font-size="11" fill="#d73a49" text-anchor="middle">Validate Cost & Quotas</text>
+
+          <path d="M390 75 L460 75" stroke="#6a737d" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="470" y="40" width="150" height="70" rx="6" fill="#28a745" fill-opacity="0.08" stroke="#28a745" stroke-width="2"/>
+          <text x="545" y="75" font-family="var(--font-heading)" font-size="13" font-weight="600" fill="#1b1f23" text-anchor="middle">Protected OS / Host</text>
+          <text x="545" y="93" font-family="var(--font-body)" font-size="11" fill="#28a745" text-anchor="middle">Approved Action</text>
+
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6a737d" />
+            </marker>
+          </defs>
+        </svg>
+      </div>
+
+      <h2>2. Declaring and Importing Tools</h2>
+      <p>Tools are external service bindings registered on the host machine. To invoke them, you must import them at the file header using <code>use tool</code>:</p>
       <pre><code class="language-inth">use tool web.search
-use tool database.query</code></pre>
-      <p>Declaring tools allows the static analyzer to fetch the tool schemas and validate their argument structures before executing the code.</p>
+use tool file.write</code></pre>
+      <p>This imports the structural parameter schema of the tool. The semantic analyzer uses these schemas to verify argument counts, types, and names prior to compilation, ensuring the LLM cannot emit malformed API structures.</p>
 
-      <h2>2. Defining the <code>agent</code> Block</h2>
-      <p>The <code>agent</code> keyword defines an agent node. Inside the block, you specify:</p>
-      <ol>
-        <li><strong><code>goal</code></strong>: A string description of what the agent needs to achieve. This is sent to the LLM backend during planning.</li>
-        <li><strong><code>inputs</code> / <code>outputs</code></strong> (Optional): Strictly-typed boundary schemas.</li>
-        <li><strong><code>policy</code></strong>: Safety boundaries that limit this agent's actions (e.g., maximum cost, tool call quota, network access).</li>
-        <li><strong><code>plan</code></strong>: The sequence of INTHON instructions that execute the agent loop.</li>
-      </ol>
-
-      <h3>Basic Agent Structure</h3>
-      <pre><code class="language-inth">use tool web.search
-
-agent ResearchAssistant {
-    goal "Find room-temperature superconductor papers"
-    
-    inputs {
-        limit: int
-    }
-    outputs {
-        papers: list[dict]
-    }
-
-    policy {
-        max_tool_calls: 5
-        max_cost_usd: 0.05
-        allow_network: true
-    }
-
-    plan {
-        // Calls the web.search tool declared above
-        let query_str = "room-temperature superconductor arxiv 2026"
-        let raw_results = web.search(query_str, limit: limit)
-        return raw_results
-    }
-}</code></pre>
-
-      <h2>3. Sandboxing & Safety Policies</h2>
-      <p>The <code>policy</code> block inside an agent serves as a runtime contract. If an agent tries to execute a statement that violates its policy, the interpreter immediately halts execution and raises a <code>PolicyViolationError</code>.</p>
-      <p>Available policy keys:</p>
+      <h2>3. Complete Policy Reference</h2>
+      <p>The <code>policy</code> block contains the execution boundaries. If code attempts to cross these limits, the runtime raises a <code>PolicyViolationError</code>.</p>
       
       <table class="guide-table">
         <thead>
           <tr>
-            <th>Policy Key</th>
+            <th>Key</th>
             <th>Type</th>
+            <th>Default</th>
             <th>Description</th>
-            <th>Example</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong><code>allow_network</code></strong></td>
+            <td><code>allow_network</code></td>
             <td><code>bool</code></td>
-            <td>Enables/disables calling external network APIs.</td>
-            <td><code>allow_network: true</code></td>
+            <td><code>false</code></td>
+            <td>Controls outbound API calls from tool and PyBridge calls.</td>
           </tr>
           <tr>
-            <td><strong><code>max_tool_calls</code></strong></td>
+            <td><code>max_tool_calls</code></td>
             <td><code>int</code></td>
-            <td>Caps the number of tool invocations allowed.</td>
-            <td><code>max_tool_calls: 10</code></td>
+            <td><code>0</code></td>
+            <td>Integer cap on total tool calls allowed per session.</td>
           </tr>
           <tr>
-            <td><strong><code>max_cost_usd</code></strong></td>
+            <td><code>max_cost_usd</code></td>
             <td><code>float</code></td>
-            <td>Sets a maximum financial budget for LLM calls.</td>
-            <td><code>max_cost_usd: 0.50</code></td>
+            <td><code>0.00</code></td>
+            <td>Financial cap on cumulative LLM token cost.</td>
           </tr>
           <tr>
-            <td><strong><code>allow_memory_persist</code></strong></td>
+            <td><code>allow_memory_persist</code></td>
             <td><code>bool</code></td>
-            <td>Permits writing to episodic/semantic memory.</td>
-            <td><code>allow_memory_persist: false</code></td>
+            <td><code>false</code></td>
+            <td>Controls SQLite episodic database inserts.</td>
+          </tr>
+          <tr>
+            <td><code>allow_fs</code></td>
+            <td><code>bool</code></td>
+            <td><code>false</code></td>
+            <td>Controls local disk read and write privileges.</td>
           </tr>
         </tbody>
       </table>
 
-      <h3>Policy Violation Example</h3>
-      <p>If <code>allow_network</code> is set to <code>false</code>, calling <code>web.search</code> will fail:</p>
-      <pre><code class="language-inth">agent TrappedAgent {
+      <h3>Agent Implementation Example</h3>
+      <pre><code class="language-inth">use tool web.search
+
+agent Researcher {
+    goal "Find room-temperature superconductor papers on arxiv"
+    inputs {
+        count: int
+    }
+    outputs {
+        papers: list[dict]
+    }
     policy {
-        allow_network: false
+        allow_network: true
+        max_tool_calls: 3
+        max_cost_usd: 0.05
     }
     plan {
-        // This will throw a PolicyViolationError at runtime!
-        web.search("test") 
+        let results = web.search("superconductor", limit: count)
+        return results
     }
 }</code></pre>
     </section>
 
     <!-- PART 4 SECTION -->
     <section id="guide-part4" class="guide-section">
-      <h1 class="guide-title">Part 4: PyBridge: Safe Python Interoperability</h1>
-      <p class="guide-lead">One of INTHON's strongest capabilities is PyBridge. It allows you to run existing Python libraries (like Pandas, NumPy, or Math) directly from your INTHON script while maintaining absolute sandbox safety.</p>
+      <h1 class="guide-title">Part 4: PyBridge Sandbox & Security</h1>
+      <p class="guide-lead">Import standard Python libraries safely. Leverage NumPy and Pandas under strict capability validation checks.</p>
 
-      <h2>1. Importing Python Modules (<code>use py</code>)</h2>
-      <p>To import a Python package, prefix the import with the <code>py.</code> namespace. You can also create an alias using the <code>as</code> keyword:</p>
-      <pre><code class="language-inth">use py.math
-use py.numpy as np
-use py.pandas as pd
+      <h2>1. The Import Hook Filter (<code>sys.meta_path</code>)</h2>
+      <p>To enforce absolute sandbox safety, PyBridge intercepts module requests before loading them onto the Python process. It injects a custom meta-importer hook inside <code>sys.meta_path</code>. When the script parses <code>use py.numpy</code>, the hook performs strict name validations.</p>
 
-let value = math.sqrt(16.0)
-let arr = np.array([1, 2, 3])</code></pre>
+      <h3>SVG Diagram: PyBridge Sandbox Interception Flow</h3>
+      <div class="sandbox-diagram-container">
+        <svg viewBox="0 0 650 180" class="spec-img" style="background: #fafbfc; border: 1px solid var(--border-color); border-radius: 8px; margin: 15px 0;">
+          <rect x="15" y="45" width="130" height="70" rx="6" fill="#f6f8fa" stroke="#e1e4e8" stroke-width="2"/>
+          <text x="80" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">use py.subprocess</text>
+          <text x="80" y="98" font-family="var(--font-body)" font-size="11" fill="#d73a49" text-anchor="middle">Malicious Request</text>
 
-      <h2>2. Permitted Standard Modules</h2>
-      <p>To prevent malicious activity (like downloading viruses, wiping directories, or leaking credentials), PyBridge filters module imports. Out of the box, the following libraries are pre-approved:</p>
+          <path d="M145 80 L205 80" stroke="#6a737d" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="215" y="45" width="150" height="70" rx="6" fill="#d73a49" fill-opacity="0.08" stroke="#d73a49" stroke-width="2"/>
+          <text x="290" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">sys.meta_path Hook</text>
+          <text x="290" y="98" font-family="var(--font-body)" font-size="11" fill="#d73a49" text-anchor="middle">Blocked: NOT Allowed</text>
+
+          <path d="M290 115 L290 145" stroke="#d73a49" stroke-width="2" stroke-dasharray="2" marker-end="url(#arrow)"/>
+          <text x="295" y="135" font-family="var(--font-mono)" font-size="11" fill="#d73a49">PyBridgeError</text>
+
+          <rect x="480" y="45" width="150" height="70" rx="6" fill="#28a745" fill-opacity="0.08" stroke="#28a745" stroke-width="2"/>
+          <text x="555" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">InthonPyObject Proxy</text>
+          <text x="555" y="98" font-family="var(--font-body)" font-size="11" fill="#28a745" text-anchor="middle">Safe Attribute Wrapper</text>
+
+          <!-- Back-route for clean code -->
+          <path d="M80 35 L80 15 L555 15 L555 35" fill="none" stroke="#28a745" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="317" y="30" font-family="var(--font-heading)" font-size="11" fill="#28a745" text-anchor="middle">use py.numpy (Allowed)</text>
+        </svg>
+      </div>
+
+      <h2>2. Permitted vs Blocked Packages</h2>
+      <p>Pre-approved libraries contain no filesystem writes or system access wrappers:</p>
       <ul>
-        <li><strong>Mathematical Computing</strong>: <code>numpy</code>, <code>math</code></li>
-        <li><strong>Data Processing</strong>: <code>pandas</code>, <code>polars</code>, <code>pyarrow</code></li>
-        <li><strong>Utilities</strong>: <code>json</code>, <code>collections</code>, <code>datetime</code></li>
+        <li><strong>Approved</strong>: <code>numpy</code>, <code>pandas</code>, <code>math</code>, <code>json</code>, <code>datetime</code>, <code>collections</code>.</li>
+        <li><strong>Blocked</strong>: <code>os</code>, <code>sys</code>, <code>subprocess</code>, <code>ctypes</code>, <code>socket</code>, <code>shutil</code>.</li>
       </ul>
+      <p>If you need to permit a new library, add it to the allowlist in <code>inthon/pybridge/allowlist.py</code>.</p>
 
-      <h3>Data Cleaning Example:</h3>
-      <pre><code class="language-inth">use py.pandas as pd
-
-// Create a DataFrame
-let df = pd.DataFrame([
-    {"name": "Alice", "score": 95},
-    {"name": "Bob", "score": 78},
-    {"name": "Charlie", "score": 88}
-])
-
-// Calculate the average score
-let mean_score = df["score"].mean()
-mean_score</code></pre>
-
-      <h2>3. Blocked Modules (Sandbox Safety)</h2>
-      <p>To guarantee that AI-generated code cannot damage the host machine, PyBridge blocks system-level and execution-altering packages.</p>
-      <p>The following modules are blocked:</p>
-      <ul>
-        <li><strong>Shell & Execution</strong>: <code>os</code>, <code>sys</code>, <code>subprocess</code></li>
-        <li><strong>Dynamic Evaluation</strong>: <code>builtins.eval</code>, <code>builtins.exec</code></li>
-        <li><strong>Networking</strong>: <code>socket</code></li>
-        <li><strong>Memory/Lower-level Access</strong>: <code>ctypes</code></li>
-      </ul>
-      <p>If an agent attempts to import a blocked module:</p>
-      <pre><code class="language-inth">use py.subprocess // Throws PyBridgeError!</code></pre>
-      <p>The interpreter will immediately halt compilation/execution with:</p>
-      <pre><code class="language-text">PyBridgeError: Module 'subprocess' is not permitted.</code></pre>
-
-      <h2>4. How the Security Sandbox Works</h2>
-      <p>PyBridge achieves this security via a two-layer defense mechanism:</p>
-      <ol>
-        <li><strong>Import Hook Filter</strong>: INTHON overrides Python's default import mechanics (<code>sys.meta_path</code>). When a script calls <code>use py.X</code>, the custom importer checks if <code>X</code> is on the allowed list. If it isn't, the import is rejected.</li>
-        <li><strong>Secure Proxy Wrappers (<code>InthonPyObject</code>)</strong>: When a permitted module is imported, it is not returned directly. Instead, it is wrapped in a proxy object. This proxy intercepts every attribute and method lookup. If the code tries to access an unapproved side-effect, the proxy rejects it.</li>
-      </ol>
+      <h2>3. Attribute Level Protection (<code>InthonPyObject</code>)</h2>
+      <p>Even if a module is allowed, standard library functions can sometimes be exploited. PyBridge wraps all returned packages inside a proxy object called <code>InthonPyObject</code>.</p>
+      <p>This proxy class overrides the Python attribute resolution dunder methods (<code>__getattribute__</code>, <code>__setattr__</code>). If code attempts to access private properties (e.g. <code>np.__dict__</code>) or traverse namespaces to access system commands (e.g. <code>np.__config__.__builtins__['eval']</code>), the proxy raises a <code>SecurityViolation</code> exception and terminates execution.</p>
     </section>
 
     <!-- PART 5 SECTION -->
     <section id="guide-part5" class="guide-section">
-      <h1 class="guide-title">Part 5: Advanced Agent Capabilities</h1>
-      <p class="guide-lead">INTHON provides advanced, native runtime primitives designed specifically for building robust and safe AI agents. These include human-in-the-loop approval gates, episodic memory systems, and automatic execution retries.</p>
+      <h1 class="guide-title">Part 5: Advanced Primitives & Resiliency</h1>
+      <p class="guide-lead">Master human verification gateways, relational memory storage, and automatic retry algorithms.</p>
 
-      <h2>1. Approval Gateways (<code>approve</code>)</h2>
-      <p>Critical actions (like sending payments, deleting database records, or sending emails) should not be performed by an AI without human verification. INTHON introduces the <code>approve</code> primitive to block execution until a human yields permission:</p>
-      <pre><code class="language-inth">approve resource_identifier before action_name</code></pre>
-
-      <h3>Payment Verification Example:</h3>
-      <pre><code class="language-inth">agent BillingAgent {
-    policy {
-        allow_payment: true
-    }
-    plan {
-        // Enforces a human check before triggering Stripe charge
-        approve subscription_payment before stripe.charge(amount: 49.00)
-    }
-}</code></pre>
-      <p>At runtime, the interpreter intercepts this instruction and fires an approval request hook. If the human approves, execution continues. If the human denies it, an <code>ApprovalDeniedError</code> is thrown, aborting the transaction.</p>
-
-      <h2>2. Episodic Memory Operations (<code>remember</code> / <code>recall</code>)</h2>
-      <p>AI agents need to store facts during their execution cycle to build context. INTHON has built-in primitives to save and retrieve facts using semantic memory namespaces:</p>
+      <h2>1. Human-in-the-Loop Approval Gates (<code>approve</code>)</h2>
+      <p>For critical side-effects, INTHON enforces human intervention. The compiler registers the target action and suspends the thread execution, emitting a structured request event:</p>
+      <pre><code class="language-inth">approve subscription_charge before stripe.charge(amount: 49.00)</code></pre>
       
-      <h3>Storing Facts (<code>remember</code>)</h3>
-      <pre><code class="language-inth">remember "Research shows room-temperature superconductors operate best under high pressure" in session</code></pre>
+      <h3>SVG Diagram: HITL Execution Suspend Flow</h3>
+      <div class="sandbox-diagram-container">
+        <svg viewBox="0 0 650 160" class="spec-img" style="background: #fafbfc; border: 1px solid var(--border-color); border-radius: 8px; margin: 15px 0;">
+          <rect x="15" y="45" width="120" height="70" rx="6" fill="#f6f8fa" stroke="#e1e4e8" stroke-width="2"/>
+          <text x="75" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">Execute Plan</text>
+          <text x="75" y="98" font-family="var(--font-body)" font-size="11" fill="#586069" text-anchor="middle">Interpreter Thread</text>
+
+          <path d="M135 80 L205 80" stroke="#6a737d" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="215" y="45" width="140" height="70" rx="6" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="2"/>
+          <text x="285" y="80" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">Halt & Emit Hook</text>
+          <text x="285" y="98" font-family="var(--font-body)" font-size="11" fill="#f59e0b" text-anchor="middle">Approval Prompted</text>
+
+          <path d="M355 80 L425 80" stroke="#6a737d" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="435" y="25" width="200" height="45" rx="6" fill="#28a745" fill-opacity="0.08" stroke="#28a745" stroke-width="2"/>
+          <text x="535" y="52" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">Approved: Resume Exec</text>
+
+          <rect x="435" y="90" width="200" height="45" rx="6" fill="#d73a49" fill-opacity="0.08" stroke="#d73a49" stroke-width="2"/>
+          <text x="535" y="117" font-family="var(--font-heading)" font-size="12" font-weight="600" fill="#1b1f23" text-anchor="middle">Denied: Abort Transaction</text>
+        </svg>
+      </div>
+
+      <h2>2. Episodic Memory Primitives (SQLite Backed)</h2>
+      <p>Semantic variables can be persisted across sessions using the <code>remember</code> and <code>recall</code> primitives:</p>
+      <pre><code class="language-inth">remember "Superconductors display zero electrical resistance" in session
+let val = recall "electrical resistance" from session</code></pre>
       
-      <h3>Retrieving Facts (<code>recall</code>)</h3>
-      <pre><code class="language-inth">let fact = recall "superconductor pressure" from session</code></pre>
-
-      <h2>3. Resilient Executions (<code>retry</code>)</h2>
-      <p>Network calls and external tool APIs are frequently unstable. Instead of letting your agent crash, you can wrap operations in a <code>retry</code> block. INTHON supports exponential backoff retries out-of-the-box:</p>
-      <pre><code class="language-inth">retry max_attempts with backoff backoff_type {
-    // Attempt block
-} catch error_variable {
-    // Failure handling
+      <h3>Storage Architecture</h3>
+      <p>Under the hood, memory spaces are backed by a local SQLite relational store. The database computes embeddings of the textual statement using cosine similarity metric indexes to fetch the most semantically relevant fact matches on demand.</p>
+    
+      <h2>3. Resilient Retries & Backoff Mathematics</h2>
+      <p>External APIs often fail due to network instability. INTHON includes structured <code>retry</code> loops with automatic backoff options:</p>
+      <pre><code class="language-inth">retry 3 with backoff exponential {
+    let raw = web.search("AI")
+    guard raw.status == 200
+} catch err {
+    return "Failed: " + err.message
 }</code></pre>
 
-      <h3>Robust Tool Call Example:</h3>
-      <pre><code class="language-inth">use tool web.search
-
-agent RobustSearcher {
-    policy {
-        allow_network: true
-    }
-    plan {
-        // Retries up to 3 times with exponential backoff if the search API fails
-        retry 3 with backoff exponential {
-            let results = web.search("AI compilers")
-            return results
-        } catch err {
-            return "Search failed after 3 attempts: " + err.message
-        }
-    }
-}</code></pre>
+      <h3>Exponential Backoff Formula</h3>
+      <p>The time interval (in seconds) between retry attempts is computed by the interpreter using the following formula:</p>
+      <div style="text-align: center; margin: 20px 0; font-size: 1.15rem; font-family: var(--font-heading); color: var(--color-accent);">
+        \(t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\)
+      </div>
+      <p>Where <code>base</code> defaults to 1.0 second, <code>attempt</code> represents the zero-indexed retry number, and <code>jitter</code> is a random offset variable to prevent request synchronization bottlenecks on the host server.</p>
     </section>
 
   </main>
