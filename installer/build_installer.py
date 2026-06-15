@@ -39,11 +39,35 @@ def main():
     # We add grammar.lark to inthon/parser in the packed binary
     # We must ensure to NOT use --noconsole here since it is a command-line tool.
     excludes = [
-        "torch", "transformers", "numpy", "pandas", "matplotlib", "scipy", "sklearn",
-        "pyarrow", "polars", "datasets", "huggingface_hub", "sympy", "jedi", "PyPDF2",
-        "pdfminer", "yt_dlp", "IPython", "notebook", "jupyter", "openai", "seaborn",
-        "scikit-learn", "comm", "ipykernel", "ipywidgets", "widgetsnbextension",
-        "nbconvert", "nbformat", "notebook_shim"
+        "torch",
+        "transformers",
+        "numpy",
+        "pandas",
+        "matplotlib",
+        "scipy",
+        "sklearn",
+        "pyarrow",
+        "polars",
+        "datasets",
+        "huggingface_hub",
+        "sympy",
+        "jedi",
+        "PyPDF2",
+        "pdfminer",
+        "yt_dlp",
+        "IPython",
+        "notebook",
+        "jupyter",
+        "openai",
+        "seaborn",
+        "scikit-learn",
+        "comm",
+        "ipykernel",
+        "ipywidgets",
+        "widgetsnbextension",
+        "nbconvert",
+        "nbformat",
+        "notebook_shim",
     ]
 
     build_inthon_cmd = [
