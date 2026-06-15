@@ -43,7 +43,12 @@ class InthonInstaller(tk.Tk):
         self.center_window()
 
         # Set window icon (if available)
-        # self.iconbitmap(...)
+        try:
+            icon_path = get_resource_path("icon.ico")
+            if os.path.exists(icon_path):
+                self.iconbitmap(icon_path)
+        except Exception:
+            pass
 
         # Setup variables
         self.install_dir = tk.StringVar(
@@ -131,7 +136,7 @@ class InthonInstaller(tk.Tk):
         self.sidebar.create_text(
             110,
             380,
-            text="HarvaTechs Research",
+            text="HarVa DeepLabs",
             font=("Segoe UI", 9),
             fill=COLOR_SUBTEXT,
             anchor=tk.CENTER,
@@ -590,7 +595,7 @@ class InthonInstaller(tk.Tk):
                 )
                 winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, target_dir)
                 winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, VERSION)
-                winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "HarvaTechs")
+                winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "HarVa DeepLabs")
                 winreg.SetValueEx(
                     key, "DisplayIcon", 0, winreg.REG_SZ, f'"{inthon_exe}"'
                 )

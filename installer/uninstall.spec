@@ -5,7 +5,7 @@ a = Analysis(
     ['uninstaller.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('E:\\AITHON\\documents\\icon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['E:\\AITHON\\documents\\icon.ico'],
 )

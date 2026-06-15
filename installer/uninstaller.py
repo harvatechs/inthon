@@ -26,6 +26,13 @@ COLOR_INPUT_BG = "#26262B"
 VERSION = "0.1.0"
 
 
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+
 class InthonUninstaller(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -33,6 +40,14 @@ class InthonUninstaller(tk.Tk):
         self.geometry("680x420")
         self.resizable(False, False)
         self.configure(bg=COLOR_BG)
+
+        # Set window icon (if available)
+        try:
+            icon_path = get_resource_path("icon.ico")
+            if os.path.exists(icon_path):
+                self.iconbitmap(icon_path)
+        except Exception:
+            pass
 
         # Center the window
         self.center_window()
@@ -116,7 +131,7 @@ class InthonUninstaller(tk.Tk):
         self.sidebar.create_text(
             110,
             380,
-            text="HarvaTechs Research",
+            text="HarVa DeepLabs",
             font=("Segoe UI", 9),
             fill=COLOR_SUBTEXT,
             anchor=tk.CENTER,

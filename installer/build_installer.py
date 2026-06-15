@@ -27,6 +27,25 @@ def main():
     print("INTHON WINDOWS INSTALLER BUILD PIPELINE")
     print("==========================================")
 
+    # 0. Ensure icon.ico exists in documents directory
+    ico_path = os.path.abspath(os.path.join(root_dir, "..", "documents", "icon.ico"))
+    png_path = os.path.abspath(os.path.join(root_dir, "..", "documents", "icon.png"))
+    if not os.path.exists(ico_path):
+        if os.path.exists(png_path):
+            print(f"\n>>> Generating ICO from {png_path}...")
+            try:
+                from PIL import Image
+                img = Image.open(png_path)
+                sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+                img.save(ico_path, format="ICO", sizes=sizes)
+                print(f"ICO saved to {ico_path}")
+            except Exception as e:
+                print(f"Error generating ICO: {e}")
+                sys.exit(1)
+        else:
+            print(f"[ERROR] Original logo not found at {png_path}!")
+            sys.exit(1)
+
     # 1. Clean previous build files
     print("\n>>> Cleaning previous build artifacts...")
     for folder in ["build", "dist"]:
@@ -117,8 +136,12 @@ def main():
         "-y",
         "--onefile",
         "--noconsole",
+        "--icon",
+        ico_path,
         "--name",
         "uninstall",
+        "--add-data",
+        f"{ico_path}{os.pathsep}.",
         "uninstaller.py",
     ]
     for ex in excludes:
@@ -145,6 +168,8 @@ def main():
         "-y",
         "--onefile",
         "--noconsole",
+        "--icon",
+        ico_path,
         "--name",
         "inthon-installer",
         "--add-data",
@@ -153,6 +178,8 @@ def main():
         f"dist/uninstall.exe{os.pathsep}.",
         "--add-data",
         f"../inthon.toml{os.pathsep}.",
+        "--add-data",
+        f"{ico_path}{os.pathsep}.",
         "installer.py",
     ]
     for ex in excludes:
@@ -167,6 +194,16 @@ def main():
     if not os.path.exists(installer_exe):
         print("[ERROR] compiled inthon-installer.exe not found!")
         sys.exit(1)
+
+    # 6. Copy compiled binaries to the root dist directory
+    root_dist_dir = os.path.abspath(os.path.join(root_dir, "..", "dist"))
+    print(f"\n>>> Stage 4/3: Copying compiled binaries to root dist directory ({root_dist_dir})...")
+    os.makedirs(root_dist_dir, exist_ok=True)
+    for exe_name in ["inthon.exe", "uninstall.exe", "inthon-installer.exe"]:
+        src_path = os.path.join(root_dir, "dist", exe_name)
+        dst_path = os.path.join(root_dist_dir, exe_name)
+        print(f"Copying {src_path} -> {dst_path}...")
+        shutil.copy2(src_path, dst_path)
 
     print("\n==========================================")
     print("BUILD SUCCESSFUL!")

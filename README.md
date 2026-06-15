@@ -214,8 +214,28 @@ Any attempt to call a blocked package or exceed allocated limits triggers a `Pol
 * Python `>= 3.11`
 * Pip (python package installer)
 
+### Quick Installation
+You can install the stable version of **INTHON** directly from PyPI:
+
+```bash
+pip install inthon
+```
+
+For specialized features (like data analysis or machine learning support), you can install the optional packages:
+
+```bash
+# For data analysis support (pandas, polars, pyarrow)
+pip install inthon[data]
+
+# For machine learning support (torch, transformers, numpy)
+pip install inthon[ml]
+
+# Install all runtime dependencies
+pip install inthon[data,ml]
+```
+
 ### Installing from Source
-Clone the repository and install it in developer mode:
+For development or to build the latest version from source, clone the repository and install it in editable mode:
 
 ```bash
 git clone https://github.com/harvatechs/inthon.git

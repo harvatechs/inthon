@@ -8,6 +8,23 @@ version = "0.1.0"
 description = "Agent-level programming language for AI-native workflows"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "HarVa DeepLabs", email = "deeplabs@harvatechs.com" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["agent", "ai", "llm", "dsl", "sandbox", "programming-language"]
+
 dependencies = [
     "lark>=1.1.9",
     "typer>=0.12.0",
@@ -30,3 +47,13 @@ dev = [
 
 [project.scripts]
 inthon = "inthon.cli:app"
+
+[project.urls]
+Homepage = "https://harvatechs.github.io/inthon/"
+Repository = "https://github.com/harvatechs/inthon"
+Documentation = "https://harvatechs.github.io/inthon/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["inthon"]
+
+
