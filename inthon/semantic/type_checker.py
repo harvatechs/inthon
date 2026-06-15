@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import Any
 from ..ast import nodes as N
 from .scope import ScopeChain
+
 
 def _type_expr_to_str(type_ann: N.TypeExpr | None) -> str:
     if type_ann is None:
@@ -18,6 +18,7 @@ def _type_expr_to_str(type_ann: N.TypeExpr | None) -> str:
     if isinstance(type_ann, N.AgentSpecificType):
         return type_ann.name
     return "any"
+
 
 def infer_type(expr: N.Expr, scope: ScopeChain) -> str:
     if isinstance(expr, N.IntLiteral):
@@ -70,6 +71,7 @@ def infer_type(expr: N.Expr, scope: ScopeChain) -> str:
     if isinstance(expr, N.CallExpr):
         return "any"
     return "any"
+
 
 def is_subtype(sub: str, sup: str) -> bool:
     if sup == "any":

@@ -3,6 +3,7 @@ import time
 from dataclasses import dataclass, field
 from .errors import SandboxViolationError
 
+
 @dataclass
 class Sandbox:
     max_runtime_sec: float = 300.0

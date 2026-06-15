@@ -3,6 +3,7 @@ import json
 from typing import Any
 from . import nodes as ir_nodes
 
+
 def _to_dict(obj: Any) -> Any:
     if hasattr(obj, "__dataclass_fields__"):
         d = {}
@@ -18,9 +19,11 @@ def _to_dict(obj: Any) -> Any:
         return [_to_dict(x) for x in obj]
     return obj
 
+
 def ir_to_json(program: ir_nodes.IRProgram, indent: int = 2) -> str:
     """Serialize IR to canonical JSON."""
     return json.dumps(_to_dict(program), indent=indent)
+
 
 def _from_dict(d: Any) -> Any:
     if isinstance(d, dict):
@@ -37,6 +40,7 @@ def _from_dict(d: Any) -> Any:
     if isinstance(d, list):
         return [_from_dict(x) for x in d]
     return d
+
 
 def ir_from_json(raw: str) -> ir_nodes.IRProgram:
     """Deserialise canonical JSON back to IR. Round-trip safe."""

@@ -2,6 +2,7 @@ import pytest
 from inthon.parser.parser import parse, ParseError
 from inthon.ast import nodes as N
 
+
 def test_parse_let_const():
     src = "let x: int = 10\nconst y = 20"
     prog = parse(src)
@@ -18,6 +19,7 @@ def test_parse_let_const():
     assert prog.body[1].type_ann is None
     assert isinstance(prog.body[1].value, N.IntLiteral)
     assert prog.body[1].value.value == 20
+
 
 def test_parse_expr():
     src = "x = a + b * c ** d"
@@ -40,6 +42,7 @@ def test_parse_expr():
     assert isinstance(val.right.right.left, N.Identifier)
     assert val.right.right.left.name == "c"
 
+
 def test_parse_fn_decl():
     src = "fn add(a: int, b: int = 5) -> int { return a + b }"
     prog = parse(src)
@@ -57,8 +60,9 @@ def test_parse_fn_decl():
     assert len(fn.body) == 1
     assert isinstance(fn.body[0], N.ReturnStmt)
 
+
 def test_parse_imports():
-    src = "use tool web.search\nuse py.pandas as pd\nuse memory.project(\"study\")"
+    src = 'use tool web.search\nuse py.pandas as pd\nuse memory.project("study")'
     prog = parse(src)
     assert len(prog.body) == 3
     assert isinstance(prog.body[0], N.UseToolStmt)
@@ -70,6 +74,7 @@ def test_parse_imports():
     assert prog.body[2].namespace == "project"
     assert len(prog.body[2].args) == 1
     assert prog.body[2].args[0].value == "study"
+
 
 def test_parse_agent_block():
     src = """
@@ -101,6 +106,7 @@ def test_parse_agent_block():
     assert isinstance(agent.plan.body[0], N.LetStmt)
     assert isinstance(agent.plan.body[1], N.ReturnStmt)
 
+
 def test_parse_agent_primitives():
     src = """
     approve payment before execute
@@ -130,6 +136,7 @@ def test_parse_agent_primitives():
 
     assert isinstance(prog.body[4], N.GuardStmt)
 
+
 def test_parse_retry_logic():
     src = """
     retry 3 with backoff exponential {
@@ -148,6 +155,7 @@ def test_parse_retry_logic():
     assert retry.catch_block is not None
     assert retry.catch_block.var == "err"
     assert len(retry.catch_block.body) == 1
+
 
 def test_parse_error_reporting():
     with pytest.raises(ParseError) as excinfo:

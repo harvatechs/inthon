@@ -1,7 +1,7 @@
-from inthon.parser.parser import parse
-from inthon.semantic.scope import ScopeChain, Symbol, SymbolKind
+from inthon.semantic.scope import ScopeChain
 from inthon.semantic.type_checker import infer_type, is_subtype
 from inthon.ast import nodes as N
+
 
 def test_type_inference_literals():
     scope = ScopeChain()
@@ -11,6 +11,7 @@ def test_type_inference_literals():
     assert infer_type(N.BoolLiteral(True), scope) == "bool"
     assert infer_type(N.NoneLiteral(), scope) == "none"
 
+
 def test_type_inference_lists_dicts():
     scope = ScopeChain()
     list_expr = N.ListExpr(elements=(N.IntLiteral(10), N.IntLiteral(20)))
@@ -18,6 +19,7 @@ def test_type_inference_lists_dicts():
 
     dict_expr = N.DictExpr(pairs=((N.StringLiteral("key"), N.IntLiteral(10)),))
     assert infer_type(dict_expr, scope) == "dict[str, int]"
+
 
 def test_type_inference_bin_ops():
     scope = ScopeChain()
@@ -29,6 +31,7 @@ def test_type_inference_bin_ops():
 
     op_str = N.BinaryOp(op="+", left=N.StringLiteral("a"), right=N.StringLiteral("b"))
     assert infer_type(op_str, scope) == "str"
+
 
 def test_subtype_relations():
     assert is_subtype("int", "float") is True

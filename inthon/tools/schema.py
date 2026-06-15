@@ -3,26 +3,30 @@ from typing import Any
 from enum import Enum
 from pydantic import BaseModel, Field
 
+
 class ToolArgSchema(BaseModel):
     type: str  # e.g., "str", "int", "list[str]"
     description: str = ""
     required: bool = True
     default: Any = None
 
+
 class ToolCostModel(BaseModel):
     base_usd: float = 0.0
     per_call_usd: float = 0.001
     per_token_usd: float = 0.0
 
+
 class ToolSideEffect(str, Enum):
-    NETWORK    = "network"
+    NETWORK = "network"
     FILESYSTEM = "filesystem"
-    SHELL      = "shell"
-    EMAIL      = "email"
-    PAYMENT    = "payment"
-    DATABASE   = "database"
-    CALENDAR   = "calendar"
-    MEMORY     = "memory"
+    SHELL = "shell"
+    EMAIL = "email"
+    PAYMENT = "payment"
+    DATABASE = "database"
+    CALENDAR = "calendar"
+    MEMORY = "memory"
+
 
 class ToolSpec(BaseModel):
     name: str  # fully qualified: "web.search"
@@ -34,6 +38,7 @@ class ToolSpec(BaseModel):
     cost_model: ToolCostModel = Field(default_factory=ToolCostModel)
     version: str = "1.0.0"
     tags: list[str] = Field(default_factory=list)
+
 
 class ToolResult(BaseModel):
     tool: str

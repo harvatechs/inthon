@@ -1,7 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any, Union
+from dataclasses import dataclass
+from typing import Union
 from ..lexer.tokens import Span
+
 
 # ─── Root ─────────────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
@@ -9,16 +10,19 @@ class Program:
     body: tuple[Statement, ...]
     span: Span | None = None
 
+
 # ─── Type Expressions ─────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class PrimitiveType:
     name: str  # "str" | "int" | "float" | "bool" | "bytes" | "none" | "any"
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class ListType:
     element: TypeExpr
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class DictType:
@@ -26,17 +30,21 @@ class DictType:
     value: TypeExpr
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class TupleType:
     elements: tuple[TypeExpr, ...]
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class AgentSpecificType:
     name: str  # "DataFrame" | "Tensor" | "Model" etc.
     span: Span | None = None
 
+
 TypeExpr = Union[PrimitiveType, ListType, DictType, TupleType, AgentSpecificType]
+
 
 # ─── Expressions ──────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
@@ -44,29 +52,35 @@ class IntLiteral:
     value: int
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class FloatLiteral:
     value: float
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class StringLiteral:
     value: str
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class BoolLiteral:
     value: bool
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class NoneLiteral:
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class Identifier:
     name: str
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class BinaryOp:
@@ -75,11 +89,13 @@ class BinaryOp:
     right: Expr
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class UnaryOp:
     op: str
     operand: Expr
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class CallExpr:
@@ -88,11 +104,13 @@ class CallExpr:
     kwargs: tuple[tuple[str, Expr], ...]
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class MemberExpr:
     obj: Expr
     attr: str
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class IndexExpr:
@@ -100,21 +118,35 @@ class IndexExpr:
     index: Expr
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class ListExpr:
     elements: tuple[Expr, ...]
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class DictExpr:
     pairs: tuple[tuple[Expr, Expr], ...]
     span: Span | None = None
 
+
 Expr = Union[
-    IntLiteral, FloatLiteral, StringLiteral, BoolLiteral, NoneLiteral,
-    Identifier, BinaryOp, UnaryOp, CallExpr, MemberExpr,
-    IndexExpr, ListExpr, DictExpr
+    IntLiteral,
+    FloatLiteral,
+    StringLiteral,
+    BoolLiteral,
+    NoneLiteral,
+    Identifier,
+    BinaryOp,
+    UnaryOp,
+    CallExpr,
+    MemberExpr,
+    IndexExpr,
+    ListExpr,
+    DictExpr,
 ]
+
 
 # ─── Statements ───────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
@@ -124,6 +156,7 @@ class LetStmt:
     value: Expr
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class ConstStmt:
     name: str
@@ -131,12 +164,14 @@ class ConstStmt:
     value: Expr
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class Param:
     name: str
     type_ann: TypeExpr | None
     default: Expr | None
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class FnDecl:
@@ -146,11 +181,13 @@ class FnDecl:
     body: tuple[Statement, ...]
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class TypedField:
     name: str
     type_ann: TypeExpr
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class PolicyEntry:
@@ -158,15 +195,18 @@ class PolicyEntry:
     value: Union[bool, int, float, str]
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class PolicyBlock:
     entries: tuple[PolicyEntry, ...]
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class PlanBlock:
     body: tuple[Statement, ...]
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class AgentDecl:
@@ -179,21 +219,25 @@ class AgentDecl:
     plan: PlanBlock
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class ReturnStmt:
     value: Expr | None
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class ExprStmt:
     expr: Expr
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class AssignStmt:
     target: str
     value: Expr
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class IfStmt:
@@ -202,6 +246,7 @@ class IfStmt:
     else_branch: tuple[Statement, ...] | None
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class ForStmt:
     var: str
@@ -209,11 +254,13 @@ class ForStmt:
     body: tuple[Statement, ...]
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class WhileStmt:
     condition: Expr
     body: tuple[Statement, ...]
     span: Span | None = None
+
 
 # ─── Import Statements ────────────────────────────────────────────────────────
 @dataclass(frozen=True)
@@ -221,17 +268,20 @@ class UseToolStmt:
     tool_path: str
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class UsePyStmt:
     module_path: str
     alias: str | None
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class UseMemoryStmt:
     namespace: str
     args: tuple[Expr, ...]
     span: Span | None = None
+
 
 # ─── Agent Primitives ─────────────────────────────────────────────────────────
 @dataclass(frozen=True)
@@ -240,17 +290,20 @@ class ApproveStmt:
     action: str
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class RememberStmt:
     value: Expr
     namespace: str
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class ForgetStmt:
     key: Expr
     namespace: str
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class RecallStmt:
@@ -259,16 +312,19 @@ class RecallStmt:
     namespace: str
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class GuardStmt:
     condition: Expr
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class CatchBlock:
     var: str
     body: tuple[Statement, ...]
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class RetryStmt:
@@ -278,12 +334,14 @@ class RetryStmt:
     catch_block: CatchBlock | None
     span: Span | None = None
 
+
 @dataclass(frozen=True)
 class EvalCriterion:
     metric: str
     op: str
     threshold: Expr
     span: Span | None = None
+
 
 @dataclass(frozen=True)
 class EvalStmt:
@@ -292,10 +350,26 @@ class EvalStmt:
     criteria: tuple[EvalCriterion, ...]
     span: Span | None = None
 
+
 Statement = Union[
-    LetStmt, ConstStmt, FnDecl, AgentDecl, ReturnStmt,
-    ExprStmt, AssignStmt, IfStmt, ForStmt, WhileStmt,
-    UseToolStmt, UsePyStmt, UseMemoryStmt, ApproveStmt,
-    RememberStmt, ForgetStmt, RecallStmt, GuardStmt,
-    RetryStmt, EvalStmt
+    LetStmt,
+    ConstStmt,
+    FnDecl,
+    AgentDecl,
+    ReturnStmt,
+    ExprStmt,
+    AssignStmt,
+    IfStmt,
+    ForStmt,
+    WhileStmt,
+    UseToolStmt,
+    UsePyStmt,
+    UseMemoryStmt,
+    ApproveStmt,
+    RememberStmt,
+    ForgetStmt,
+    RecallStmt,
+    GuardStmt,
+    RetryStmt,
+    EvalStmt,
 ]

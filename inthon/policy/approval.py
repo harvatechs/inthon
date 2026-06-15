@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Callable, Any
 from ..runtime.errors import ApprovalDeniedError
 
+
 @dataclass
 class ApprovalRequest:
     target: str
@@ -10,11 +11,13 @@ class ApprovalRequest:
     context_summary: str
     requires_reason: bool = False
 
+
 class ApprovalGate:
     """
     Synchronous approval gate for v0.1.
     For headless execution (such as testing), an auto-approve callback handler can be registered.
     """
+
     def __init__(self) -> None:
         self._handler: Callable[[ApprovalRequest], bool] | None = None
 
@@ -26,7 +29,7 @@ class ApprovalGate:
         req = ApprovalRequest(
             target=target,
             action=action,
-            context_summary=f"Agent '{context.current_agent}' wants to {action} on {target}"
+            context_summary=f"Agent '{context.current_agent}' wants to {action} on {target}",
         )
         if self._handler is None:
             approved = self._cli_prompt(req)
@@ -38,7 +41,7 @@ class ApprovalGate:
             )
 
     def _cli_prompt(self, req: ApprovalRequest) -> bool:
-        print(f"\n[INTHON APPROVAL REQUIRED]")
+        print("\n[INTHON APPROVAL REQUIRED]")
         print(f"  Action: {req.action} -> {req.target}")
         print(f"  Context: {req.context_summary}")
         try:

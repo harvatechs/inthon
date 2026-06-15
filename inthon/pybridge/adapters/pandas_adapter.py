@@ -2,11 +2,13 @@ from __future__ import annotations
 from typing import Any
 from ...runtime.values import InthonPyObject
 
+
 class PandasAdapter:
     """
     Ergonomic wrapper around a pandas DataFrame that exposes
     INTHON-idiomatic method names and returns InthonPyObject values.
     """
+
     def __init__(self, df: Any) -> None:
         self._df = df
 
@@ -63,4 +65,4 @@ class PandasGroupByAdapter:
         return PandasAdapter(self._grp.agg(kwargs).reset_index())
 
     def __repr__(self) -> str:
-        return f"<IntHon PandasGroupByAdapter>"
+        return "<IntHon PandasGroupByAdapter>"

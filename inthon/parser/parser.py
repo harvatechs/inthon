@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+from typing import Any
 import lark
 from ..ast.nodes import Program
 from .transformer import InthonTransformer
@@ -11,6 +12,7 @@ _PARSER = lark.Lark(
     parser="lalr",
     propagate_positions=True,
 )
+
 
 class ParseError(Exception):
     def __init__(self, message: str, line: int, col: int, filename: str) -> None:
@@ -29,10 +31,11 @@ class ParseError(Exception):
             f"Hint: check syntax around line {self.line}."
         )
 
+
 def parse(source: str, filename: str = "<stdin>") -> Program:
     """Parse INTHON source text into an AST. Raises ParseError on failure."""
     # Strip carriage returns to ensure Lark parser gets clean newlines
-    source = source.replace('\r\n', '\n')
+    source = source.replace("\r\n", "\n")
     try:
         tree = _PARSER.parse(source)
         transformer = InthonTransformer(filename=filename)
@@ -45,7 +48,8 @@ def parse(source: str, filename: str = "<stdin>") -> Program:
             filename=filename,
         ) from exc
 
+
 def _format_lark_error(exc: lark.exceptions.UnexpectedInput) -> str:
-    expected = getattr(exc, "expected", set())
+    expected: set[Any] = getattr(exc, "expected", set())
     readable = ", ".join(sorted(str(e) for e in expected)[:5])
     return f"Unexpected token. Expected one of: {readable}"

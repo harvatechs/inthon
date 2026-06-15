@@ -4,8 +4,14 @@ from .schema import ToolSpec, ToolResult
 from .validator import validate_tool_args
 import time
 
-class ToolNotFoundError(Exception): pass
-class ToolValidationError(Exception): pass
+
+class ToolNotFoundError(Exception):
+    pass
+
+
+class ToolValidationError(Exception):
+    pass
+
 
 class ToolRegistry:
     """
@@ -13,6 +19,7 @@ class ToolRegistry:
     Thread-safe for read operations. Write operations (register)
     should only happen during startup, not during execution.
     """
+
     def __init__(self) -> None:
         self._specs: dict[str, ToolSpec] = {}
         self._impls: dict[str, Callable] = {}
@@ -48,11 +55,11 @@ class ToolRegistry:
         spec = self.get_spec(name)
         # Dynamic schema checks via validate_tool_args
         validated_args = validate_tool_args(spec, args, kwargs)
-        
+
         impl = self._mock_impls.get(name) if self._mock_mode else self._impls.get(name)
         if not impl:
             raise ToolNotFoundError(f"INTHON_TOOL_002: No implementation for '{name}'")
-            
+
         t0 = time.perf_counter()
         try:
             output = impl(**validated_args)

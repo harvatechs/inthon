@@ -6,6 +6,7 @@ from .audit import AuditLog
 from .model import Capability, POLICY_KEY_TO_CAPABILITY
 from ..runtime.errors import PolicyViolationError
 
+
 @dataclass
 class PolicyEngine:
     active_caps: set[Capability] = field(

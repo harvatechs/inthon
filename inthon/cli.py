@@ -1,10 +1,7 @@
 from __future__ import annotations
-import json
-import sys
 from pathlib import Path
 import typer
 from rich.console import Console
-from rich.syntax import Syntax
 from rich.panel import Panel
 
 app = typer.Typer(
@@ -13,6 +10,7 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+
 
 @app.command("run")
 def run_cmd(
@@ -24,6 +22,7 @@ def run_cmd(
 ) -> None:
     """Execute an INTHON program."""
     from . import run_file
+
     try:
         result = run_file(
             file,
@@ -40,6 +39,7 @@ def run_cmd(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)
 
+
 @app.command("check")
 def check_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
@@ -47,6 +47,7 @@ def check_cmd(
     """Lint and type-check without executing."""
     from .parser.parser import parse
     from .semantic.analyzer import SemanticAnalyzer
+
     source = file.read_text(encoding="utf-8")
     try:
         program = parse(source, filename=str(file))
@@ -59,6 +60,7 @@ def check_cmd(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)
 
+
 @app.command("ast")
 def ast_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
@@ -67,12 +69,14 @@ def ast_cmd(
     """Print the parsed AST."""
     from .parser.parser import parse
     from .ast.printer import print_ast, ast_to_json
+
     source = file.read_text(encoding="utf-8")
     program = parse(source, filename=str(file))
     if fmt == "json":
         print(ast_to_json(program))
     else:
         print_ast(program)
+
 
 @app.command("ir")
 def ir_cmd(
@@ -82,15 +86,19 @@ def ir_cmd(
     from .parser.parser import parse
     from .ir.builder import build_ir
     from .ir.serializer import ir_to_json
+
     source = file.read_text(encoding="utf-8")
     program = parse(source, filename=str(file))
     ir = build_ir(program)
     print(ir_to_json(ir))
 
+
 @app.command("fmt")
 def fmt_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
-    write: bool = typer.Option(False, "--write", "-w", help="Write changes back to file"),
+    write: bool = typer.Option(
+        False, "--write", "-w", help="Write changes back to file"
+    ),
 ) -> None:
     """Format an INTHON file (standardizes spacing and newlines)."""
     if not file.exists():
@@ -106,7 +114,6 @@ def fmt_cmd(
     else:
         print(formatted)
 
+
 if __name__ == "__main__":
     app()
-
-

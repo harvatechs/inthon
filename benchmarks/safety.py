@@ -1,8 +1,13 @@
 import json
 from pathlib import Path
 from inthon import run
-from inthon.runtime.errors import SandboxViolationError, PolicyViolationError, ApprovalDeniedError, IntHonRuntimeError
+from inthon.runtime.errors import (
+    SandboxViolationError,
+    PolicyViolationError,
+    ApprovalDeniedError,
+)
 from inthon.pybridge.importer import PyBridgeError
+
 
 def run_safety_benchmark():
     attacks = {
@@ -19,21 +24,21 @@ def run_safety_benchmark():
             }
             """,
             "expected_error": PolicyViolationError,
-            "error_msg": "Capability 'NETWORK' is required"
+            "error_msg": "Capability 'NETWORK' is required",
         },
         "unsafe_python_import_subprocess": {
             "src": """
             use py.subprocess
             """,
             "expected_error": PyBridgeError,
-            "error_msg": "Module 'subprocess' is not permitted"
+            "error_msg": "Module 'subprocess' is not permitted",
         },
         "unsafe_python_import_os": {
             "src": """
             use py.os
             """,
             "expected_error": PyBridgeError,
-            "error_msg": "Module 'os' is not permitted"
+            "error_msg": "Module 'os' is not permitted",
         },
         "max_tool_calls_exceeded": {
             "src": """
@@ -50,7 +55,7 @@ def run_safety_benchmark():
             }
             """,
             "expected_error": SandboxViolationError,
-            "error_msg": "limit of 1 exceeded"
+            "error_msg": "limit of 1 exceeded",
         },
         "max_cost_exceeded": {
             "src": """
@@ -66,7 +71,7 @@ def run_safety_benchmark():
             }
             """,
             "expected_error": SandboxViolationError,
-            "error_msg": "exceeded $0.001"
+            "error_msg": "exceeded $0.001",
         },
         "approval_gate_denial": {
             "src": """
@@ -80,8 +85,8 @@ def run_safety_benchmark():
             }
             """,
             "expected_error": ApprovalDeniedError,
-            "error_msg": "Human denied approval"
-        }
+            "error_msg": "Human denied approval",
+        },
     }
 
     results = []
@@ -93,29 +98,42 @@ def run_safety_benchmark():
                 from inthon.parser.parser import parse
                 from inthon.runtime.context import ExecutionContext
                 from inthon.runtime.interpreter import Interpreter
+
                 prog = parse(attack["src"], filename=f"<attack_{name}>")
                 ctx = ExecutionContext()
                 ctx.policy.approval_gate.set_handler(lambda req: False)
                 interp = Interpreter(ctx)
                 interp.run(prog)
             else:
-                res = run(attack["src"], filename=f"<attack_{name}>", mock_tools=True)
-            results.append({
-                "benchmark": "safety",
-                "attack": name,
-                "blocked": False,
-                "notes": ["Execution completed without throwing the expected safety exception."]
-            })
+                run(attack["src"], filename=f"<attack_{name}>", mock_tools=True)
+            results.append(
+                {
+                    "benchmark": "safety",
+                    "attack": name,
+                    "blocked": False,
+                    "notes": [
+                        "Execution completed without throwing the expected safety exception."
+                    ],
+                }
+            )
         except Exception as e:
-            is_expected = isinstance(e, attack["expected_error"]) and attack["error_msg"] in str(e)
-            results.append({
-                "benchmark": "safety",
-                "attack": name,
-                "blocked": is_expected,
-                "error_type": type(e).__name__,
-                "error_message": str(e).strip(),
-                "notes": [f"Successfully blocked via {type(e).__name__}." if is_expected else f"Blocked by wrong error: {type(e).__name__}."]
-            })
+            is_expected = isinstance(e, attack["expected_error"]) and attack[
+                "error_msg"
+            ] in str(e)
+            results.append(
+                {
+                    "benchmark": "safety",
+                    "attack": name,
+                    "blocked": is_expected,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e).strip(),
+                    "notes": [
+                        f"Successfully blocked via {type(e).__name__}."
+                        if is_expected
+                        else f"Blocked by wrong error: {type(e).__name__}."
+                    ],
+                }
+            )
 
     output_path = Path(__file__).parent / "results_safety.json"
     output_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
@@ -130,9 +148,10 @@ def run_safety_benchmark():
             print(f"  Notes: {r['notes'][0]}")
         else:
             print(f"  Details: {r['notes'][0]}")
-            
+
     print(f"Results written to {output_path}")
     return all_blocked
+
 
 if __name__ == "__main__":
     run_safety_benchmark()

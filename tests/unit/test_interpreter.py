@@ -1,16 +1,22 @@
 import pytest
-import time
 from inthon import run, parse
 from inthon.runtime.context import ExecutionContext
 from inthon.runtime.interpreter import Interpreter
-from inthon.runtime.values import to_python, InthonInt, InthonStr, InthonNone
-from inthon.runtime.errors import IntHonRuntimeError, SandboxViolationError, ApprovalDeniedError, ToolCallError, PolicyViolationError
+from inthon.runtime.values import to_python
+from inthon.runtime.errors import (
+    IntHonRuntimeError,
+    SandboxViolationError,
+    ApprovalDeniedError,
+    PolicyViolationError,
+)
 from inthon.policy.approval import ApprovalRequest
+
 
 def test_eval_basic_arithmetic():
     src = "let x = 10 + 20 * 2 - 5\nx"
     res = run(src)
     assert res.output == 45
+
 
 def test_eval_boolean_operators():
     src = "let a = true\nlet b = false\nlet c = a or b\nlet d = a and b\nlet e = not a"
@@ -23,10 +29,12 @@ def test_eval_boolean_operators():
     assert to_python(ctx.get_var("d")) is False
     assert to_python(ctx.get_var("e")) is False
 
+
 def test_variable_reassignment():
     src = "let x = 10\nx = 20\nx"
     res = run(src)
     assert res.output == 20
+
 
 def test_if_else_statement():
     src = """
@@ -44,6 +52,7 @@ def test_if_else_statement():
     interp.run(prog)
     assert to_python(ctx.get_var("res")) == 1
 
+
 def test_while_loop():
     src = """
     let i = 0
@@ -59,6 +68,7 @@ def test_while_loop():
     interp.run(prog)
     assert to_python(ctx.get_var("sum")) == 10
 
+
 def test_for_loop():
     src = """
     let sum = 0
@@ -71,6 +81,7 @@ def test_for_loop():
     interp = Interpreter(ctx)
     interp.run(prog)
     assert to_python(ctx.get_var("sum")) == 10
+
 
 def test_function_call():
     src = """
@@ -86,6 +97,7 @@ def test_function_call():
     interp.run(prog)
     assert to_python(ctx.get_var("a")) == 15
     assert to_python(ctx.get_var("b")) == 30
+
 
 def test_agent_policy_and_sandbox_limits():
     src = """
@@ -109,7 +121,9 @@ def test_agent_policy_and_sandbox_limits():
     assert ctx.policy.max_cost_usd == 0.05
     # allow_network is in active capabilities
     from inthon.policy.model import Capability
+
     assert Capability.NETWORK in ctx.policy.active_caps
+
 
 def test_sandbox_tool_calls_quota_violation():
     src = """
@@ -128,11 +142,13 @@ def test_sandbox_tool_calls_quota_violation():
     prog = parse(src)
     ctx = ExecutionContext()
     from inthon.tools.builtin_tools import register_builtins
+
     register_builtins(ctx.tools, mock=True)
     interp = Interpreter(ctx)
     with pytest.raises(SandboxViolationError) as exc:
         interp.run(prog)
     assert "limit of 1 exceeded" in str(exc.value)
+
 
 def test_sandbox_cost_quota_violation():
     src = """
@@ -150,12 +166,14 @@ def test_sandbox_cost_quota_violation():
     prog = parse(src)
     ctx = ExecutionContext()
     from inthon.tools.builtin_tools import register_builtins
+
     register_builtins(ctx.tools, mock=True)
     interp = Interpreter(ctx)
     # The first call estimates the budget beforehand or budget is exceeded.
     with pytest.raises(SandboxViolationError) as exc:
         interp.run(prog)
     assert "exceeded $0.001" in str(exc.value)
+
 
 def test_policy_capability_denied():
     src = """
@@ -172,11 +190,13 @@ def test_policy_capability_denied():
     prog = parse(src)
     ctx = ExecutionContext()
     from inthon.tools.builtin_tools import register_builtins
+
     register_builtins(ctx.tools, mock=True)
     interp = Interpreter(ctx)
     with pytest.raises(PolicyViolationError) as exc:
         interp.run(prog)
     assert "Capability 'NETWORK' is required" in str(exc.value)
+
 
 def test_interactive_approval_gate_auto_approve():
     src = """
@@ -191,12 +211,15 @@ def test_interactive_approval_gate_auto_approve():
     """
     prog = parse(src)
     ctx = ExecutionContext()
+
     # Register an auto-approve handler
     def auto_approve(req: ApprovalRequest) -> bool:
         return req.action == "send"
+
     ctx.policy.approval_gate.set_handler(auto_approve)
     interp = Interpreter(ctx)
-    interp.run(prog) # should pass without error
+    interp.run(prog)  # should pass without error
+
 
 def test_interactive_approval_gate_denied():
     src = """
@@ -211,14 +234,17 @@ def test_interactive_approval_gate_denied():
     """
     prog = parse(src)
     ctx = ExecutionContext()
+
     # Register a denial handler
     def deny_all(req: ApprovalRequest) -> bool:
         return False
+
     ctx.policy.approval_gate.set_handler(deny_all)
     interp = Interpreter(ctx)
     with pytest.raises(ApprovalDeniedError) as exc:
         interp.run(prog)
     assert "Human denied approval" in str(exc.value)
+
 
 def test_memory_actions_remember_recall_forget():
     src = """
@@ -238,6 +264,7 @@ def test_memory_actions_remember_recall_forget():
     res = run(src)
     assert res.output == "INTHON rules"
 
+
 def test_retry_statement_success():
     src = """
     let x = 0
@@ -253,6 +280,7 @@ def test_retry_statement_success():
     interp = Interpreter(ctx)
     interp.run(prog)
     assert to_python(ctx.get_var("x")) == 2
+
 
 def test_retry_statement_failure_and_catch():
     src = """
@@ -272,15 +300,17 @@ def test_retry_statement_failure_and_catch():
     assert to_python(ctx.get_var("x")) == 2
     assert "Guard condition failed" in to_python(ctx.get_var("caught_msg"))
 
+
 def test_guard_statement():
     src = "guard 10 > 5"
     res = run(src)
     assert res.output is None
-    
+
     src_fail = "guard 10 < 5"
     with pytest.raises(IntHonRuntimeError) as exc:
         run(src_fail)
     assert "Guard condition failed" in str(exc.value)
+
 
 def test_eval_statement():
     src = """
@@ -292,8 +322,8 @@ def test_eval_statement():
     prog = parse(src)
     ctx = ExecutionContext()
     interp = Interpreter(ctx)
-    interp.run(prog) # passes without error
-    
+    interp.run(prog)  # passes without error
+
     src_fail = """
     let score = 0.85
     eval score against rubric {
@@ -306,6 +336,7 @@ def test_eval_statement():
     with pytest.raises(IntHonRuntimeError) as exc:
         interp_fail.run(prog_fail)
     assert "expected >= 0.9, got 0.85" in str(exc.value)
+
 
 def test_dynamic_target_assignment_nested():
     src = """
@@ -323,6 +354,7 @@ def test_dynamic_target_assignment_nested():
     interp.run(prog)
     assert to_python(ctx.get_var("val")) == 20
 
+
 def test_dict_subscript_assignment():
     src = """
     let d = {"key": "old"}
@@ -334,6 +366,7 @@ def test_dict_subscript_assignment():
     interp = Interpreter(ctx)
     interp.run(prog)
     assert to_python(ctx.get_var("val")) == "new"
+
 
 def test_list_subscript_assignment():
     src = """
@@ -347,6 +380,7 @@ def test_list_subscript_assignment():
     interp.run(prog)
     assert to_python(ctx.get_var("val")) == 99
 
+
 def test_nested_subscript_assignment():
     src = """
     let data = {"a": {"b": 10}}
@@ -359,6 +393,7 @@ def test_nested_subscript_assignment():
     interp.run(prog)
     assert to_python(ctx.get_var("val")) == 100
 
+
 def test_top_level_return():
     src = """
     let val = 42
@@ -366,4 +401,3 @@ def test_top_level_return():
     """
     res = run(src)
     assert res.output == 50
-

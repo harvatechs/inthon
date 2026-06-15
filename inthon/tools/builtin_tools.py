@@ -2,6 +2,7 @@ from __future__ import annotations
 from .schema import ToolSpec, ToolArgSchema, ToolCostModel
 from .registry import ToolRegistry
 
+
 def register_builtins(registry: ToolRegistry, mock: bool = True) -> None:
     """Register the standard built-in tool set. Uses mock implementations by default."""
     # ── web.search ──────────────────────────────────────────────────────────
@@ -40,23 +41,28 @@ def register_builtins(registry: ToolRegistry, mock: bool = True) -> None:
     if mock:
         registry.use_mocks(True)
 
+
 def _web_search_mock(query: str, limit: int = 5) -> list[dict]:
     return [
         {
-            "title": f"Result {i+1} for: {query}",
-            "url": f"https://example.com/res{i+1}",
-            "snippet": f"Snippet {i+1}"
+            "title": f"Result {i + 1} for: {query}",
+            "url": f"https://example.com/res{i + 1}",
+            "snippet": f"Snippet {i + 1}",
         }
         for i in range(limit)
     ]
 
+
 def _web_read_mock(url: str) -> str:
     return f"[Mock content from {url}]"
+
 
 def _web_search_real(query: str, limit: int = 5) -> list[dict]:
     raise NotImplementedError("Real web.search requires API key configuration")
 
+
 def _web_read_real(url: str) -> str:
     import urllib.request
+
     with urllib.request.urlopen(url, timeout=10) as resp:
         return resp.read().decode("utf-8", errors="replace")[:50_000]

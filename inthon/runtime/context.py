@@ -9,6 +9,7 @@ from ..memory.store import MemoryStore
 from .trace import TraceLogger
 from .sandbox import Sandbox
 
+
 @dataclass
 class ExecutionContext:
     # Identity

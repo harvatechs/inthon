@@ -1,29 +1,80 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 
-DEFAULT_ALLOWED_MODULES = frozenset({
-    "pandas", "numpy", "torch", "transformers", "sklearn",
-    "scipy", "matplotlib", "seaborn", "plotly", "polars",
-    "pyarrow", "json", "math", "datetime", "collections",
-    "itertools", "functools", "string", "re", "pathlib",
-    "typing", "dataclasses", "enum", "abc", "copy",
-    "textwrap", "base64", "hashlib", "hmac", "uuid",
-    "urllib.parse",
-})
+DEFAULT_ALLOWED_MODULES = frozenset(
+    {
+        "pandas",
+        "numpy",
+        "torch",
+        "transformers",
+        "sklearn",
+        "scipy",
+        "matplotlib",
+        "seaborn",
+        "plotly",
+        "polars",
+        "pyarrow",
+        "json",
+        "math",
+        "datetime",
+        "collections",
+        "itertools",
+        "functools",
+        "string",
+        "re",
+        "pathlib",
+        "typing",
+        "dataclasses",
+        "enum",
+        "abc",
+        "copy",
+        "textwrap",
+        "base64",
+        "hashlib",
+        "hmac",
+        "uuid",
+        "urllib.parse",
+    }
+)
 
-HARD_DENIED_MODULES = frozenset({
-    "os", "sys", "subprocess", "shutil", "socket", "asyncio",
-    "threading", "multiprocessing", "ctypes", "cffi",
-    "importlib", "builtins", "code", "codeop", "inspect",
-    "ast", "pickle", "shelve", "marshal", "compileall",
-    "dis", "gc", "weakref", "signal", "mmap", "pty",
-    "tty", "termios",
-})
+HARD_DENIED_MODULES = frozenset(
+    {
+        "os",
+        "sys",
+        "subprocess",
+        "shutil",
+        "socket",
+        "asyncio",
+        "threading",
+        "multiprocessing",
+        "ctypes",
+        "cffi",
+        "importlib",
+        "builtins",
+        "code",
+        "codeop",
+        "inspect",
+        "ast",
+        "pickle",
+        "shelve",
+        "marshal",
+        "compileall",
+        "dis",
+        "gc",
+        "weakref",
+        "signal",
+        "mmap",
+        "pty",
+        "tty",
+        "termios",
+    }
+)
 
 BLOCKED_ATTRIBUTES: dict[str, frozenset[str]] = {
     "pandas": frozenset({"eval", "read_clipboard"}),
-    "numpy":  frozenset({"frompyfunc"}),
+    "numpy": frozenset({"frompyfunc"}),
 }
+
 
 @dataclass
 class AllowlistConfig:

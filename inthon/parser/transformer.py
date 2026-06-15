@@ -4,6 +4,7 @@ from typing import Any
 from ..ast import nodes as N
 from ..lexer.tokens import Span
 
+
 class InthonTransformer(lark.Transformer):
     def __init__(self, filename: str = "<stdin>") -> None:
         super().__init__()
@@ -18,12 +19,14 @@ class InthonTransformer(lark.Transformer):
                 line=meta.line,
                 col=meta.column,
                 offset=offset,
-                length=max(1, length)
+                length=max(1, length),
             )
         return None
 
     # Helper to wrap list rules that fold
-    def _fold_binary(self, children: list[Any], default_span: Span | None = None) -> Any:
+    def _fold_binary(
+        self, children: list[Any], default_span: Span | None = None
+    ) -> Any:
         if len(children) == 1:
             return children[0]
         # children are: [left, op, right, op, right, ...]
@@ -32,7 +35,7 @@ class InthonTransformer(lark.Transformer):
         i = 1
         while i < len(children):
             op = str(children[i])
-            right = children[i+1]
+            right = children[i + 1]
             span = getattr(left, "span", default_span)
             left = N.BinaryOp(op=op, left=left, right=right, span=span)
             i += 2
@@ -101,12 +104,15 @@ class InthonTransformer(lark.Transformer):
         params = ()
         return_type = None
         body = ()
-        
+
         idx = 1
         if idx < len(children) and isinstance(children[idx], list):
             params = tuple(children[idx])
             idx += 1
-        if idx < len(children) and isinstance(children[idx], (N.PrimitiveType, N.ListType, N.DictType, N.TupleType, N.AgentSpecificType)):
+        if idx < len(children) and isinstance(
+            children[idx],
+            (N.PrimitiveType, N.ListType, N.DictType, N.TupleType, N.AgentSpecificType),
+        ):
             return_type = children[idx]
             idx += 1
         if idx < len(children):
@@ -120,9 +126,12 @@ class InthonTransformer(lark.Transformer):
         name = str(children[0])
         type_ann = None
         default = None
-        
+
         idx = 1
-        if idx < len(children) and isinstance(children[idx], (N.PrimitiveType, N.ListType, N.DictType, N.TupleType, N.AgentSpecificType)):
+        if idx < len(children) and isinstance(
+            children[idx],
+            (N.PrimitiveType, N.ListType, N.DictType, N.TupleType, N.AgentSpecificType),
+        ):
             type_ann = children[idx]
             idx += 1
         if idx < len(children):
@@ -150,10 +159,14 @@ class InthonTransformer(lark.Transformer):
             "outputs": (),
             "imports": [],
             "policy": None,
-            "plan": None
+            "plan": None,
         }
         for child in children:
-            if isinstance(child, tuple) and len(child) > 0 and isinstance(child[0], N.TypedField):
+            if (
+                isinstance(child, tuple)
+                and len(child) > 0
+                and isinstance(child[0], N.TypedField)
+            ):
                 # inputs/outputs
                 pass
             elif isinstance(child, N.PolicyBlock):
@@ -174,7 +187,7 @@ class InthonTransformer(lark.Transformer):
         return result
 
     def goal_decl(self, children: list[Any]) -> str:
-        return str(children[0]).strip('"\'')
+        return str(children[0]).strip("\"'")
 
     def inputs_decl(self, children: list[Any]) -> dict[str, Any]:
         return {"inputs": tuple(children)}
@@ -192,18 +205,18 @@ class InthonTransformer(lark.Transformer):
         key = str(children[0])
         val = children[1]
         if isinstance(val, lark.Token):
-            if val.type == 'INT':
+            if val.type == "INT":
                 val = int(val)
-            elif val.type == 'FLOAT':
+            elif val.type == "FLOAT":
                 val = float(val)
-            elif val.type == 'BOOL_LIT':
-                val = True if val.value == 'true' else False
-            elif val.type == 'STRING':
-                val = val.value.strip('"\'')
+            elif val.type == "BOOL_LIT":
+                val = True if val.value == "true" else False
+            elif val.type == "STRING":
+                val = val.value.strip("\"'")
             else:
                 val = str(val)
         elif isinstance(val, str):
-            val = val.strip('"\'')
+            val = val.strip("\"'")
             if val.lower() == "true":
                 val = True
             elif val.lower() == "false":
@@ -230,7 +243,9 @@ class InthonTransformer(lark.Transformer):
                 else_branch = (eb,)
             else:
                 else_branch = eb
-        return N.IfStmt(condition=condition, then_branch=then_branch, else_branch=else_branch)
+        return N.IfStmt(
+            condition=condition, then_branch=then_branch, else_branch=else_branch
+        )
 
     def for_stmt(self, children: list[Any]) -> N.ForStmt:
         return N.ForStmt(var=str(children[0]), iterable=children[1], body=children[2])
@@ -250,7 +265,11 @@ class InthonTransformer(lark.Transformer):
 
     def recall_stmt(self, children: list[Any]) -> N.RecallStmt:
         var_name = self._expr_to_target_str(children[0])
-        return N.RecallStmt(var=var_name, query=str(children[1]).strip('"\''), namespace=str(children[2]))
+        return N.RecallStmt(
+            var=var_name,
+            query=str(children[1]).strip("\"'"),
+            namespace=str(children[2]),
+        )
 
     def guard_stmt(self, children: list[Any]) -> N.GuardStmt:
         return N.GuardStmt(condition=children[0])
@@ -260,7 +279,9 @@ class InthonTransformer(lark.Transformer):
         backoff = str(children[1])
         body = children[2]
         catch_blk = children[3] if len(children) > 3 else None
-        return N.RetryStmt(count=count, backoff=backoff, body=body, catch_block=catch_blk)
+        return N.RetryStmt(
+            count=count, backoff=backoff, body=body, catch_block=catch_blk
+        )
 
     def catch_block(self, children: list[Any]) -> N.CatchBlock:
         return N.CatchBlock(var=str(children[0]), body=children[1])
@@ -272,7 +293,9 @@ class InthonTransformer(lark.Transformer):
         return N.EvalStmt(subject=subject, rubric=rubric, criteria=criteria)
 
     def eval_criterion(self, children: list[Any]) -> N.EvalCriterion:
-        return N.EvalCriterion(metric=str(children[0]), op=str(children[1]), threshold=children[2])
+        return N.EvalCriterion(
+            metric=str(children[0]), op=str(children[1]), threshold=children[2]
+        )
 
     # --- Expressions ---
     def or_expr(self, children: list[Any]) -> Any:
@@ -315,7 +338,9 @@ class InthonTransformer(lark.Transformer):
 
     def call_expr(self, children: list[Any]) -> N.CallExpr:
         callee = children[0]
-        args, kwargs = children[1] if len(children) > 1 and children[1] is not None else ((), ())
+        args, kwargs = (
+            children[1] if len(children) > 1 and children[1] is not None else ((), ())
+        )
         return N.CallExpr(callee=callee, args=args, kwargs=kwargs)
 
     def member_expr(self, children: list[Any]) -> N.MemberExpr:
@@ -327,14 +352,24 @@ class InthonTransformer(lark.Transformer):
     def method_chain(self, children: list[Any]) -> N.CallExpr:
         obj = children[0]
         method_name = str(children[1])
-        args, kwargs = children[2] if len(children) > 2 and children[2] is not None else ((), ())
-        return N.CallExpr(callee=N.MemberExpr(obj=obj, attr=method_name), args=args, kwargs=kwargs)
+        args, kwargs = (
+            children[2] if len(children) > 2 and children[2] is not None else ((), ())
+        )
+        return N.CallExpr(
+            callee=N.MemberExpr(obj=obj, attr=method_name), args=args, kwargs=kwargs
+        )
 
-    def arg_list(self, children: list[Any]) -> tuple[tuple[Any, ...], tuple[tuple[str, Any], ...]]:
+    def arg_list(
+        self, children: list[Any]
+    ) -> tuple[tuple[Any, ...], tuple[tuple[str, Any], ...]]:
         args = []
         kwargs = []
         for child in children:
-            if isinstance(child, tuple) and len(child) == 2 and isinstance(child[0], str):
+            if (
+                isinstance(child, tuple)
+                and len(child) == 2
+                and isinstance(child[0], str)
+            ):
                 kwargs.append(child)
             else:
                 args.append(child)
@@ -354,9 +389,14 @@ class InthonTransformer(lark.Transformer):
 
     def string_literal(self, children: list[Any]) -> N.StringLiteral:
         val = str(children[0])
-        val = val[1:-1] # strip quote chars
+        val = val[1:-1]  # strip quote chars
         # Handle escapes simple replacements
-        val = val.replace('\\"', '"').replace("\\'", "'").replace('\\n', '\n').replace('\\t', '\t')
+        val = (
+            val.replace('\\"', '"')
+            .replace("\\'", "'")
+            .replace("\\n", "\n")
+            .replace("\\t", "\t")
+        )
         return N.StringLiteral(value=val)
 
     def bool_literal(self, children: list[Any]) -> N.BoolLiteral:

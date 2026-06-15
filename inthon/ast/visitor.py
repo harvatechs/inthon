@@ -3,6 +3,7 @@ from typing import Any, TypeVar
 
 T = TypeVar("T")
 
+
 class ASTVisitor:
     """
     Generic double-dispatch visitor.
@@ -10,6 +11,7 @@ class ASTVisitor:
     fall through to generic_visit(). The default generic_visit
     walks all child fields and returns None.
     """
+
     def visit(self, node: Any) -> Any:
         if node is None:
             return None

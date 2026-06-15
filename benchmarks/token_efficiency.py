@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from inthon.lexer.tokenizer import Tokenizer
 
+
 def run_token_efficiency_benchmark():
     # Baselines for comparison
     baselines = {
@@ -19,7 +20,7 @@ def run_token_efficiency_benchmark():
             "natural_language": {"tokens": 80, "success": True},
             "json_plan": {"tokens": 70, "success": True},
             "python": {"tokens": 60, "success": True},
-        }
+        },
     }
 
     examples_dir = Path(__file__).parent.parent / "examples"
@@ -34,7 +35,7 @@ def run_token_efficiency_benchmark():
     for task, file_path in task_files.items():
         if not file_path.exists():
             continue
-        
+
         source = file_path.read_text(encoding="utf-8")
         # Tokenize using INTHON's tokenizer
         toks = Tokenizer(source, filename=str(file_path)).tokenize()
@@ -47,25 +48,33 @@ def run_token_efficiency_benchmark():
             "natural_language": task_baselines["natural_language"],
             "json_plan": task_baselines["json_plan"],
             "python": task_baselines["python"],
-            "inthon": {"tokens": inthon_tokens, "success": True}
+            "inthon": {"tokens": inthon_tokens, "success": True},
         }
 
         # Calculate reduction relative to natural language
-        reduction = (reps["natural_language"]["tokens"] - inthon_tokens) / reps["natural_language"]["tokens"]
-        
-        results.append({
-            "benchmark": "token_efficiency",
-            "task": task,
-            "representations": reps,
-            "winner": "inthon" if inthon_tokens < reps["python"]["tokens"] else "python",
-            "reduction_vs_nl_pct": round(reduction * 100, 2),
-            "notes": [f"INTHON achieves {round(reduction * 100, 2)}% token reduction compared to Natural Language."]
-        })
+        reduction = (reps["natural_language"]["tokens"] - inthon_tokens) / reps[
+            "natural_language"
+        ]["tokens"]
+
+        results.append(
+            {
+                "benchmark": "token_efficiency",
+                "task": task,
+                "representations": reps,
+                "winner": "inthon"
+                if inthon_tokens < reps["python"]["tokens"]
+                else "python",
+                "reduction_vs_nl_pct": round(reduction * 100, 2),
+                "notes": [
+                    f"INTHON achieves {round(reduction * 100, 2)}% token reduction compared to Natural Language."
+                ],
+            }
+        )
 
     # Serialize results to JSON
     output_path = Path(__file__).parent / "results_token_efficiency.json"
     output_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
-    
+
     print("\n=== Token Efficiency Benchmark Results ===")
     for r in results:
         print(f"Task: {r['task']}")
@@ -75,6 +84,7 @@ def run_token_efficiency_benchmark():
         print(f"  INTHON: {r['representations']['inthon']['tokens']} tokens")
         print(f"  Winner: {r['winner']} (Reduction vs NL: {r['reduction_vs_nl_pct']}%)")
     print(f"Results written to {output_path}")
+
 
 if __name__ == "__main__":
     run_token_efficiency_benchmark()

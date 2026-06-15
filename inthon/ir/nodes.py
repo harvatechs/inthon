@@ -2,11 +2,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Union
 
+
 @dataclass
 class IRProgram:
     imports: list[IRImport]
     body: list[IRNode]
     metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class IRImport:
@@ -14,14 +16,17 @@ class IRImport:
     path: str
     alias: str | None = None
 
+
 @dataclass
 class IRAssign:
     target: str
     value: IRValue
 
+
 @dataclass
 class IRReturn:
     value: IRValue | None
+
 
 @dataclass
 class IRToolCall:
@@ -29,6 +34,7 @@ class IRToolCall:
     args: list[IRValue]
     kwargs: dict[str, IRValue]
     result_var: str | None = None
+
 
 @dataclass
 class IRPyCall:
@@ -38,6 +44,7 @@ class IRPyCall:
     kwargs: dict[str, IRValue]
     result_var: str | None = None
 
+
 @dataclass
 class IRAgentBlock:
     name: str
@@ -45,16 +52,19 @@ class IRAgentBlock:
     policy: dict[str, Any]
     plan: list[IRNode]
 
+
 @dataclass
 class IRApproval:
     target: str
     action: str
+
 
 @dataclass
 class IRConditional:
     condition: IRValue
     then_branch: list[IRNode]
     else_branch: list[IRNode] | None
+
 
 @dataclass
 class IRLoop:
@@ -64,15 +74,18 @@ class IRLoop:
     condition: IRValue | None
     body: list[IRNode]
 
+
 # ─── IR Values (leaf nodes in expressions) ────────────────────────────────────
 @dataclass
 class IRLiteral:
     value: int | float | str | bool | None
     type_hint: str
 
+
 @dataclass
 class IRVar:
     name: str
+
 
 @dataclass
 class IRBinaryOp:
@@ -80,13 +93,16 @@ class IRBinaryOp:
     left: IRValue
     right: IRValue
 
+
 @dataclass
 class IRList:
     elements: list[IRValue]
 
+
 @dataclass
 class IRDict:
     pairs: list[tuple[IRValue, IRValue]]
+
 
 @dataclass
 class IRCall:
@@ -94,5 +110,18 @@ class IRCall:
     args: list[IRValue]
     kwargs: dict[str, IRValue]
 
-IRValue = Union[IRLiteral, IRVar, IRBinaryOp, IRList, IRDict, IRToolCall, IRPyCall, IRCall]
-IRNode  = Union[IRAssign, IRReturn, IRToolCall, IRPyCall, IRAgentBlock, IRApproval, IRConditional, IRLoop]
+
+IRValue = Union[
+    IRLiteral, IRVar, IRBinaryOp, IRList, IRDict, IRToolCall, IRPyCall, IRCall
+]
+IRNode = Union[
+    IRAssign,
+    IRReturn,
+    IRToolCall,
+    IRPyCall,
+    IRAgentBlock,
+    IRApproval,
+    IRConditional,
+    IRLoop,
+    IRCall,
+]

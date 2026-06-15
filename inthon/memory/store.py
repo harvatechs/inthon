@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 import time
 
+
 @dataclass
 class MemoryEntry:
     key: str
@@ -13,6 +14,7 @@ class MemoryEntry:
     updated_at: float = field(default_factory=time.time)
     tags: list[str] = field(default_factory=list)
 
+
 class MemoryStore(ABC):
     @abstractmethod
     def write(self, key: str, value: Any, namespace: str) -> MemoryEntry: ...
@@ -21,10 +23,13 @@ class MemoryStore(ABC):
     @abstractmethod
     def delete(self, key: str, namespace: str) -> bool: ...
     @abstractmethod
-    def search(self, query: str, namespace: str, limit: int = 10) -> list[MemoryEntry]: ...
+    def search(
+        self, query: str, namespace: str, limit: int = 10
+    ) -> list[MemoryEntry]: ...
     @classmethod
     def in_memory(cls) -> "InMemoryStore":
         return InMemoryStore()
+
 
 class InMemoryStore(MemoryStore):
     """
@@ -32,6 +37,7 @@ class InMemoryStore(MemoryStore):
     Namespaces are isolated; cross-namespace reads require explicit
     namespace specification.
     """
+
     def __init__(self) -> None:
         self._store: dict[str, dict[str, MemoryEntry]] = {}
 
@@ -40,8 +46,11 @@ class InMemoryStore(MemoryStore):
         if key in ns:
             entry = ns[key]
             ns[key] = MemoryEntry(
-                key=key, value=value, namespace=namespace,
-                created_at=entry.created_at, updated_at=time.time(),
+                key=key,
+                value=value,
+                namespace=namespace,
+                created_at=entry.created_at,
+                updated_at=time.time(),
                 tags=entry.tags,
             )
         else:
@@ -58,10 +67,11 @@ class InMemoryStore(MemoryStore):
             return True
         return False
 
-    def search(self, query: str, namespace: str = "session", limit: int = 10) -> list[MemoryEntry]:
+    def search(
+        self, query: str, namespace: str = "session", limit: int = 10
+    ) -> list[MemoryEntry]:
         ns = self._store.get(namespace, {})
         results = [
-            entry for entry in ns.values()
-            if query.lower() in str(entry.value).lower()
+            entry for entry in ns.values() if query.lower() in str(entry.value).lower()
         ]
         return results[:limit]

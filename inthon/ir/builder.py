@@ -1,12 +1,27 @@
 from __future__ import annotations
-from typing import Any
 from ..ast.visitor import ASTVisitor
 from ..ast import nodes as N
 from .nodes import (
-    IRProgram, IRImport, IRAssign, IRReturn, IRToolCall, IRPyCall,
-    IRAgentBlock, IRApproval, IRConditional, IRLoop, IRLiteral,
-    IRVar, IRBinaryOp, IRList, IRDict, IRCall, IRValue, IRNode
+    IRProgram,
+    IRImport,
+    IRAssign,
+    IRReturn,
+    IRToolCall,
+    IRPyCall,
+    IRAgentBlock,
+    IRApproval,
+    IRConditional,
+    IRLoop,
+    IRLiteral,
+    IRVar,
+    IRBinaryOp,
+    IRList,
+    IRDict,
+    IRCall,
+    IRValue,
+    IRNode,
 )
+
 
 class IRBuilder(ASTVisitor):
     def __init__(self) -> None:
@@ -83,35 +98,57 @@ class IRBuilder(ASTVisitor):
 
     def visit_IfStmt(self, node: N.IfStmt) -> IRConditional:
         then_branch = [self.visit(s) for s in node.then_branch]
-        else_branch = [self.visit(s) for s in node.else_branch] if node.else_branch else None
-        return IRConditional(condition=self.visit(node.condition), then_branch=then_branch, else_branch=else_branch)
+        else_branch = (
+            [self.visit(s) for s in node.else_branch] if node.else_branch else None
+        )
+        return IRConditional(
+            condition=self.visit(node.condition),
+            then_branch=then_branch,
+            else_branch=else_branch,
+        )
 
     def visit_ForStmt(self, node: N.ForStmt) -> IRLoop:
         body = [self.visit(s) for s in node.body]
-        return IRLoop(kind="for", var=node.var, iterable=self.visit(node.iterable), condition=None, body=body)
+        return IRLoop(
+            kind="for",
+            var=node.var,
+            iterable=self.visit(node.iterable),
+            condition=None,
+            body=body,
+        )
 
     def visit_WhileStmt(self, node: N.WhileStmt) -> IRLoop:
         body = [self.visit(s) for s in node.body]
-        return IRLoop(kind="while", var=None, iterable=None, condition=self.visit(node.condition), body=body)
+        return IRLoop(
+            kind="while",
+            var=None,
+            iterable=None,
+            condition=self.visit(node.condition),
+            body=body,
+        )
 
     def visit_AgentDecl(self, node: N.AgentDecl) -> IRAgentBlock:
-        policy_dict = {e.key: e.value for e in node.policy.entries} if node.policy else {}
+        policy_dict = (
+            {e.key: e.value for e in node.policy.entries} if node.policy else {}
+        )
         plan_nodes = [self.visit(s) for s in node.plan.body]
-        return IRAgentBlock(name=node.name, goal=node.goal, policy=policy_dict, plan=plan_nodes)
+        return IRAgentBlock(
+            name=node.name, goal=node.goal, policy=policy_dict, plan=plan_nodes
+        )
 
     def visit_RememberStmt(self, node: N.RememberStmt) -> IRCall:
         # Lower memory primitives to a call to std.memory.remember
         return IRCall(
             callee=IRVar("remember"),
             args=[self.visit(node.value), IRLiteral(node.namespace, "str")],
-            kwargs={}
+            kwargs={},
         )
 
     def visit_ForgetStmt(self, node: N.ForgetStmt) -> IRCall:
         return IRCall(
             callee=IRVar("forget"),
             args=[self.visit(node.key), IRLiteral(node.namespace, "str")],
-            kwargs={}
+            kwargs={},
         )
 
     def visit_RecallStmt(self, node: N.RecallStmt) -> IRAssign:
@@ -119,15 +156,13 @@ class IRBuilder(ASTVisitor):
         recall_call = IRCall(
             callee=IRVar("recall"),
             args=[IRLiteral(node.query, "str"), IRLiteral(node.namespace, "str")],
-            kwargs={}
+            kwargs={},
         )
         return IRAssign(target=node.var, value=recall_call)
 
     def visit_GuardStmt(self, node: N.GuardStmt) -> IRCall:
         return IRCall(
-            callee=IRVar("guard"),
-            args=[self.visit(node.condition)],
-            kwargs={}
+            callee=IRVar("guard"), args=[self.visit(node.condition)], kwargs={}
         )
 
     def visit_RetryStmt(self, node: N.RetryStmt) -> IRLoop:
@@ -138,22 +173,30 @@ class IRBuilder(ASTVisitor):
             var=None,
             iterable=None,
             condition=IRLiteral(node.count, "int"),
-            body=body
+            body=body,
         )
 
     def visit_EvalStmt(self, node: N.EvalStmt) -> IRCall:
         # Lower eval to a call
-        criteria_list = []
+        criteria_list: list[IRValue] = []
         for c in node.criteria:
-            criteria_list.append(IRDict(pairs=[
-                (IRLiteral("metric", "str"), IRLiteral(c.metric, "str")),
-                (IRLiteral("op", "str"), IRLiteral(c.op, "str")),
-                (IRLiteral("threshold", "str"), self.visit(c.threshold))
-            ]))
+            criteria_list.append(
+                IRDict(
+                    pairs=[
+                        (IRLiteral("metric", "str"), IRLiteral(c.metric, "str")),
+                        (IRLiteral("op", "str"), IRLiteral(c.op, "str")),
+                        (IRLiteral("threshold", "str"), self.visit(c.threshold)),
+                    ]
+                )
+            )
         return IRCall(
             callee=IRVar("eval"),
-            args=[IRVar(node.subject), IRLiteral(node.rubric, "str"), IRList(elements=criteria_list)],
-            kwargs={}
+            args=[
+                IRVar(node.subject),
+                IRLiteral(node.rubric, "str"),
+                IRList(elements=criteria_list),
+            ],
+            kwargs={},
         )
 
     # --- Expressions ---
@@ -176,11 +219,15 @@ class IRBuilder(ASTVisitor):
         return IRVar(name=node.name)
 
     def visit_BinaryOp(self, node: N.BinaryOp) -> IRBinaryOp:
-        return IRBinaryOp(op=node.op, left=self.visit(node.left), right=self.visit(node.right))
+        return IRBinaryOp(
+            op=node.op, left=self.visit(node.left), right=self.visit(node.right)
+        )
 
     def visit_UnaryOp(self, node: N.UnaryOp) -> IRBinaryOp:
         # Unary is lowered to binary operation with 0/empty or unary representation
-        return IRBinaryOp(op=node.op, left=self.visit(node.operand), right=IRLiteral(None, "none"))
+        return IRBinaryOp(
+            op=node.op, left=self.visit(node.operand), right=IRLiteral(None, "none")
+        )
 
     def visit_ListExpr(self, node: N.ListExpr) -> IRList:
         return IRList(elements=[self.visit(e) for e in node.elements])
@@ -195,13 +242,17 @@ class IRBuilder(ASTVisitor):
 
         if root:
             # Check if it is a tool call (e.g. web.search)
-            if root in self.imported_tools or any(root == t.split(".")[0] for t in self.imported_tools):
+            if root in self.imported_tools or any(
+                root == t.split(".")[0] for t in self.imported_tools
+            ):
                 tool_path = f"{root}.{'.'.join(chain)}" if chain else root
                 return IRToolCall(tool=tool_path, args=args, kwargs=kwargs)
             # Check if it is a python module call (e.g. pd.read_csv)
             if root in self.imported_py:
                 module = self.imported_py[root]
-                return IRPyCall(module=module, attr_chain=chain, args=args, kwargs=kwargs)
+                return IRPyCall(
+                    module=module, attr_chain=chain, args=args, kwargs=kwargs
+                )
 
         return IRCall(callee=self.visit(node.callee), args=args, kwargs=kwargs)
 
@@ -218,8 +269,9 @@ class IRBuilder(ASTVisitor):
         return IRCall(
             callee=IRVar("getitem"),
             args=[self.visit(node.obj), self.visit(node.index)],
-            kwargs={}
+            kwargs={},
         )
+
 
 def build_ir(program: N.Program) -> IRProgram:
     builder = IRBuilder()
