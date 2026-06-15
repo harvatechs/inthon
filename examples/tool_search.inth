@@ -1,0 +1,13 @@
+use tool web.search
+
+agent Searcher {
+    goal "Find information about INTHON"
+    policy {
+        allow_network: true
+    }
+    plan {
+        let query = "INTHON programming language layer"
+        let results = web.search(query, limit: 3)
+        return results
+    }
+}

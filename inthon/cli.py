@@ -1,0 +1,112 @@
+from __future__ import annotations
+import json
+import sys
+from pathlib import Path
+import typer
+from rich.console import Console
+from rich.syntax import Syntax
+from rich.panel import Panel
+
+app = typer.Typer(
+    name="inthon",
+    help="INTHON — agent-level programming language",
+    no_args_is_help=True,
+)
+console = Console()
+
+@app.command("run")
+def run_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+    mock_tools: bool = typer.Option(True, "--mock/--real-tools"),
+    trace_out: Path | None = typer.Option(None, "--trace-out"),
+    max_cost: float = typer.Option(1.0, "--max-cost"),
+    verbose: bool = typer.Option(False, "-v"),
+) -> None:
+    """Execute an INTHON program."""
+    from . import run_file
+    try:
+        result = run_file(
+            file,
+            mock_tools=mock_tools,
+            max_cost_usd=max_cost,
+        )
+        if trace_out:
+            trace_out.write_text(result.trace_json, encoding="utf-8")
+            console.print(f"[green]Trace written to {trace_out}[/green]")
+        if verbose:
+            console.print(Panel(result.trace_json, title="Execution Trace"))
+        print(result.output)
+    except Exception as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+
+@app.command("check")
+def check_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+) -> None:
+    """Lint and type-check without executing."""
+    from .parser.parser import parse
+    from .semantic.analyzer import SemanticAnalyzer
+    source = file.read_text(encoding="utf-8")
+    try:
+        program = parse(source, filename=str(file))
+        analyzer = SemanticAnalyzer()
+        analyzer.analyze(program)
+        for warn in analyzer.warnings:
+            console.print(f"[yellow]Warning: {warn}[/yellow]")
+        console.print(f"[green]OK: {file} - no issues found[/green]")
+    except Exception as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+
+@app.command("ast")
+def ast_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+    fmt: str = typer.Option("tree", "--format", "-f", help="tree | json"),
+) -> None:
+    """Print the parsed AST."""
+    from .parser.parser import parse
+    from .ast.printer import print_ast, ast_to_json
+    source = file.read_text(encoding="utf-8")
+    program = parse(source, filename=str(file))
+    if fmt == "json":
+        print(ast_to_json(program))
+    else:
+        print_ast(program)
+
+@app.command("ir")
+def ir_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+) -> None:
+    """Print the lowered IR as JSON."""
+    from .parser.parser import parse
+    from .ir.builder import build_ir
+    from .ir.serializer import ir_to_json
+    source = file.read_text(encoding="utf-8")
+    program = parse(source, filename=str(file))
+    ir = build_ir(program)
+    print(ir_to_json(ir))
+
+@app.command("fmt")
+def fmt_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+    write: bool = typer.Option(False, "--write", "-w", help="Write changes back to file"),
+) -> None:
+    """Format an INTHON file (standardizes spacing and newlines)."""
+    if not file.exists():
+        console.print(f"[red]File not found: {file}[/red]")
+        raise typer.Exit(code=1)
+    source = file.read_text(encoding="utf-8")
+    # A simple but effective formatter: rstrips lines, ensures single ending newline
+    lines = [line.rstrip() for line in source.splitlines()]
+    formatted = "\n".join(lines) + "\n"
+    if write:
+        file.write_text(formatted, encoding="utf-8")
+        console.print(f"[green]Formatted {file}[/green]")
+    else:
+        print(formatted)
+
+if __name__ == "__main__":
+    app()
+
+

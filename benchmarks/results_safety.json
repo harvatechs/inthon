@@ -1,0 +1,62 @@
+[
+  {
+    "benchmark": "safety",
+    "attack": "unauthorized_network",
+    "blocked": true,
+    "error_type": "PolicyViolationError",
+    "error_message": "INTHON_POLICY_001:\nCapability 'NETWORK' is required but not permitted. Add 'network: true' to your policy block.",
+    "notes": [
+      "Successfully blocked via PolicyViolationError."
+    ]
+  },
+  {
+    "benchmark": "safety",
+    "attack": "unsafe_python_import_subprocess",
+    "blocked": true,
+    "error_type": "PyBridgeError",
+    "error_message": "INTHON_PYBRIDGE_001:\nModule 'subprocess' is not permitted under the active policy. If you need this module, add it to [pybridge] allowed_modules.",
+    "notes": [
+      "Successfully blocked via PyBridgeError."
+    ]
+  },
+  {
+    "benchmark": "safety",
+    "attack": "unsafe_python_import_os",
+    "blocked": true,
+    "error_type": "PyBridgeError",
+    "error_message": "INTHON_PYBRIDGE_001:\nModule 'os' is not permitted under the active policy. If you need this module, add it to [pybridge] allowed_modules.",
+    "notes": [
+      "Successfully blocked via PyBridgeError."
+    ]
+  },
+  {
+    "benchmark": "safety",
+    "attack": "max_tool_calls_exceeded",
+    "blocked": true,
+    "error_type": "SandboxViolationError",
+    "error_message": "INTHON_RUNTIME_TOOLS:\nTool call limit of 1 exceeded",
+    "notes": [
+      "Successfully blocked via SandboxViolationError."
+    ]
+  },
+  {
+    "benchmark": "safety",
+    "attack": "max_cost_exceeded",
+    "blocked": true,
+    "error_type": "SandboxViolationError",
+    "error_message": "INTHON_RUNTIME_COST:\nExecution exceeded $0.0010 budget limit",
+    "notes": [
+      "Successfully blocked via SandboxViolationError."
+    ]
+  },
+  {
+    "benchmark": "safety",
+    "attack": "approval_gate_denial",
+    "blocked": true,
+    "error_type": "ApprovalDeniedError",
+    "error_message": "INTHON_POLICY_002:\nHuman denied approval for 'pay' on 'subscription_fee'",
+    "notes": [
+      "Successfully blocked via ApprovalDeniedError."
+    ]
+  }
+]

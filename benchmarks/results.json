@@ -1,0 +1,193 @@
+{
+  "token_efficiency": [
+    {
+      "benchmark": "token_efficiency",
+      "task": "research_report",
+      "representations": {
+        "natural_language": {
+          "tokens": 120,
+          "success": true
+        },
+        "json_plan": {
+          "tokens": 90,
+          "success": true
+        },
+        "python": {
+          "tokens": 75,
+          "success": true
+        },
+        "inthon": {
+          "tokens": 52,
+          "success": true
+        }
+      },
+      "winner": "inthon",
+      "reduction_vs_nl_pct": 56.67,
+      "notes": [
+        "INTHON achieves 56.67% token reduction compared to Natural Language."
+      ]
+    },
+    {
+      "benchmark": "token_efficiency",
+      "task": "csv_summary",
+      "representations": {
+        "natural_language": {
+          "tokens": 95,
+          "success": true
+        },
+        "json_plan": {
+          "tokens": 80,
+          "success": true
+        },
+        "python": {
+          "tokens": 65,
+          "success": true
+        },
+        "inthon": {
+          "tokens": 54,
+          "success": true
+        }
+      },
+      "winner": "inthon",
+      "reduction_vs_nl_pct": 43.16,
+      "notes": [
+        "INTHON achieves 43.16% token reduction compared to Natural Language."
+      ]
+    },
+    {
+      "benchmark": "token_efficiency",
+      "task": "approval_gate",
+      "representations": {
+        "natural_language": {
+          "tokens": 80,
+          "success": true
+        },
+        "json_plan": {
+          "tokens": 70,
+          "success": true
+        },
+        "python": {
+          "tokens": 60,
+          "success": true
+        },
+        "inthon": {
+          "tokens": 19,
+          "success": true
+        }
+      },
+      "winner": "inthon",
+      "reduction_vs_nl_pct": 76.25,
+      "notes": [
+        "INTHON achieves 76.25% token reduction compared to Natural Language."
+      ]
+    }
+  ],
+  "workflow_correctness": [
+    {
+      "benchmark": "workflow_correctness",
+      "task": "hello",
+      "success": true,
+      "output": "Hello, INTHON Developer!",
+      "duration_ms": 1432.37,
+      "trace_events_count": 1,
+      "has_valid_trace": true,
+      "cost_usd": 0.0,
+      "errors": []
+    },
+    {
+      "benchmark": "workflow_correctness",
+      "task": "tool_search",
+      "success": true,
+      "output": "[{'title': 'Result 1 for: INTHON programming language layer', 'url': 'https://example.com/res1', 'snippet': 'Snippet 1'}, {'title': 'Result 2 for: INTHON programming language layer', 'url': 'https://e",
+      "duration_ms": 22.2,
+      "trace_events_count": 5,
+      "has_valid_trace": true,
+      "cost_usd": 0.005,
+      "errors": []
+    },
+    {
+      "benchmark": "workflow_correctness",
+      "task": "csv_summary",
+      "success": true,
+      "output": "[{'item': 'laptop', 'price': 1200}, {'item': 'phone', 'price': 800}, {'item': 'mouse', 'price': 50}]",
+      "duration_ms": 4492.98,
+      "trace_events_count": 4,
+      "has_valid_trace": true,
+      "cost_usd": 0.0,
+      "errors": []
+    },
+    {
+      "benchmark": "workflow_correctness",
+      "task": "agent_research",
+      "success": true,
+      "output": "[{'title': 'Result 1 for: agent-level reasoning compiler', 'url': 'https://example.com/res1', 'snippet': 'Snippet 1'}]",
+      "duration_ms": 4.75,
+      "trace_events_count": 7,
+      "has_valid_trace": true,
+      "cost_usd": 0.005,
+      "errors": []
+    }
+  ],
+  "safety": [
+    {
+      "benchmark": "safety",
+      "attack": "unauthorized_network",
+      "blocked": true,
+      "error_type": "PolicyViolationError",
+      "error_message": "INTHON_POLICY_001:\nCapability 'NETWORK' is required but not permitted. Add 'network: true' to your policy block.",
+      "notes": [
+        "Successfully blocked via PolicyViolationError."
+      ]
+    },
+    {
+      "benchmark": "safety",
+      "attack": "unsafe_python_import_subprocess",
+      "blocked": true,
+      "error_type": "PyBridgeError",
+      "error_message": "INTHON_PYBRIDGE_001:\nModule 'subprocess' is not permitted under the active policy. If you need this module, add it to [pybridge] allowed_modules.",
+      "notes": [
+        "Successfully blocked via PyBridgeError."
+      ]
+    },
+    {
+      "benchmark": "safety",
+      "attack": "unsafe_python_import_os",
+      "blocked": true,
+      "error_type": "PyBridgeError",
+      "error_message": "INTHON_PYBRIDGE_001:\nModule 'os' is not permitted under the active policy. If you need this module, add it to [pybridge] allowed_modules.",
+      "notes": [
+        "Successfully blocked via PyBridgeError."
+      ]
+    },
+    {
+      "benchmark": "safety",
+      "attack": "max_tool_calls_exceeded",
+      "blocked": true,
+      "error_type": "SandboxViolationError",
+      "error_message": "INTHON_RUNTIME_TOOLS:\nTool call limit of 1 exceeded",
+      "notes": [
+        "Successfully blocked via SandboxViolationError."
+      ]
+    },
+    {
+      "benchmark": "safety",
+      "attack": "max_cost_exceeded",
+      "blocked": true,
+      "error_type": "SandboxViolationError",
+      "error_message": "INTHON_RUNTIME_COST:\nExecution exceeded $0.0010 budget limit",
+      "notes": [
+        "Successfully blocked via SandboxViolationError."
+      ]
+    },
+    {
+      "benchmark": "safety",
+      "attack": "approval_gate_denial",
+      "blocked": true,
+      "error_type": "ApprovalDeniedError",
+      "error_message": "INTHON_POLICY_002:\nHuman denied approval for 'pay' on 'subscription_fee'",
+      "notes": [
+        "Successfully blocked via ApprovalDeniedError."
+      ]
+    }
+  ]
+}

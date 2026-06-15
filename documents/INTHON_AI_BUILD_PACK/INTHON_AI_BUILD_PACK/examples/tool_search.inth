@@ -1,0 +1,3 @@
+use tool web.search
+results = web.search("agent programming language", limit: 3)
+return results

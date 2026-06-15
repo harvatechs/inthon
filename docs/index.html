@@ -1,0 +1,254 @@
+---
+layout: default
+title: "INTHON - Agent-Level Programming Language for AI-Native Workflows"
+description: "A Python-hosted language layer for AI-native workflows, tool orchestration, and sandboxed execution."
+---
+
+<main>
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <div class="container hero-container">
+      <div class="badge-container">
+        <span class="badge badge-accent">Research Paper v0.1</span>
+        <span class="badge badge-neutral">Code: Coming Soon</span>
+      </div>
+      <h1 class="hero-title">An Agent-Level Language for Executable Intent</h1>
+      <p class="hero-subtitle">
+        INTHON is a Python-hosted language layer that allows AI agents to express workflows as compact, deterministic, and auditable programs.
+      </p>
+
+      <div class="author-card">
+        <div class="author-name">Harsha Vardhan</div>
+        <div class="author-title">Chief Researcher</div>
+        <div class="author-affiliation">INTHON Research Group &bull; Department of Advanced Computing & Research</div>
+        <div class="author-lab">HarVa DeepLabs</div>
+      </div>
+
+      <div class="hero-actions">
+        <a href="#playground" class="btn btn-primary" id="explore-playground-btn">Try Playground</a>
+        <a href="#" class="btn btn-secondary" id="paper-download-btn" onclick="alert('The pre-print paper is currently being processed for arXiv registry. Stay tuned!'); return false;">
+          <span>Download Paper (PDF)</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Abstract / TL;DR Section -->
+  <section class="abstract" id="abstract">
+    <div class="container container-narrow">
+      <h2 class="section-title">Abstract</h2>
+      <div class="abstract-content">
+        <p>
+          Current autonomous agent architectures communicate actions using natural language, fragile JSON blocks, or boilerplate-heavy Python. While powerful, these approaches suffer from token bloat, execution non-determinism, and lack of rigorous sandboxing.
+        </p>
+        <p>
+          We introduce <strong>INTHON</strong> (Intelligent Python), a language layer optimized for the token efficiency of Large Language Models (LLMs). INTHON models workflows as structured agent blocks with strict capability-based policies. By enforcing static validation of tool schemas, sandboxing side effects, and emitting detailed, replayable JSON trace graphs, INTHON guarantees auditability and safety at machine execution speeds.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture & Pipeline Section -->
+  <section class="pipeline-section" id="pipeline">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">The Execution Pipeline</h2>
+        <p class="section-description">
+          INTHON translates source programs to Intermediate Representation (IR), validates capabilities, and evaluates tool transactions inside sandboxed environments.
+        </p>
+      </div>
+
+      <!-- Flowchart container -->
+      <div class="flow-container">
+        <div class="flow-step" id="step-lexer" data-step="lexer">
+          <div class="step-num">01</div>
+          <div class="step-title">Lex & Parse</div>
+          <div class="step-desc">Tokenizes stream & matches syntax using Lark grammar rules.</div>
+          <div class="step-file">lexer/, parser/</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+
+        <div class="flow-step" id="step-ast" data-step="ast">
+          <div class="step-num">02</div>
+          <div class="step-title">AST Generation</div>
+          <div class="step-desc">Creates immutable syntax nodes representing instructions.</div>
+          <div class="step-file">ast/nodes.py</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+
+        <div class="flow-step" id="step-semantic" data-step="semantic">
+          <div class="step-num">03</div>
+          <div class="step-title">Semantic Analyzer</div>
+          <div class="step-desc">Resolves variables, validates imports, checks static types.</div>
+          <div class="step-file">semantic/analyzer.py</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+
+        <div class="flow-step" id="step-policy" data-step="policy">
+          <div class="step-num">04</div>
+          <div class="step-title">Policy & Guard</div>
+          <div class="step-desc">Checks capability boundaries & registers approval gateways.</div>
+          <div class="step-file">policy/engine.py</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+
+        <div class="flow-step" id="step-runtime" data-step="runtime">
+          <div class="step-num">05</div>
+          <div class="step-title">Sandbox Execution</div>
+          <div class="step-desc">Evaluates IR and handles sandboxed tool interactions.</div>
+          <div class="step-file">runtime/sandbox.py</div>
+        </div>
+      </div>
+
+      <!-- Info details panel -->
+      <div class="detail-panel" id="pipeline-details">
+        <h3 id="detail-title">Select an execution stage above to inspect details</h3>
+        <p id="detail-desc">Hover over or tap any pipeline stage to view its architectural mechanics, component boundaries, and matching Python module source references.</p>
+        <div class="detail-file-badge" id="detail-badge" style="display: none;">Module: ast/nodes.py</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Playground / Emulator Section -->
+  <section class="playground" id="playground">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Interactive Code Playground</h2>
+        <p class="section-description">
+          Experience INTHON compilation and execution behavior. Select a preset program, run the virtual environment, and audit the live execution logs.
+        </p>
+      </div>
+
+      <div class="playground-layout">
+        <!-- Left: Code Editor -->
+        <div class="editor-pane">
+          <div class="editor-header">
+            <div class="editor-tabs">
+              <button class="tab-btn active" data-preset="research" id="tab-btn-research">Market Research</button>
+              <button class="tab-btn" data-preset="payment" id="tab-btn-payment">Approval Gates</button>
+              <button class="tab-btn" data-preset="sandbox" id="tab-btn-sandbox">PyBridge Interop</button>
+            </div>
+            <div class="editor-badge">.inth</div>
+          </div>
+          <div class="editor-body">
+            <pre><code id="code-display" class="language-inth">// Select a program from the tabs above</code></pre>
+          </div>
+          <div class="editor-footer">
+            <button class="btn btn-primary btn-run" id="run-code-btn">
+              <span>Run Program</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Interactive Console/Log Emulator -->
+        <div class="console-pane">
+          <div class="console-header">
+            <div class="console-title">Audit Trace Terminal</div>
+            <div class="console-status" id="console-status-indicator">Idle</div>
+          </div>
+          <div class="console-body" id="console-output">
+            <div class="console-line system-line">&gt; System initialized. Ready to execute.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Innovations Section -->
+  <section class="innovations" id="innovations">
+    <div class="container">
+      <h2 class="section-title text-center">Core Innovations</h2>
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+          </div>
+          <h3 class="card-title">Token-Optimized Syntax</h3>
+          <p class="card-text">
+            Drastically reduces the token footprint for agent planning, system instructions, and tool calling definitions. Replaces verbose JSON schemas with concise language declarations.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <h3 class="card-title">Capability-Based Sandbox</h3>
+          <p class="card-text">
+            Fine-grained execution policies. Control internet traffic, local filesystem writes, memory persistence, and package import restrictions directly within the language construct.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
+          <h3 class="card-title">Deterministic Replay Audits</h3>
+          <p class="card-text">
+            Synchronously records variables, state changes, tool transactions, API costs, and evaluation metrics into a cryptographic JSON trace log for complete reproducibility.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap Section -->
+  <section class="roadmap" id="roadmap">
+    <div class="container container-narrow">
+      <h2 class="section-title">Development Roadmap</h2>
+      <div class="timeline">
+        <div class="timeline-item active">
+          <div class="timeline-badge">v0.1</div>
+          <div class="timeline-content">
+            <h3>Language Core MVP (Current)</h3>
+            <p>Python-hosted runtime with Lark parser grammar, sandboxed AST-walking interpreter, Pydantic tool registry, and initial Python modules bridge.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-badge">v0.2</div>
+          <div class="timeline-content">
+            <h3>Developer Experience Expansion</h3>
+            <p>Formatting suite (`inthon fmt`), style linter, active interactive REPL console, Tree-sitter configurations, and Language Server Protocol (LSP) for VS Code.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-badge">v0.3</div>
+          <div class="timeline-content">
+            <h3>Ecosystem Integration</h3>
+            <p>Autodoc tools mapping OpenAPI endpoints to INTHON modules, vector database memory handlers, and Interactive Notebook execution cells.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-badge">v1.0</div>
+          <div class="timeline-content">
+            <h3>Stable Production Release</h3>
+            <p>Finalized language specification, security audit, sandboxed micro-containers for remote runtime environments, and public tool library registry.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Citation Section -->
+  <section class="citation-section" id="citation">
+    <div class="container container-narrow">
+      <h2 class="section-title">Cite INTHON</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center;">If you use INTHON in your research, please cite our concept paper:</p>
+      <div class="citation-box">
+        <button class="btn-copy" id="btn-copy-citation">Copy BibTeX</button>
+        <pre id="bibtex-citation">@article{vardhan2026inthon,
+  title={INTHON: Agent-Level Programming Language Layer for AI-Native Workflows},
+  author={Vardhan, Harsha},
+  journal={Department of Advanced Computing \& Research, HarVa DeepLabs},
+  year={2026},
+  url={https://github.com/harva-deeplabs/inthon}
+}</pre>
+      </div>
+    </div>
+  </section>
+</main>

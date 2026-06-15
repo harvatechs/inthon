@@ -1,0 +1,16 @@
+use tool web.search
+
+agent ResearchAgent {
+    goal "Research and store findings in memory"
+    policy {
+        allow_network: true
+        allow_memory_persist: true
+    }
+    plan {
+        let query = "agent-level reasoning compiler"
+        let results = web.search(query, limit: 1)
+        remember results in session
+        recalled = recall "compiler" from session
+        return recalled
+    }
+}

@@ -1,0 +1,11 @@
+use py.pandas as pd
+
+// Set up a DataFrame and summarise it using pd.DataFrame
+let df = pd.DataFrame([
+    {"item": "laptop", "price": 1200},
+    {"item": "phone", "price": 800},
+    {"item": "mouse", "price": 50}
+])
+
+let summary = df.to_dict()
+summary

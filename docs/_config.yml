@@ -1,0 +1,18 @@
+title: "INTHON: Agent-Level Programming Language"
+description: "A Python-hosted language layer for AI-native workflows. Compact, deterministic, and auditable."
+author: "Harsha Vardhan"
+email: "harsha.vardhan@harvadeeplabs.com"
+github_username: "harva-deeplabs"
+
+# Build settings
+markdown: kramdown
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor

@@ -1,0 +1,7 @@
+draft = email.compose(
+  to: "client@example.com",
+  subject: "Proposal Update",
+  body: proposal.summary
+)
+approve draft before send
+email.send(draft)

@@ -1,0 +1,83 @@
+[
+  {
+    "benchmark": "token_efficiency",
+    "task": "research_report",
+    "representations": {
+      "natural_language": {
+        "tokens": 120,
+        "success": true
+      },
+      "json_plan": {
+        "tokens": 90,
+        "success": true
+      },
+      "python": {
+        "tokens": 75,
+        "success": true
+      },
+      "inthon": {
+        "tokens": 52,
+        "success": true
+      }
+    },
+    "winner": "inthon",
+    "reduction_vs_nl_pct": 56.67,
+    "notes": [
+      "INTHON achieves 56.67% token reduction compared to Natural Language."
+    ]
+  },
+  {
+    "benchmark": "token_efficiency",
+    "task": "csv_summary",
+    "representations": {
+      "natural_language": {
+        "tokens": 95,
+        "success": true
+      },
+      "json_plan": {
+        "tokens": 80,
+        "success": true
+      },
+      "python": {
+        "tokens": 65,
+        "success": true
+      },
+      "inthon": {
+        "tokens": 54,
+        "success": true
+      }
+    },
+    "winner": "inthon",
+    "reduction_vs_nl_pct": 43.16,
+    "notes": [
+      "INTHON achieves 43.16% token reduction compared to Natural Language."
+    ]
+  },
+  {
+    "benchmark": "token_efficiency",
+    "task": "approval_gate",
+    "representations": {
+      "natural_language": {
+        "tokens": 80,
+        "success": true
+      },
+      "json_plan": {
+        "tokens": 70,
+        "success": true
+      },
+      "python": {
+        "tokens": 60,
+        "success": true
+      },
+      "inthon": {
+        "tokens": 19,
+        "success": true
+      }
+    },
+    "winner": "inthon",
+    "reduction_vs_nl_pct": 76.25,
+    "notes": [
+      "INTHON achieves 76.25% token reduction compared to Natural Language."
+    ]
+  }
+]

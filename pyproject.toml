@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inthon"
+version = "0.1.0"
+description = "Agent-level programming language for AI-native workflows"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "lark>=1.1.9",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "pydantic>=2.7.0",
+    "jsonschema>=4.22.0",
+    "structlog>=24.1.0",
+]
+
+[project.optional-dependencies]
+data = ["pandas>=2.2.0", "polars>=0.20.0", "pyarrow>=16.0.0"]
+ml = ["torch>=2.3.0", "transformers>=4.40.0", "numpy>=1.26.0"]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "hypothesis>=6.100.0",
+]
+
+[project.scripts]
+inthon = "inthon.cli:app"

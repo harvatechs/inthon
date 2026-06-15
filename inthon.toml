@@ -1,0 +1,38 @@
+[project]
+name = "inthon-default"
+version = "0.1.0"
+description = "Default INTHON configuration"
+entry = "main.inth"
+
+[inthon]
+runtime = "python"
+version = ">=0.1.0"
+
+[type_checking]
+mode = "warn"
+
+[permissions]
+network = false
+filesystem = "read_only"
+shell = false
+email = false
+payment = false
+memory_persist = true
+
+[pybridge]
+allowed_modules = []
+
+[tools]
+web.search = true
+web.read = true
+
+[sandbox]
+max_runtime_sec = 300
+max_cost_usd = 1.0
+max_tool_calls = 50
+
+[trace]
+enabled = true
+level = "info"
+include_values = false
+output_dir = ".inthon/traces"

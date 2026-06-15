@@ -1,0 +1,257 @@
+// -------------------------------------------------------------
+// INTHON Web Emulator & Academic Project Interactions
+// -------------------------------------------------------------
+
+const PRESETS = {
+  research: `use tool web.search
+
+agent ResearchAgent {
+    goal "Research and store findings in memory"
+    policy {
+        allow_network: true
+        allow_memory_persist: true
+    }
+    plan {
+        let query = "agent-level reasoning compiler"
+        let results = web.search(query, limit: 1)
+        remember results in session
+        recalled = recall "compiler" from session
+        return recalled
+    }
+}`,
+  payment: `agent PaymentAgent {
+    goal "Process payments with approval gates"
+    policy {
+        allow_payment: true
+    }
+    plan {
+        approve subscription_fee before pay
+    }
+}`,
+  sandbox: `use py.pandas as pd
+
+agent AnalyticsAgent {
+    goal "Filter CSV datasets securely"
+    policy {
+        allow_fs: false // Strict local disk isolation
+        max_tool_calls: 5
+    }
+    plan {
+        // Safe Python execution via PyBridge wrappers
+        let df = pd.DataFrame({"metrics": [10.5, 23.2, 5.0]})
+        return df.mean()
+    }
+}`
+};
+
+const SIMULATION_LOGS = {
+  research: [
+    { type: 'compiler', text: '[Lexer] Analyzing token streams in examples/agent_research.inth' },
+    { type: 'compiler', text: '[Parser] Lark parser grammar successfully built AST representation.' },
+    { type: 'compiler', text: '[Semantic] Validating names, variables, and type compatibility.' },
+    { type: 'compiler', text: '[Policy] Capability allow_network: TRUE verified.' },
+    { type: 'run', text: '[Runtime] Spawning ResearchAgent in isolated memory workspace...' },
+    { type: 'run', text: '[Tool Call] Invoking web.search("agent-level reasoning compiler", limit=1)...' },
+    { type: 'run', text: '[Tool Response] Completed. Found 1 relevant result from web.' },
+    { type: 'run', text: '[Trace] Emitting execution state log event:' },
+    { type: 'trace', text: JSON.stringify({
+      event_id: "evt_082",
+      run_id: "run_8f0e",
+      type: "tool_call",
+      span: { file: "agent_research.inth", line: 11, col: 24 },
+      data: { query: "agent-level reasoning compiler", returned_items: 1 },
+      cost_usd: 0.002
+    }, null, 2)},
+    { type: 'run', text: 'Output: "INTHON: An agent-level compiler layer for tool transactions."' }
+  ],
+  payment: [
+    { type: 'compiler', text: '[Lexer] Scanning tokens in examples/approval_gate.inth' },
+    { type: 'compiler', text: '[Parser] Parser recognized policy block and payment expression.' },
+    { type: 'compiler', text: '[Semantic] Checking variables subscription_fee and pay.' },
+    { type: 'compiler', text: '[Policy] Allow payment transaction verified.' },
+    { type: 'run', text: '[Runtime] Spawning PaymentAgent...' },
+    { type: 'run', text: '[Policy] Halting execution. Approval required for transaction subscription_fee.' },
+    { type: 'run', text: '[System] Human gate prompted: Approve payment of subscription_fee? (Y/N)' },
+    { type: 'run', text: '[System] Human approved transaction synchronously. Resuming execution...' },
+    { type: 'run', text: '[Trace] Emitting transaction trace event:' },
+    { type: 'trace', text: JSON.stringify({
+      event_id: "evt_091",
+      run_id: "run_7c1d",
+      type: "approval_gate",
+      span: { file: "approval_gate.inth", line: 7, col: 9 },
+      data: { item: "subscription_fee", approved: true },
+      cost_usd: 0.0
+    }, null, 2)},
+    { type: 'run', text: 'Output: Transaction Approved.' }
+  ],
+  sandbox: [
+    { type: 'compiler', text: '[Lexer] Parsing module imports...' },
+    { type: 'compiler', text: '[Semantic] Checking import policy for pd (pandas)...' },
+    { type: 'compiler', text: '[Policy] Safe bridge verification: pandas module is in allowlist.' },
+    { type: 'compiler', text: '[Policy] File system check: allow_fs is set to FALSE.' },
+    { type: 'run', text: '[Runtime] Executing plan in restricted environment...' },
+    { type: 'run', text: '[PyBridge] Initializing Pandas DataFrame adapter...' },
+    { type: 'run', text: '[Trace] Trace logged execution event:' },
+    { type: 'trace', text: JSON.stringify({
+      event_id: "evt_112",
+      run_id: "run_9a2b",
+      type: "pybridge_call",
+      span: { file: "analytics.inth", line: 11, col: 18 },
+      data: { module: "pandas", method: "DataFrame.mean", result: 12.9 },
+      cost_usd: 0.0
+    }, null, 2)},
+    { type: 'run', text: 'Output: 12.9' }
+  ]
+};
+
+const PIPELINE_STEPS = {
+  lexer: {
+    title: "01. Lex & Parse Phase",
+    desc: "The source code is scanned into character segments and matching lexical tokens. We use a context-free grammar written in Lark (`grammar.lark`) to generate a concrete syntax tree, discarding spaces and layout semantics.",
+    file: "Modules: lexer/tokenizer.py, parser/grammar.lark"
+  },
+  ast: {
+    title: "02. AST Generation Phase",
+    desc: "Transforms the parsing tree structures into a clean, typed Abstract Syntax Tree (AST). AST Nodes represent declarative expressions (like Agent declarations, variable declarations, and tool pipelines) for downstream evaluation.",
+    file: "Modules: ast/nodes.py, parser/transformer.py"
+  },
+  semantic: {
+    title: "03. Semantic Analysis & Type Check",
+    desc: "Performs scope resolution and static semantic validation. Ensures all references, variable definitions, tool registrations, and PyBridge libraries exist and pass strict validation before runtime computation starts.",
+    file: "Modules: semantic/analyzer.py, semantic/type_checker.py"
+  },
+  policy: {
+    title: "04. Capability & Policy Checks",
+    desc: "Statically and dynamically checks capability permissions. It cross-checks the agent policy block configurations (allow_network, allow_fs, max_cost) against the target capability limits, refusing to run if policy constraints are violated.",
+    file: "Modules: policy/engine.py, policy/approval.py"
+  },
+  runtime: {
+    title: "05. Sandbox Runtime",
+    desc: "Evaluates the execution stream in a strict tree-walking execution backend. Evaluates tool calls, handles state persistence in session namespaces, wraps Python interop calls securely via PyBridge, and records execution traces synchronously.",
+    file: "Modules: runtime/sandbox.py, runtime/interpreter.py"
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  let activePreset = 'research';
+  let isExecuting = false;
+
+  // Initialize Code Editor Preset
+  const codeDisplay = document.getElementById('code-display');
+  const consoleOutput = document.getElementById('console-output');
+  const runBtn = document.getElementById('run-code-btn');
+  const consoleStatus = document.getElementById('console-status-indicator');
+
+  function loadPreset(presetName) {
+    activePreset = presetName;
+    codeDisplay.textContent = PRESETS[presetName];
+    
+    // Clear tabs active state
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    // Set active tab
+    const activeTab = document.querySelector(`.tab-btn[data-preset="${presetName}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    // Reset console
+    consoleOutput.innerHTML = `<div class="console-line system-line">&gt; Code loaded. Ready to execute ${presetName} agent.</div>`;
+    consoleStatus.textContent = 'Idle';
+    consoleStatus.style.color = 'var(--text-muted)';
+  }
+
+  // Bind Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      if (isExecuting) return;
+      loadPreset(e.target.getAttribute('data-preset'));
+    });
+  });
+
+  // Run Button Logic
+  runBtn.addEventListener('click', async () => {
+    if (isExecuting) return;
+    isExecuting = true;
+    runBtn.disabled = true;
+    consoleStatus.textContent = 'Running';
+    consoleStatus.style.color = 'var(--color-accent)';
+
+    consoleOutput.innerHTML = '<div class="console-line system-line">&gt; Initiating INTHON environment runtime...</div>';
+
+    const steps = SIMULATION_LOGS[activePreset];
+    for (let i = 0; i < steps.length; i++) {
+      await delay(Math.floor(Math.random() * 200) + 150); // fast execution
+      
+      const step = steps[i];
+      let lineClass = 'compiler-line';
+      if (step.type === 'run') lineClass = 'run-line';
+      if (step.type === 'error') lineClass = 'error-line';
+      
+      let content = step.text;
+      if (step.type === 'trace') {
+        content = `<pre class="trace-json"><code>${step.text}</code></pre>`;
+      }
+
+      consoleOutput.innerHTML += `<div class="console-line ${lineClass}">${content}</div>`;
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    consoleStatus.textContent = 'Success';
+    consoleStatus.style.color = '#28a745';
+    isExecuting = false;
+    runBtn.disabled = false;
+  });
+
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Load first default preset
+  loadPreset('research');
+
+  // Pipeline Interactive Hover Logic
+  const flowSteps = document.querySelectorAll('.flow-step');
+  const detailPanel = document.getElementById('pipeline-details');
+  const detailTitle = document.getElementById('detail-title');
+  const detailDesc = document.getElementById('detail-desc');
+  const detailBadge = document.getElementById('detail-badge');
+
+  flowSteps.forEach(step => {
+    step.addEventListener('mouseenter', () => {
+      updateDetails(step.getAttribute('data-step'));
+    });
+
+    step.addEventListener('click', () => {
+      flowSteps.forEach(s => s.classList.remove('active'));
+      step.classList.add('active');
+      updateDetails(step.getAttribute('data-step'));
+    });
+  });
+
+  function updateDetails(stepKey) {
+    const info = PIPELINE_STEPS[stepKey];
+    if (info) {
+      detailTitle.textContent = info.title;
+      detailDesc.textContent = info.desc;
+      detailBadge.textContent = info.file;
+      detailBadge.style.display = 'inline-block';
+    }
+  }
+
+  // Citation Copy logic
+  const copyBtn = document.getElementById('btn-copy-citation');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const citationText = document.getElementById('bibtex-citation').innerText;
+      navigator.clipboard.writeText(citationText).then(() => {
+        const originalText = copyBtn.innerText;
+        copyBtn.innerText = 'Copied!';
+        setTimeout(() => {
+          copyBtn.innerText = originalText;
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy citation: ', err);
+      });
+    });
+  }
+});

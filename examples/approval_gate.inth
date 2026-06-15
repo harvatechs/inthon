@@ -1,0 +1,9 @@
+agent PaymentAgent {
+    goal "Process payments with approval gates"
+    policy {
+        allow_payment: true
+    }
+    plan {
+        approve subscription_fee before pay
+    }
+}
