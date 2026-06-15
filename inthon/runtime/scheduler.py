@@ -36,7 +36,7 @@ class AgentTask:
     started_at: float = field(default_factory=time.time)
     finished_at: float | None = None
     result: Any = None
-    error: Exception | None = None
+    error: BaseException | None = None
 
 
 class AgentScheduler:
@@ -133,7 +133,7 @@ class AgentScheduler:
         """
         return {agent_id: at.result for agent_id, at in self._tasks.items()}
 
-    def get_errors(self) -> dict[str, Exception | None]:
+    def get_errors(self) -> dict[str, BaseException | None]:
         """Return per-agent errors, if any."""
         return {
             agent_id: at.error

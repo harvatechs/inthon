@@ -165,6 +165,8 @@ class SQLiteMemoryStore(MemoryStore):
         self, query: str, namespace: str, limit: int
     ) -> list[MemoryEntry]:
         """Ranked cosine similarity search over stored embeddings."""
+        if self._embedder is None:
+            return self._keyword_search(query, namespace, limit)
         query_vec = self._embedder.embed(query)
 
         # Fetch all rows in namespace that have embeddings

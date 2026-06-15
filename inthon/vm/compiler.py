@@ -364,7 +364,7 @@ class Compiler(ASTVisitor):
                     "metric": c.metric,
                     "op": c.op,
                     "threshold": lit
-                    if not isinstance(lit, object.__class__)
+                    if type(lit) is not object
                     else str(c.threshold),
                 }
             )

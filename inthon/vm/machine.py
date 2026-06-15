@@ -224,7 +224,8 @@ class InthonVM:
                 if isinstance(obj, dict):
                     val = obj.get(arg, None)
                 elif isinstance(obj, InthonDict):
-                    val = to_python(obj.pairs.get(arg))
+                    val_opt = obj.pairs.get(arg)
+                    val = to_python(val_opt) if val_opt is not None else None
                 elif isinstance(obj, InthonPyObject):
                     val = getattr(obj.obj, arg)
                 else:
@@ -430,10 +431,10 @@ class InthonVM:
 
             elif op == OpCode.AGENT_RECALL:
                 query, namespace, varname = arg
-                entries = ctx.memory.search(query, namespace)
-                if entries:
-                    entries.sort(key=lambda e: e.updated_at, reverse=True)
-                    res_val = entries[0].value
+                recall_entries = ctx.memory.search(query, namespace)
+                if recall_entries:
+                    recall_entries.sort(key=lambda e: e.updated_at, reverse=True)
+                    res_val = recall_entries[0].value
                 else:
                     res_val = None
                 frame.locals[varname] = res_val
