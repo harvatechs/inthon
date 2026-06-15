@@ -15,18 +15,49 @@ class SafeModuleImporter:
     Safe module importer enforcing allowlists and attribute blocks.
     """
 
-    def __init__(self, config: AllowlistConfig | None = None) -> None:
+    def __init__(self, config: AllowlistConfig | None = None, ctx: Any = None) -> None:
         self._config = config or AllowlistConfig()
         self._cache: dict[str, Any] = {}
+        self._ctx = ctx
 
-    def import_module(
-        self, module_path: str, alias: str | None = None
-    ) -> SafeModuleWrapper:
+        # Determine sandbox mode
+        sandbox_mode = "soft"
+        if ctx and hasattr(ctx, "config") and ctx.config:
+            sandbox_mode = ctx.config.get("pybridge", {}).get("sandbox", "soft")
+        else:
+            # Fallback: load directly
+            try:
+                import tomllib
+                from pathlib import Path
+
+                for path in [Path.cwd(), *Path.cwd().parents]:
+                    toml_path = path / "inthon.toml"
+                    if toml_path.is_file():
+                        with open(toml_path, "rb") as f:
+                            cfg = tomllib.load(f)
+                            sandbox_mode = cfg.get("pybridge", {}).get(
+                                "sandbox", "soft"
+                            )
+                        break
+            except Exception:
+                pass
+
+        self._sandbox_mode = sandbox_mode
+        self._subprocess_bridge = None
+        if sandbox_mode == "strict":
+            from .subprocess_bridge import SubprocessPyBridge
+
+            self._subprocess_bridge = SubprocessPyBridge()
+
+    def import_module(self, module_path: str, alias: str | None = None) -> Any:
         if not self._config.is_allowed(module_path):
             raise PyBridgeError(
                 f"INTHON_PYBRIDGE_001: Module '{module_path}' is not permitted under the active policy. "
                 f"If you need this module, add it to [pybridge] allowed_modules."
             )
+
+        if self._sandbox_mode == "strict":
+            return self._subprocess_bridge.import_module(module_path, alias)
         if module_path in self._cache:
             return self._cache[module_path]
         try:

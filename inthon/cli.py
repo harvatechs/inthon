@@ -19,22 +19,99 @@ def run_cmd(
     trace_out: Path | None = typer.Option(None, "--trace-out"),
     max_cost: float = typer.Option(1.0, "--max-cost"),
     verbose: bool = typer.Option(False, "-v"),
+    vm: bool = typer.Option(
+        False, "--vm", help="Use bytecode VM backend (faster for loops)"
+    ),
+    persist_memory: bool = typer.Option(
+        False, "--persist-memory", help="Use SQLite-backed persistent memory"
+    ),
 ) -> None:
     """Execute an INTHON program."""
-    from . import run_file
+    if vm:
+        from . import run_file_vm
+
+        def runner():
+            return run_file_vm(
+                file,
+                mock_tools=mock_tools,
+                max_cost_usd=max_cost,
+                persist_memory=persist_memory,
+            )
+    else:
+        from . import run_file
+
+        def runner():
+            return run_file(
+                file,
+                mock_tools=mock_tools,
+                max_cost_usd=max_cost,
+            )
 
     try:
-        result = run_file(
-            file,
-            mock_tools=mock_tools,
-            max_cost_usd=max_cost,
-        )
+        result = runner()
         if trace_out:
             trace_out.write_text(result.trace_json, encoding="utf-8")
             console.print(f"[green]Trace written to {trace_out}[/green]")
         if verbose:
             console.print(Panel(result.trace_json, title="Execution Trace"))
+            backend = "VM (bytecode)" if vm else "Interpreter (tree-walk)"
+            console.print(f"[cyan]Backend:[/cyan] {backend}")
+            console.print(
+                f"[cyan]Duration:[/cyan] {result.duration_ms}ms | [cyan]Cost:[/cyan] ${result.cost_usd:.6f}"
+            )
         print(result.output)
+    except Exception as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+
+
+@app.command("async-run")
+def async_run_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+    mock_tools: bool = typer.Option(True, "--mock/--real-tools"),
+    max_cost: float = typer.Option(1.0, "--max-cost"),
+    persist_memory: bool = typer.Option(False, "--persist-memory"),
+    timeout: float = typer.Option(300.0, "--timeout"),
+    verbose: bool = typer.Option(False, "-v"),
+) -> None:
+    """Execute an INTHON program using the async cooperative scheduler."""
+    import asyncio
+    from .parser.parser import parse
+    from .semantic.analyzer import SemanticAnalyzer
+    from .runtime.context import ExecutionContext
+    from .memory.store import MemoryStore
+    from .tools.builtin_tools import register_builtins
+    from .vm.compiler import compile_program
+    from .runtime.scheduler import AgentScheduler
+
+    source = file.read_text(encoding="utf-8")
+    try:
+        program = parse(source, filename=str(file))
+        SemanticAnalyzer().analyze(program)
+
+        memory = (
+            MemoryStore.persistent(db_path=str(file.parent / ".inthon" / "memory.db"))
+            if persist_memory
+            else MemoryStore.in_memory()
+        )
+        ctx = ExecutionContext(filename=str(file), memory=memory)
+        ctx.sandbox.max_cost_usd = max_cost
+        ctx.sandbox.max_runtime_sec = timeout
+        register_builtins(ctx.tools, mock=mock_tools)
+
+        code = compile_program(program, filename=str(file))
+
+        async def _run():
+            async with AgentScheduler(ctx) as scheduler:
+                agent_id = await scheduler.spawn(file.stem, code)
+                results = await scheduler.wait_all(timeout=timeout)
+                if verbose:
+                    for aid, res in scheduler.summary().items():
+                        console.print(f"[cyan]{aid}[/cyan]: {res}")
+                return results.get(agent_id)
+
+        result = asyncio.run(_run())
+        console.print(result)
     except Exception as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)

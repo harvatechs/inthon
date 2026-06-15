@@ -81,6 +81,22 @@ class AllowlistConfig:
     extra_allowed: set[str] = field(default_factory=set)
     extra_denied: set[str] = field(default_factory=set)
 
+    def __post_init__(self) -> None:
+        try:
+            import tomllib
+            from pathlib import Path
+
+            for path in [Path.cwd(), *Path.cwd().parents]:
+                toml_path = path / "inthon.toml"
+                if toml_path.is_file():
+                    with open(toml_path, "rb") as f:
+                        cfg = tomllib.load(f)
+                        extra = cfg.get("pybridge", {}).get("allowed_modules", [])
+                        self.extra_allowed.update(extra)
+                    break
+        except Exception:
+            pass
+
     def is_allowed(self, module_path: str) -> bool:
         root = module_path.split(".")[0]
         if root in HARD_DENIED_MODULES:

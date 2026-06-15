@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Inthon IDE — Agent-Level Programming Language</title>
+<meta name="description" content="Portable IDE for the Inthon programming language — compile, run, and explore Inthon code with full syntax highlighting, autocomplete, and real-time linting."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ─── CSS Reset & Variables ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-0:        #090d13;
+  --bg-1:        #0d1117;
+  --bg-2:        #161b22;
+  --bg-3:        #1c2230;
+  --bg-4:        #21262d;
+  --bg-5:        #2d333b;
+  --border:      #30363d;
+  --border-hi:   #444c56;
+  --text-0:      #e6edf3;
+  --text-1:      #adbac7;
+  --text-2:      #768390;
+  --text-3:      #545d68;
+  --accent:      #00d4ff;
+  --accent-dim:  #0099bb;
+  --accent-glow: rgba(0,212,255,0.15);
+  --violet:      #7c3aed;
+  --violet-dim:  #5b21b6;
+  --violet-glow: rgba(124,58,237,0.15);
+  --green:       #10b981;
+  --green-dim:   #059669;
+  --red:         #ef4444;
+  --red-dim:     #dc2626;
+  --yellow:      #f59e0b;
+  --yellow-dim:  #d97706;
+  --orange:      #f97316;
+  --font-ui:     'Inter', system-ui, sans-serif;
+  --font-code:   'JetBrains Mono', 'Fira Code', monospace;
+  --radius-sm:   4px;
+  --radius:      8px;
+  --radius-lg:   12px;
+  --shadow:      0 4px 24px rgba(0,0,0,0.4);
+  --transition:  all 0.18s ease;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg-0); color: var(--text-0); font-family: var(--font-ui); font-size: 14px; }
+
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+#titlebar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px; height: 48px; min-height: 48px;
+  background: var(--bg-1); border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+#titlebar .logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.5px; color: var(--accent);
+}
+#titlebar .logo .logo-icon {
+  width: 28px; height: 28px; background: linear-gradient(135deg,var(--accent),var(--violet));
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; color: #fff;
+}
+#titlebar .logo .logo-sub { color: var(--text-2); font-weight: 400; font-size: 12px; }
+#titlebar .spacer { flex: 1; }
+#titlebar .tb-btn {
+  display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+  background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-1); font-family: var(--font-ui); font-size: 12px; cursor: pointer;
+  transition: var(--transition);
+}
+#titlebar .tb-btn:hover { background: var(--bg-3); border-color: var(--border-hi); color: var(--text-0); }
+#titlebar .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+#titlebar .tb-btn.primary:hover { background: #00b8d9; }
+#titlebar .tb-btn.danger { border-color: var(--red-dim); color: var(--red); }
+#titlebar .tb-btn.danger:hover { background: rgba(239,68,68,0.1); }
+#titlebar .tb-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+#main-content { display: flex; flex: 1; overflow: hidden; }
+
+/* ─── Sidebar (Explorer + Settings) ─────────────────────────────────────── */
+#sidebar {
+  width: 220px; min-width: 220px; background: var(--bg-1);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.sidebar-tab {
+  flex: 1; padding: 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+  text-align: center; cursor: pointer; color: var(--text-2); border-bottom: 2px solid transparent;
+  transition: var(--transition); text-transform: uppercase;
+}
+.sidebar-tab:hover { color: var(--text-1); }
+.sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+#sidebar-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+#sidebar-content::-webkit-scrollbar { width: 4px; }
+#sidebar-content::-webkit-scrollbar-track { background: transparent; }
+#sidebar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sidebar-section { padding: 8px 0; }
+.sidebar-section-title {
+  padding: 6px 12px 4px; font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  color: var(--text-3); text-transform: uppercase;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+  cursor: pointer; color: var(--text-1); font-size: 12px; font-family: var(--font-code);
+  border-radius: 0; transition: var(--transition); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-item:hover { background: var(--bg-3); color: var(--text-0); }
+.sidebar-item.active { background: var(--accent-glow); color: var(--accent); }
+.sidebar-item svg { width: 13px; height: 13px; flex-shrink: 0; opacity: 0.7; }
+.sidebar-item .item-badge {
+  margin-left: auto; font-size: 10px; padding: 1px 5px; border-radius: 10px;
+  background: var(--bg-5); color: var(--text-3); flex-shrink: 0;
+}
+
+/* ─── Settings Panel ─────────────────────────────────────────────────────── */
+#settings-panel { display: none; flex-direction: column; gap: 0; }
+#settings-panel.active { display: flex; }
+.setting-group { padding: 12px; border-bottom: 1px solid var(--border); }
+.setting-label { font-size: 11px; font-weight: 600; color: var(--text-2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.setting-row:last-child { margin-bottom: 0; }
+.setting-name { font-size: 12px; color: var(--text-1); }
+.toggle-switch { position: relative; width: 36px; height: 20px; cursor: pointer; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; background: var(--bg-5);
+  border: 1px solid var(--border); border-radius: 10px; transition: var(--transition);
+}
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  background: var(--text-2); border-radius: 50%; transition: var(--transition);
+}
+.toggle-switch input:checked ~ .toggle-track { background: var(--accent-dim); border-color: var(--accent); }
+.toggle-switch input:checked ~ .toggle-thumb { left: 18px; background: #fff; }
+.setting-range { width: 100%; appearance: none; height: 4px; background: var(--bg-5); border-radius: 2px; outline: none; }
+.setting-range::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+.setting-val { font-size: 11px; color: var(--text-2); min-width: 40px; text-align: right; }
+.setting-select {
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--text-0);
+  font-family: var(--font-ui); font-size: 12px; border-radius: var(--radius-sm);
+  padding: 4px 8px; width: 100%; outline: none;
+}
+.server-status {
+  display: flex; align-items: center; gap: 8px; padding: 12px;
+  font-size: 12px; color: var(--text-2);
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--red);
+  flex-shrink: 0; transition: var(--transition);
+}
+.status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.checking { background: var(--yellow); animation: pulse 1s infinite; }
+
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* ─── Editor Area ────────────────────────────────────────────────────────── */
+#editor-area { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+#tabs-bar {
+  display: flex; align-items: center; background: var(--bg-1);
+  border-bottom: 1px solid var(--border); overflow-x: auto; min-height: 36px;
+}
+#tabs-bar::-webkit-scrollbar { height: 2px; }
+#tabs-bar::-webkit-scrollbar-thumb { background: var(--border); }
+.editor-tab {
+  display: flex; align-items: center; gap: 6px; padding: 0 14px;
+  height: 36px; font-size: 12px; font-family: var(--font-code);
+  color: var(--text-2); cursor: pointer; border-right: 1px solid var(--border);
+  white-space: nowrap; transition: var(--transition); position: relative; flex-shrink: 0;
+}
+.editor-tab:hover { color: var(--text-0); background: var(--bg-2); }
+.editor-tab.active { color: var(--text-0); background: var(--bg-2); border-top: 2px solid var(--accent); padding-top: 2px; }
+.editor-tab .tab-dirty { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+.editor-tab .tab-close {
+  width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-3); font-size: 14px; line-height: 1; transition: var(--transition);
+  background: none; border: none; cursor: pointer; padding: 0;
+}
+.editor-tab .tab-close:hover { background: var(--bg-5); color: var(--text-0); }
+#new-tab-btn {
+  padding: 0 12px; height: 36px; display: flex; align-items: center;
+  color: var(--text-3); cursor: pointer; font-size: 18px; transition: var(--transition);
+  background: none; border: none; flex-shrink: 0;
+}
+#new-tab-btn:hover { color: var(--text-0); }
+
+#editor-wrapper { display: flex; flex: 1; overflow: hidden; }
+#monaco-container { flex: 1; }
+
+/* ─── Right Panel (Output) ───────────────────────────────────────────────── */
+#right-panel {
+  width: 380px; min-width: 280px; background: var(--bg-1);
+  border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;
+}
+#panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.panel-tab {
+  padding: 10px 14px; font-size: 12px; font-weight: 500; cursor: pointer;
+  color: var(--text-2); border-bottom: 2px solid transparent; transition: var(--transition);
+  white-space: nowrap;
+}
+.panel-tab:hover { color: var(--text-1); }
+.panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.panel-tab .tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 700;
+  margin-left: 4px; background: var(--red); color: #fff;
+}
+.panel-tab .tab-badge.warn { background: var(--yellow); color: #000; }
+
+#panel-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+#panel-content::-webkit-scrollbar { width: 4px; }
+#panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ─── Output Panel ───────────────────────────────────────────────────────── */
+.output-section { padding: 12px; border-bottom: 1px solid var(--border); }
+.output-section-title {
+  font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.output-result {
+  font-family: var(--font-code); font-size: 12px; color: var(--text-0);
+  background: var(--bg-2); border-radius: var(--radius-sm); padding: 10px;
+  word-break: break-all; white-space: pre-wrap; max-height: 120px; overflow-y: auto;
+}
+.output-result.error { color: var(--red); border-left: 3px solid var(--red); }
+.output-result.success { color: var(--green); }
+.stats-row { display: flex; gap: 8px; margin-top: 8px; }
+.stat-pill {
+  display: flex; align-items: center; gap: 4px; padding: 4px 8px;
+  background: var(--bg-2); border-radius: 20px; font-size: 11px; color: var(--text-2);
+}
+.stat-pill .stat-val { color: var(--text-0); font-weight: 600; }
+
+/* ─── Diagnostic Items ───────────────────────────────────────────────────── */
+.diag-list { padding: 8px 0; }
+.diag-item {
+  display: flex; gap: 10px; padding: 8px 12px; cursor: pointer;
+  border-bottom: 1px solid var(--border); transition: var(--transition);
+}
+.diag-item:hover { background: var(--bg-3); }
+.diag-icon { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+.diag-icon.error { background: var(--red); color: #fff; }
+.diag-icon.warning { background: var(--yellow); color: #000; }
+.diag-icon.info { background: var(--accent-dim); color: #fff; }
+.diag-text { flex: 1; min-width: 0; }
+.diag-msg { font-size: 12px; color: var(--text-0); word-break: break-word; }
+.diag-loc { font-size: 11px; color: var(--text-2); font-family: var(--font-code); margin-top: 2px; }
+.diag-empty { padding: 24px 12px; text-align: center; color: var(--text-3); font-size: 12px; }
+
+/* ─── AST/IR Tree ────────────────────────────────────────────────────────── */
+.json-tree { padding: 8px; font-family: var(--font-code); font-size: 11px; }
+.json-tree details { margin-left: 14px; }
+.json-tree summary { cursor: pointer; color: var(--accent); padding: 2px 0; outline: none; }
+.json-tree summary::-webkit-details-marker { color: var(--text-3); }
+.json-key { color: #79c0ff; }
+.json-str { color: #a5d6ff; }
+.json-num { color: #f0883e; }
+.json-bool { color: #ff7b72; }
+.json-null { color: var(--text-3); }
+
+/* ─── Trace Viewer ───────────────────────────────────────────────────────── */
+.trace-list { padding: 8px; }
+.trace-event {
+  display: flex; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm);
+  margin-bottom: 2px; font-size: 11px; font-family: var(--font-code);
+}
+.trace-event:hover { background: var(--bg-3); }
+.trace-type { font-weight: 600; min-width: 80px; }
+.trace-type.assign { color: var(--accent); }
+.trace-type.tool_call { color: var(--violet); }
+.trace-type.agent_start { color: var(--green); }
+.trace-type.agent_end { color: var(--green-dim); }
+.trace-type.py_call { color: var(--yellow); }
+.trace-type.remember { color: #f97316; }
+.trace-type.recall { color: #fb923c; }
+.trace-type.error { color: var(--red); }
+.trace-data { color: var(--text-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── Empty States ───────────────────────────────────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 20px; gap: 12px; text-align: center; color: var(--text-3);
+}
+.empty-state .empty-icon { font-size: 32px; opacity: 0.4; }
+.empty-state h3 { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.empty-state p { font-size: 11px; line-height: 1.5; }
+
+/* ─── Status Bar ─────────────────────────────────────────────────────────── */
+#statusbar {
+  display: flex; align-items: center; gap: 0;
+  height: 24px; min-height: 24px; background: var(--accent-dim);
+  font-size: 11px; color: rgba(0,0,0,0.8); font-weight: 500;
+}
+#statusbar.error { background: var(--red-dim); }
+#statusbar.warn { background: var(--yellow-dim); color: rgba(0,0,0,0.9); }
+.sb-item {
+  padding: 0 10px; height: 100%; display: flex; align-items: center; gap: 4px;
+  border-right: 1px solid rgba(0,0,0,0.15); cursor: default;
+}
+.sb-item:hover { background: rgba(0,0,0,0.1); }
+.sb-item.clickable { cursor: pointer; }
+.sb-item svg { width: 11px; height: 11px; }
+.sb-right { margin-left: auto; display: flex; }
+
+/* ─── Resize Handle ──────────────────────────────────────────────────────── */
+.resize-handle {
+  width: 4px; background: transparent; cursor: col-resize;
+  transition: background 0.2s;
+}
+.resize-handle:hover { background: var(--accent-dim); }
+
+/* ─── Overlay / Modals ───────────────────────────────────────────────────── */
+#overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+  display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+#overlay.active { display: flex; }
+.modal {
+  background: var(--bg-2); border: 1px solid var(--border-hi); border-radius: var(--radius-lg);
+  padding: 24px; min-width: 400px; max-width: 560px; box-shadow: var(--shadow);
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--text-0); }
+.modal-body { color: var(--text-1); font-size: 13px; line-height: 1.6; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btn {
+  padding: 8px 16px; border-radius: var(--radius-sm); font-family: var(--font-ui);
+  font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border);
+  background: var(--bg-3); color: var(--text-0); transition: var(--transition);
+}
+.modal-btn:hover { background: var(--bg-4); }
+.modal-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+.modal-btn.primary:hover { background: #00b8d9; }
+
+/* ─── Toolbar Divider ────────────────────────────────────────────────────── */
+.tb-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+/* ─── Loading spinner ────────────────────────────────────────────────────── */
+.spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Scrollbars global ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+
+/* ─── Autocomplete hint ──────────────────────────────────────────────────── */
+.inline-hint { color: var(--text-3); font-style: italic; font-family: var(--font-code); }
+
+/* ─── Welcome message ────────────────────────────────────────────────────── */
+#welcome-banner {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center; pointer-events: none; z-index: 0; opacity: 0.06;
+}
+#welcome-banner h1 { font-size: 72px; font-weight: 800; letter-spacing: -4px; color: var(--accent); }
+#welcome-banner p { font-size: 20px; color: var(--text-1); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ─── Title Bar ──────────────────────────────────────────────────────── -->
+  <div id="titlebar">
+    <div class="logo">
+      <div class="logo-icon">Ι</div>
+      <span>INTHON</span>
+      <span class="logo-sub">IDE</span>
+    </div>
+    <div class="tb-divider"></div>
+    <button class="tb-btn primary" id="btn-run" title="Run program (F5)">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5l10 5.5-10 5.5V2.5z"/></svg>
+      Run
+    </button>
+    <button class="tb-btn" id="btn-check" title="Check/Lint (Ctrl+Shift+K)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 4L6 11l-3-3"/></svg>
+      Check
+    </button>
+    <button class="tb-btn" id="btn-format" title="Format file (Ctrl+Shift+F)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+      Format
+    </button>
+    <div class="tb-divider"></div>
+    <button class="tb-btn" id="btn-ast" title="View AST">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="3" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><path d="M8 4.5V8m-2.5 2L8 8m4.5 2L8 8"/></svg>
+      AST
+    </button>
+    <button class="tb-btn" id="btn-ir" title="View IR">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="5.5" y="9" width="5" height="5" rx="1"/><path d="M4.5 7v2M11.5 7v2M8 7v2"/></svg>
+      IR
+    </button>
+    <div class="tb-divider"></div>
+    <button class="tb-btn" id="btn-open-file" title="Open file">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h5l2 2h5v9H2z"/></svg>
+      Open
+    </button>
+    <button class="tb-btn" id="btn-save-file" title="Save file (Ctrl+S)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2h6l4 4v8H2V2zm4 9v-5m-2 2h4"/></svg>
+      Save
+    </button>
+    <div class="spacer"></div>
+    <span id="server-indicator" class="tb-btn" title="Server status" style="cursor:default;">
+      <span class="status-dot" id="tb-status-dot"></span>
+      <span id="tb-status-text">Connecting…</span>
+    </span>
+  </div>
+
+  <!-- ─── Main Content ──────────────────────────────────────────────────── -->
+  <div id="main-content">
+
+    <!-- ─── Sidebar ─────────────────────────────────────────────────────── -->
+    <div id="sidebar">
+      <div id="sidebar-tabs">
+        <div class="sidebar-tab active" data-panel="explorer">Explorer</div>
+        <div class="sidebar-tab" data-panel="settings">Settings</div>
+      </div>
+      <div id="sidebar-content">
+
+        <!-- Explorer Panel -->
+        <div id="explorer-panel">
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Examples</div>
+            <div class="sidebar-item" data-example="hello" id="ex-hello">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" fill="var(--bg-5)"/><path d="M5 5h6M5 8h6M5 11h4" stroke="var(--accent)" stroke-width="1.5"/></svg>
+              hello.inth
+            </div>
+            <div class="sidebar-item" data-example="agent_research" id="ex-agent">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" fill="var(--bg-5)"/><path d="M5 5h6M5 8h6M5 11h4" stroke="var(--violet)" stroke-width="1.5"/></svg>
+              agent_research.inth
+            </div>
+            <div class="sidebar-item" data-example="approval_gate" id="ex-approval">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" fill="var(--bg-5)"/><path d="M5 5h6M5 8h6M5 11h4" stroke="var(--yellow)" stroke-width="1.5"/></svg>
+              approval_gate.inth
+            </div>
+            <div class="sidebar-item" data-example="csv_summary" id="ex-csv">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" fill="var(--bg-5)"/><path d="M5 5h6M5 8h6M5 11h4" stroke="var(--green)" stroke-width="1.5"/></svg>
+              csv_summary.inth
+            </div>
+            <div class="sidebar-item" data-example="tool_search" id="ex-tool">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" fill="var(--bg-5)"/><path d="M5 5h6M5 8h6M5 11h4" stroke="var(--orange)" stroke-width="1.5"/></svg>
+              tool_search.inth
+            </div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Open Files</div>
+            <div id="open-files-list"></div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Language Ref</div>
+            <div class="sidebar-item" onclick="showKeywordsRef()">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 10h4"/></svg>
+              Keywords & Syntax
+            </div>
+            <div class="sidebar-item" onclick="showSnippets()">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3L3 8l3 5M10 3l3 5-3 5"/></svg>
+              Code Snippets
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-panel">
+          <div class="server-status">
+            <span class="status-dot" id="settings-status-dot"></span>
+            <span id="settings-status-text">Checking server…</span>
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Execution</div>
+            <div class="setting-row">
+              <span class="setting-name">Mock Tools</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-mock" checked/>
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-name">Max Cost (USD)</span>
+              <span class="setting-val" id="cost-val">$1.00</span>
+            </div>
+            <input type="range" class="setting-range" id="setting-cost" min="0.1" max="10" step="0.1" value="1.0"/>
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Editor</div>
+            <div class="setting-row">
+              <span class="setting-name">Font Size</span>
+              <span class="setting-val" id="fontsize-val">14px</span>
+            </div>
+            <input type="range" class="setting-range" id="setting-fontsize" min="10" max="22" step="1" value="14"/>
+            <div class="setting-row" style="margin-top:10px;">
+              <span class="setting-name">Word Wrap</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-wrap"/>
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-name">Minimap</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-minimap" checked/>
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-name">Auto-lint on type</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-autolint" checked/>
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Theme</div>
+            <select class="setting-select" id="setting-theme">
+              <option value="inthon-dark">Inthon Dark (Default)</option>
+              <option value="vs-dark">VS Dark</option>
+              <option value="vs">VS Light</option>
+              <option value="hc-black">High Contrast</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Server</div>
+            <div class="setting-row">
+              <span class="setting-name">Port</span>
+              <span class="setting-val">7474</span>
+            </div>
+            <button class="modal-btn" style="width:100%;margin-top:8px;" onclick="checkServer()">Reconnect</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Resize handle between sidebar and editor -->
+    <div class="resize-handle" id="resize-sidebar"></div>
+
+    <!-- ─── Editor Area ─────────────────────────────────────────────────── -->
+    <div id="editor-area">
+      <div id="tabs-bar">
+        <div id="tab-list"></div>
+        <button id="new-tab-btn" title="New file (Ctrl+T)">+</button>
+      </div>
+      <div id="editor-wrapper">
+        <div id="monaco-container"></div>
+      </div>
+    </div>
+
+    <!-- Resize handle between editor and right panel -->
+    <div class="resize-handle" id="resize-panel"></div>
+
+    <!-- ─── Right Panel ─────────────────────────────────────────────────── -->
+    <div id="right-panel">
+      <div id="panel-tabs">
+        <div class="panel-tab active" data-panel="output">Output</div>
+        <div class="panel-tab" data-panel="problems" id="problems-tab">
+          Problems<span class="tab-badge" id="problem-count" style="display:none">0</span>
+        </div>
+        <div class="panel-tab" data-panel="trace">Trace</div>
+        <div class="panel-tab" data-panel="ast">AST</div>
+        <div class="panel-tab" data-panel="ir">IR</div>
+      </div>
+      <div id="panel-content">
+
+        <!-- Output Tab -->
+        <div id="tab-output" class="tab-pane">
+          <div class="output-section">
+            <div class="output-section-title">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="var(--green)"><path d="M3.5 2.5l10 5.5-10 5.5V2.5z"/></svg>
+              Execution Result
+            </div>
+            <div class="output-result" id="output-result" style="color:var(--text-3)">Run a program to see output here…</div>
+            <div class="stats-row" id="stats-row" style="display:none">
+              <div class="stat-pill">⏱ <span class="stat-val" id="stat-time">0ms</span></div>
+              <div class="stat-pill">💰 <span class="stat-val" id="stat-cost">$0.00</span></div>
+              <div class="stat-pill" id="stat-errors-pill" style="display:none">❌ <span class="stat-val" id="stat-errors">0 err</span></div>
+            </div>
+          </div>
+          <div class="empty-state" id="output-empty">
+            <div class="empty-icon">▶</div>
+            <h3>Ready to run</h3>
+            <p>Press <kbd style="background:var(--bg-4);border:1px solid var(--border);padding:2px 5px;border-radius:3px;font-family:var(--font-code);font-size:11px;">F5</kbd> or click Run to execute your program</p>
+          </div>
+        </div>
+
+        <!-- Problems Tab -->
+        <div id="tab-problems" class="tab-pane" style="display:none">
+          <div class="diag-list" id="diag-list">
+            <div class="diag-empty">No problems detected</div>
+          </div>
+        </div>
+
+        <!-- Trace Tab -->
+        <div id="tab-trace" class="tab-pane" style="display:none">
+          <div class="trace-list" id="trace-list">
+            <div class="diag-empty">Run a program to see execution trace</div>
+          </div>
+        </div>
+
+        <!-- AST Tab -->
+        <div id="tab-ast" class="tab-pane" style="display:none">
+          <div class="json-tree" id="ast-tree">
+            <div class="diag-empty">Click the AST button to parse your program</div>
+          </div>
+        </div>
+
+        <!-- IR Tab -->
+        <div id="tab-ir" class="tab-pane" style="display:none">
+          <div class="json-tree" id="ir-tree">
+            <div class="diag-empty">Click the IR button to view intermediate representation</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── Status Bar ────────────────────────────────────────────────────── -->
+  <div id="statusbar">
+    <div class="sb-item">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5l10 5.5-10 5.5V2.5z"/></svg>
+      Inthon v0.1.0
+    </div>
+    <div class="sb-item" id="sb-file">untitled.inth</div>
+    <div class="sb-item" id="sb-pos">Ln 1, Col 1</div>
+    <div class="sb-right">
+      <div class="sb-item" id="sb-diags">✓ No problems</div>
+      <div class="sb-item" id="sb-server">● Server</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── Hidden file input ──────────────────────────────────────────────── -->
+<input type="file" id="file-input" accept=".inth" style="display:none"/>
+
+<!-- ─── Modal ─────────────────────────────────────────────────────────── -->
+<div id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-title" id="modal-title">Title</div>
+    <div class="modal-body" id="modal-body">Body</div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Monaco loader ──────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs/loader.js"></script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════════════════
+//  INTHON IDE — Main Script
+// ════════════════════════════════════════════════════════════════════════════
+
+const SERVER = 'http://localhost:7474';
+const LANG_ID = 'inthon';
+
+// ─── Example Files ──────────────────────────────────────────────────────────
+const EXAMPLES = {
+  hello: {
+    name: 'hello.inth',
+    content: `fn greet(name: str) -> str {
+    return "Hello, " + name + "!"
+}
+
+let message = greet("INTHON Developer")
+message
+`
+  },
+  agent_research: {
+    name: 'agent_research.inth',
+    content: `use tool web.search
+
+agent ResearchAgent {
+    goal "Research and store findings in memory"
+    policy {
+        allow_network: true
+        allow_memory_persist: true
+    }
+    plan {
+        let query = "agent-level reasoning compiler"
+        let results = web.search(query, limit: 1)
+        remember results in session
+        recalled = recall "compiler" from session
+        return recalled
+    }
+}
+`
+  },
+  approval_gate: {
+    name: 'approval_gate.inth',
+    content: `agent PaymentAgent {
+    goal "Process payments with approval gates"
+    policy {
+        allow_payment: true
+    }
+    plan {
+        approve subscription_fee before pay
+    }
+}
+`
+  },
+  csv_summary: {
+    name: 'csv_summary.inth',
+    content: `use py.pandas as pd
+
+// Set up a DataFrame and summarise it using pd.DataFrame
+let df = pd.DataFrame([
+    {"item": "laptop", "price": 1200},
+    {"item": "phone", "price": 800},
+    {"item": "mouse", "price": 50}
+])
+
+let summary = df.to_dict()
+summary
+`
+  },
+  tool_search: {
+    name: 'tool_search.inth',
+    content: `use tool web.search
+
+let query = "agent-level programming"
+let results = web.search(query, limit: 3)
+
+for item in results {
+    remember item in session
+}
+
+return results
+`
+  }
+};
+
+// ─── Keywords & Completions ──────────────────────────────────────────────────
+const INTHON_KEYWORDS = [
+  'let','const','fn','return','use','tool','py','as','agent','goal','plan',
+  'policy','observe','act','approve','before','remember','forget','recall',
+  'from','in','to','eval','guard','retry','with','catch','backoff','exponential',
+  'log','fail','save','memory','trace','if','else','for','while','break','continue'
+];
+const INTHON_TYPES = [
+  'str','int','float','bool','bytes','any','list','dict','tuple','set',
+  'Goal','Plan','ToolCall','ToolResult','Trace','MemoryRef','Approval',
+  'Policy','DataFrame','Tensor','Model','Dataset','Embedding'
+];
+const INTHON_LITERALS = ['true','false','none'];
+const INTHON_BUILTINS = ['web.search','web.read'];
+
+const SNIPPETS = [
+  { label: 'fn', insertText: 'fn ${1:name}(${2:param}: ${3:str}) -> ${4:str} {\n\t${5:return "result"}\n}', doc: 'Function declaration' },
+  { label: 'agent', insertText: 'agent ${1:AgentName} {\n\tgoal "${2:Describe what this agent does}"\n\tpolicy {\n\t\tallow_network: ${3:false}\n\t}\n\tplan {\n\t\t${4:let result = "done"}\n\t\treturn ${4}\n\t}\n}', doc: 'Agent block' },
+  { label: 'let', insertText: 'let ${1:name}: ${2:str} = ${3:"value"}', doc: 'Mutable variable' },
+  { label: 'const', insertText: 'const ${1:NAME}: ${2:int} = ${3:0}', doc: 'Immutable constant' },
+  { label: 'if', insertText: 'if ${1:condition} {\n\t${2}\n}', doc: 'If statement' },
+  { label: 'ifelse', insertText: 'if ${1:condition} {\n\t${2}\n} else {\n\t${3}\n}', doc: 'If-else statement' },
+  { label: 'for', insertText: 'for ${1:item} in ${2:items} {\n\t${3}\n}', doc: 'For loop' },
+  { label: 'while', insertText: 'while ${1:condition} {\n\t${2}\n}', doc: 'While loop' },
+  { label: 'retry', insertText: 'retry ${1:3} with backoff ${2:exponential} {\n\t${3}\n} catch ${4:error} {\n\t${5:return "Failed: " + error}\n}', doc: 'Retry with backoff' },
+  { label: 'use tool', insertText: 'use tool ${1:web.search}', doc: 'Import a tool' },
+  { label: 'use py', insertText: 'use py.${1:pandas} as ${2:pd}', doc: 'Import Python module' },
+  { label: 'remember', insertText: 'remember ${1:value} in ${2:session}', doc: 'Store in memory' },
+  { label: 'recall', insertText: '${1:result} = recall "${2:query}" from ${3:session}', doc: 'Recall from memory' },
+  { label: 'guard', insertText: 'guard ${1:condition}', doc: 'Guard assertion' },
+  { label: 'approve', insertText: 'approve ${1:action} before ${2:execute}', doc: 'Approval gate' },
+  { label: 'eval', insertText: 'eval ${1:result} against ${2:rubric} {\n\t${3:accuracy} >= ${4:0.9}\n}', doc: 'Evaluation block' },
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let monacoEditor = null;
+let monacoMonaco = null;
+let editorDecorations = [];
+let serverOnline = false;
+let lintTimeout = null;
+let currentPanelTab = 'output';
+let currentSidebarPanel = 'explorer';
+
+const tabs = []; // { id, name, content, dirty }
+let activeTabId = null;
+let tabCounter = 0;
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+function uid() { return 'tab-' + (++tabCounter); }
+
+async function apiCall(route, payload = {}) {
+  const r = await fetch(SERVER + route, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return r.json();
+}
+
+async function checkServer() {
+  const dots = document.querySelectorAll('.status-dot');
+  const txts = [document.getElementById('tb-status-text'), document.getElementById('settings-status-text')];
+  dots.forEach(d => { d.className = 'status-dot checking'; });
+  txts.forEach(t => { if (t) t.textContent = 'Connecting…'; });
+  try {
+    const res = await fetch(SERVER + '/health', { signal: AbortSignal.timeout(3000) });
+    const data = await res.json();
+    if (data.ok) {
+      serverOnline = true;
+      dots.forEach(d => { d.className = 'status-dot connected'; });
+      txts.forEach(t => { if(t) t.textContent = `Connected — Inthon ${data.inthon}`; });
+      document.getElementById('tb-status-text').textContent = `Online`;
+      document.getElementById('sb-server').textContent = '● Connected';
+    } else throw new Error('Server returned not ok');
+  } catch(e) {
+    serverOnline = false;
+    dots.forEach(d => { d.className = 'status-dot'; });
+    txts.forEach(t => { if(t) t.textContent = 'Server offline — run python ide/inthon_server.py'; });
+    document.getElementById('tb-status-text').textContent = `Offline`;
+    document.getElementById('sb-server').textContent = '● Offline';
+  }
+}
+
+function showPanel(name) {
+  currentPanelTab = name;
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+  document.querySelectorAll('.tab-pane').forEach(p => { p.style.display = 'none'; });
+  const el = document.getElementById('tab-' + name);
+  if (el) el.style.display = '';
+}
+
+function showSidebarPanel(name) {
+  currentSidebarPanel = name;
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+  document.getElementById('explorer-panel').style.display = name === 'explorer' ? '' : 'none';
+  document.getElementById('settings-panel').style.display = name === 'settings' ? 'flex' : 'none';
+}
+
+function setOutput(text, isError = false, isSuccess = false) {
+  const el = document.getElementById('output-result');
+  el.textContent = text;
+  el.className = 'output-result' + (isError ? ' error' : isSuccess ? ' success' : '');
+  document.getElementById('output-empty').style.display = 'none';
+  showPanel('output');
+}
+
+function setStats(durationMs, costUsd, errCount = 0) {
+  const row = document.getElementById('stats-row');
+  row.style.display = 'flex';
+  document.getElementById('stat-time').textContent = durationMs.toFixed(1) + 'ms';
+  document.getElementById('stat-cost').textContent = '$' + costUsd.toFixed(4);
+  const ep = document.getElementById('stat-errors-pill');
+  if (errCount > 0) {
+    ep.style.display = '';
+    document.getElementById('stat-errors').textContent = errCount + ' err';
+  } else {
+    ep.style.display = 'none';
+  }
+}
+
+function setDiagnostics(errors = [], warnings = []) {
+  const list = document.getElementById('diag-list');
+  const total = errors.length + warnings.length;
+  const badge = document.getElementById('problem-count');
+  const statusEl = document.getElementById('sb-diags');
+
+  if (total === 0) {
+    list.innerHTML = '<div class="diag-empty">✓ No problems detected</div>';
+    badge.style.display = 'none';
+    statusEl.textContent = '✓ No problems';
+    document.getElementById('statusbar').className = '';
+  } else {
+    badge.style.display = '';
+    badge.className = 'tab-badge' + (errors.length ? '' : ' warn');
+    badge.textContent = total;
+    statusEl.textContent = `${errors.length} error${errors.length!==1?'s':''}, ${warnings.length} warning${warnings.length!==1?'s':''}`;
+    document.getElementById('statusbar').className = errors.length ? 'error' : 'warn';
+
+    list.innerHTML = '';
+    [...errors.map(e => ({...e, sev:'error'})), ...warnings.map(w => ({...w, sev:'warning'}))].forEach(d => {
+      const item = document.createElement('div');
+      item.className = 'diag-item';
+      const line = d.line || null;
+      item.innerHTML = `
+        <div class="diag-icon ${d.sev}">${d.sev==='error'?'E':'W'}</div>
+        <div class="diag-text">
+          <div class="diag-msg">${escHtml(d.message || String(d))}</div>
+          ${line ? `<div class="diag-loc">Line ${line}${d.col?' col '+d.col:''}</div>` : ''}
+        </div>`;
+      if (line && monacoEditor) {
+        item.addEventListener('click', () => {
+          monacoEditor.setPosition({ lineNumber: line, column: d.col || 1 });
+          monacoEditor.revealLineInCenter(line);
+          monacoEditor.focus();
+        });
+      }
+      list.appendChild(item);
+    });
+  }
+
+  // Apply Monaco markers
+  if (monacoMonaco && monacoEditor) {
+    const model = monacoEditor.getModel();
+    const markers = [];
+    errors.forEach(e => {
+      if (e.line) markers.push({
+        severity: monacoMonaco.MarkerSeverity.Error,
+        message: e.message, startLineNumber: e.line, startColumn: e.col || 1,
+        endLineNumber: e.line, endColumn: e.col ? e.col + 10 : 80,
+      });
+    });
+    warnings.forEach(w => {
+      if (w.line) markers.push({
+        severity: monacoMonaco.MarkerSeverity.Warning,
+        message: w.message, startLineNumber: w.line, startColumn: w.col || 1,
+        endLineNumber: w.line, endColumn: w.col ? w.col + 10 : 80,
+      });
+    });
+    monacoMonaco.editor.setModelMarkers(model, 'inthon', markers);
+  }
+}
+
+function setTrace(traceArr) {
+  const el = document.getElementById('trace-list');
+  if (!traceArr || !traceArr.length) {
+    el.innerHTML = '<div class="diag-empty">No trace events</div>';
+    return;
+  }
+  el.innerHTML = '';
+  traceArr.forEach(evt => {
+    const div = document.createElement('div');
+    div.className = 'trace-event';
+    const type = evt.event || evt.type || 'event';
+    const data = evt.data || evt;
+    const dataStr = Object.entries(data)
+      .filter(([k]) => k !== 'event' && k !== 'timestamp')
+      .map(([k,v]) => `${k}=${JSON.stringify(v)}`)
+      .join(' ');
+    div.innerHTML = `<span class="trace-type ${type}">${escHtml(type)}</span><span class="trace-data">${escHtml(dataStr)}</span>`;
+    el.appendChild(div);
+  });
+}
+
+function renderJsonTree(data, depth = 0) {
+  if (data === null) return `<span class="json-null">null</span>`;
+  if (typeof data === 'boolean') return `<span class="json-bool">${data}</span>`;
+  if (typeof data === 'number') return `<span class="json-num">${data}</span>`;
+  if (typeof data === 'string') return `<span class="json-str">"${escHtml(data)}"</span>`;
+  if (Array.isArray(data)) {
+    if (data.length === 0) return '<span class="json-num">[]</span>';
+    const items = data.map(v => `<div style="margin-left:14px">${renderJsonTree(v, depth+1)}</div>`).join('');
+    return `<details${depth < 2?' open':''}><summary style="color:var(--text-2)">[${data.length} items]</summary>${items}</details>`;
+  }
+  if (typeof data === 'object') {
+    const keys = Object.keys(data);
+    if (keys.length === 0) return '<span class="json-num">{}</span>';
+    const items = keys.map(k => {
+      const label = k === 'type' || k === 'kind' ? `<span style="color:var(--green)">${escHtml(k)}</span>` : `<span class="json-key">"${escHtml(k)}"</span>`;
+      return `<div style="margin-left:14px">${label}: ${renderJsonTree(data[k], depth+1)}</div>`;
+    }).join('');
+    const summary = data.type || data.kind || data.name || keys.slice(0,2).join(', ');
+    return `<details${depth < 2?' open':''}><summary>${escHtml(String(summary))}</summary>${items}</details>`;
+  }
+  return escHtml(String(data));
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showModal(title, body) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('overlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('active');
+}
+
+// ─── Tab Management ──────────────────────────────────────────────────────────
+function createTab(name, content) {
+  const id = uid();
+  tabs.push({ id, name, content, dirty: false });
+  renderTabBar();
+  activateTab(id);
+  return id;
+}
+
+function activateTab(id) {
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  if (activeTabId !== null) {
+    const prev = tabs.find(t => t.id === activeTabId);
+    if (prev && monacoEditor) prev.content = monacoEditor.getValue();
+  }
+  activeTabId = id;
+  if (monacoEditor) {
+    monacoEditor.setValue(tab.content);
+    monacoEditor.focus();
+  }
+  document.getElementById('sb-file').textContent = tab.name;
+  renderTabBar();
+  updateOpenFilesList();
+}
+
+function closeTab(id) {
+  const idx = tabs.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  if (tabs[idx].dirty) {
+    if (!confirm(`"${tabs[idx].name}" has unsaved changes. Close anyway?`)) return;
+  }
+  tabs.splice(idx, 1);
+  if (activeTabId === id) {
+    activeTabId = tabs.length ? tabs[Math.max(0, idx - 1)].id : null;
+    if (activeTabId && monacoEditor) monacoEditor.setValue(tabs.find(t=>t.id===activeTabId)?.content || '');
+  }
+  renderTabBar();
+  updateOpenFilesList();
+}
+
+function renderTabBar() {
+  const list = document.getElementById('tab-list');
+  list.innerHTML = '';
+  tabs.forEach(tab => {
+    const el = document.createElement('div');
+    el.className = 'editor-tab' + (tab.id === activeTabId ? ' active' : '');
+    el.innerHTML = `
+      ${tab.dirty ? '<span class="tab-dirty"></span>' : ''}
+      <span>${escHtml(tab.name)}</span>
+      <button class="tab-close" title="Close">×</button>
+    `;
+    el.addEventListener('click', e => { if (!e.target.classList.contains('tab-close')) activateTab(tab.id); });
+    el.querySelector('.tab-close').addEventListener('click', e => { e.stopPropagation(); closeTab(tab.id); });
+    list.appendChild(el);
+  });
+}
+
+function updateOpenFilesList() {
+  const el = document.getElementById('open-files-list');
+  if (tabs.length === 0) { el.innerHTML = '<div class="diag-empty" style="padding:8px 12px;font-size:11px;">No open files</div>'; return; }
+  el.innerHTML = tabs.map(t => `
+    <div class="sidebar-item ${t.id===activeTabId?'active':''}" onclick="activateTab('${t.id}')">
+      <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" fill="var(--bg-5)"/><path d="M5 5h6M5 8h6M5 11h4" stroke="var(--accent)" stroke-width="1.5"/></svg>
+      ${escHtml(t.name)}${t.dirty?'<span class="item-badge" style="background:var(--yellow-dim);">●</span>':''}
+    </div>`).join('');
+}
+
+function markDirty() {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab && !tab.dirty) { tab.dirty = true; renderTabBar(); updateOpenFilesList(); }
+}
+
+function markClean() {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab && tab.dirty) { tab.dirty = false; renderTabBar(); updateOpenFilesList(); }
+}
+
+function getActiveSource() {
+  if (!monacoEditor) return '';
+  const src = monacoEditor.getValue();
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab) tab.content = src;
+  return src;
+}
+
+// ─── Actions ─────────────────────────────────────────────────────────────────
+async function runProgram() {
+  const source = getActiveSource();
+  if (!source.trim()) { setOutput('Nothing to run — write some code first!', false, false); return; }
+  const btnRun = document.getElementById('btn-run');
+  btnRun.disabled = true;
+  btnRun.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" class="spin"><path d="M8 2a6 6 0 100 12A6 6 0 008 2zm1 9H7V7h2v4zm0-6H7V3h2v2z"/></svg> Running…';
+
+  if (!serverOnline) {
+    setOutput('⚠ Server is offline.\n\nStart it by running:\n  python ide/inthon_server.py\n\nor double-click ide/launch.bat', true);
+    btnRun.disabled = false;
+    btnRun.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5l10 5.5-10 5.5V2.5z"/></svg> Run';
+    return;
+  }
+
+  try {
+    const mock = document.getElementById('setting-mock').checked;
+    const maxCost = parseFloat(document.getElementById('setting-cost').value);
+    const data = await apiCall('/compile', { source, mock_tools: mock, max_cost: maxCost });
+    if (data.ok) {
+      setOutput(String(data.output), false, true);
+      setStats(data.duration_ms || 0, data.cost_usd || 0, (data.errors||[]).length);
+      setTrace(data.trace || []);
+      setDiagnostics([], []);
+    } else {
+      const errMsg = data.error || 'Unknown error';
+      setOutput('❌ ' + errMsg, true);
+      setStats(data.duration_ms || 0, 0, 1);
+      const errs = data.errors?.length ? data.errors : [{ message: errMsg }];
+      setDiagnostics(errs, []);
+      showPanel('problems');
+    }
+  } catch(e) {
+    setOutput('⚠ Could not reach server.\n\nMake sure inthon_server.py is running in ide/ on port 7474.', true);
+    setDiagnostics([{ message: 'Server unreachable: ' + e.message }], []);
+  }
+
+  btnRun.disabled = false;
+  btnRun.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5l10 5.5-10 5.5V2.5z"/></svg> Run';
+}
+
+async function checkCode() {
+  const source = getActiveSource();
+  if (!source.trim()) { setDiagnostics([], []); return; }
+  if (!serverOnline) return;
+  try {
+    const data = await apiCall('/check', { source });
+    setDiagnostics(data.errors || [], data.warnings || []);
+  } catch(e) {}
+}
+
+async function viewAST() {
+  const source = getActiveSource();
+  showPanel('ast');
+  const treeEl = document.getElementById('ast-tree');
+  treeEl.innerHTML = '<div class="diag-empty">Parsing…</div>';
+  if (!serverOnline) { treeEl.innerHTML = '<div class="diag-empty">Server offline</div>'; return; }
+  try {
+    const data = await apiCall('/ast', { source });
+    if (data.ok) {
+      treeEl.innerHTML = '<div class="json-tree">' + renderJsonTree(data.ast) + '</div>';
+    } else {
+      treeEl.innerHTML = `<div class="diag-empty">${escHtml(data.error || 'Parse error')}</div>`;
+    }
+  } catch(e) {
+    treeEl.innerHTML = `<div class="diag-empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function viewIR() {
+  const source = getActiveSource();
+  showPanel('ir');
+  const treeEl = document.getElementById('ir-tree');
+  treeEl.innerHTML = '<div class="diag-empty">Building IR…</div>';
+  if (!serverOnline) { treeEl.innerHTML = '<div class="diag-empty">Server offline</div>'; return; }
+  try {
+    const data = await apiCall('/ir', { source });
+    if (data.ok) {
+      treeEl.innerHTML = '<div class="json-tree">' + renderJsonTree(data.ir) + '</div>';
+    } else {
+      treeEl.innerHTML = `<div class="diag-empty">${escHtml(data.error || 'IR build error')}</div>`;
+    }
+  } catch(e) {
+    treeEl.innerHTML = `<div class="diag-empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function formatCode() {
+  const source = getActiveSource();
+  if (!serverOnline) {
+    // Basic local formatter as fallback
+    const lines = source.split('\n').map(l => l.trimEnd());
+    const formatted = lines.join('\n') + '\n';
+    monacoEditor.setValue(formatted);
+    markDirty();
+    return;
+  }
+  try {
+    const data = await apiCall('/format', { source });
+    if (data.ok && data.formatted) {
+      monacoEditor.setValue(data.formatted);
+      markDirty();
+    }
+  } catch(e) {}
+}
+
+function openFile() {
+  document.getElementById('file-input').click();
+}
+
+function saveFile() {
+  const source = getActiveSource();
+  const tab = tabs.find(t => t.id === activeTabId);
+  const filename = tab ? tab.name : 'untitled.inth';
+  const blob = new Blob([source], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  markClean();
+}
+
+function openExample(key) {
+  const ex = EXAMPLES[key];
+  if (!ex) return;
+  // Check if already open
+  const existing = tabs.find(t => t.name === ex.name);
+  if (existing) { activateTab(existing.id); return; }
+  createTab(ex.name, ex.content);
+}
+
+function showKeywordsRef() {
+  const kws = [...INTHON_KEYWORDS, ...INTHON_TYPES, ...INTHON_LITERALS].sort();
+  showModal('Inthon Language Reference', `
+    <b>Keywords</b>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">
+      ${INTHON_KEYWORDS.map(k=>`<code style="background:var(--bg-3);padding:2px 6px;border-radius:3px;font-size:11px;color:var(--accent)">${k}</code>`).join('')}
+    </div>
+    <b>Types</b>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">
+      ${INTHON_TYPES.map(k=>`<code style="background:var(--bg-3);padding:2px 6px;border-radius:3px;font-size:11px;color:var(--violet)">${k}</code>`).join('')}
+    </div>
+    <b>Operators</b>: <code style="font-size:12px;">+ - * / % ** == != &lt; &lt;= &gt; &gt;= and or not -&gt;</code><br><br>
+    <b>Comments</b>: <code style="font-size:12px;">// single line</code> &nbsp; <code style="font-size:12px;">/* block */</code>
+  `);
+}
+
+function showSnippets() {
+  showModal('Code Snippets', `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${SNIPPETS.slice(0,8).map(s=>`
+        <div style="background:var(--bg-3);border-radius:6px;padding:8px 12px;">
+          <div style="font-weight:600;color:var(--accent);margin-bottom:4px;">${s.label}</div>
+          <div style="font-size:11px;color:var(--text-2)">${s.doc}</div>
+        </div>`).join('')}
+    </div>
+    <p style="margin-top:12px;font-size:11px;color:var(--text-3)">All snippets are available via autocomplete in the editor.</p>
+  `);
+}
+
+// ─── Monaco Setup ────────────────────────────────────────────────────────────
+require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs' } });
+
+require(['vs/editor/editor.main'], function(monaco) {
+  monacoMonaco = monaco;
+
+  // ─── Register Inthon Language ───────────────────────────────────────────
+  monaco.languages.register({ id: LANG_ID, extensions: ['.inth'], aliases: ['Inthon', 'inthon'] });
+
+  // Tokenizer (syntax highlighting)
+  monaco.languages.setMonarchTokensProvider(LANG_ID, {
+    keywords: INTHON_KEYWORDS,
+    typeKeywords: INTHON_TYPES,
+    literals: INTHON_LITERALS,
+    operators: ['=', '==', '!=', '<', '<=', '>', '>=', '+', '-', '*', '/', '%', '**', '->', ':'],
+
+    tokenizer: {
+      root: [
+        // Comments
+        [/\/\/.*$/, 'comment'],
+        [/\/\*/, 'comment', '@blockComment'],
+        // Strings
+        [/"([^"\\]|\\.)*"/, 'string'],
+        [/'([^'\\]|\\.)*'/, 'string'],
+        // Numbers
+        [/\d+\.\d*([eE][+-]?\d+)?/, 'number.float'],
+        [/\d+/, 'number'],
+        // Identifiers / Keywords
+        [/[A-Za-z_][A-Za-z0-9_]*/, {
+          cases: {
+            '@keywords': 'keyword',
+            '@typeKeywords': 'type',
+            '@literals': 'constant',
+            'true|false': 'constant',
+            'none': 'constant',
+            '@default': 'identifier'
+          }
+        }],
+        // Operators
+        [/->|==|!=|<=|>=|[<>=+\-*\/%**]/, 'operator'],
+        [/:/, 'delimiter'],
+        [/[{}()\[\]]/, 'bracket'],
+        [/[,.]/, 'delimiter'],
+        // Whitespace
+        [/[ \t\r\n]+/, 'white'],
+      ],
+      blockComment: [
+        [/[^/*]+/, 'comment'],
+        [/\*\//, 'comment', '@pop'],
+        [/[/*]/, 'comment'],
+      ],
+    }
+  });
+
+  // ─── Custom Dark Theme ──────────────────────────────────────────────────
+  monaco.editor.defineTheme('inthon-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment',       foreground: '545d68', fontStyle: 'italic' },
+      { token: 'keyword',       foreground: 'ff7b72', fontStyle: 'bold' },
+      { token: 'type',          foreground: 'ffa657' },
+      { token: 'constant',      foreground: '79c0ff' },
+      { token: 'string',        foreground: 'a5d6ff' },
+      { token: 'number',        foreground: 'f0883e' },
+      { token: 'number.float',  foreground: 'f0883e' },
+      { token: 'operator',      foreground: 'ff7b72' },
+      { token: 'identifier',    foreground: 'e6edf3' },
+      { token: 'bracket',       foreground: '79c0ff' },
+      { token: 'delimiter',     foreground: '768390' },
+    ],
+    colors: {
+      'editor.background':           '#0d1117',
+      'editor.foreground':           '#e6edf3',
+      'editor.lineHighlightBackground': '#161b22',
+      'editor.selectionBackground':  '#264f7840',
+      'editorCursor.foreground':     '#00d4ff',
+      'editorLineNumber.foreground': '#3d444d',
+      'editorLineNumber.activeForeground': '#768390',
+      'editorIndentGuide.background': '#21262d',
+      'editorIndentGuide.activeBackground': '#30363d',
+      'editor.findMatchBackground':  '#264f7880',
+      'editorWidget.background':     '#161b22',
+      'editorWidget.border':         '#30363d',
+      'editorSuggestWidget.background': '#161b22',
+      'editorSuggestWidget.border':  '#30363d',
+      'editorSuggestWidget.selectedBackground': '#1c2230',
+      'editorSuggestWidget.highlightForeground': '#00d4ff',
+      'input.background':            '#0d1117',
+      'input.border':                '#30363d',
+      'scrollbarSlider.background':  '#30363d60',
+      'scrollbarSlider.hoverBackground': '#44454660',
+    }
+  });
+  monaco.editor.setTheme('inthon-dark');
+
+  // ─── Autocomplete Provider ──────────────────────────────────────────────
+  monaco.languages.registerCompletionItemProvider(LANG_ID, {
+    triggerCharacters: [' ', '.', ':', '"', '\n', '('],
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position);
+      const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
+                      startColumn: word.startColumn, endColumn: word.endColumn };
+      const lineText = model.getLineContent(position.lineNumber);
+      const beforeCursor = lineText.substring(0, position.column - 1);
+
+      const items = [];
+
+      // Snippets
+      SNIPPETS.forEach(s => {
+        items.push({
+          label: s.label,
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: s.insertText,
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: s.doc,
+          detail: '(snippet)',
+          range,
+        });
+      });
+
+      // Keywords
+      INTHON_KEYWORDS.forEach(kw => {
+        items.push({
+          label: kw,
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: kw,
+          documentation: `Inthon keyword: ${kw}`,
+          range,
+        });
+      });
+
+      // Types
+      INTHON_TYPES.forEach(t => {
+        items.push({
+          label: t,
+          kind: monaco.languages.CompletionItemKind.Class,
+          insertText: t,
+          documentation: `Inthon type: ${t}`,
+          range,
+        });
+      });
+
+      // Literals
+      INTHON_LITERALS.forEach(l => {
+        items.push({
+          label: l,
+          kind: monaco.languages.CompletionItemKind.Value,
+          insertText: l,
+          documentation: `Inthon literal: ${l}`,
+          range,
+        });
+      });
+
+      // User-defined identifiers (scan current document)
+      const fullText = model.getValue();
+      const varMatches = fullText.matchAll(/\b(?:let|const)\s+([A-Za-z_][A-Za-z0-9_]*)/g);
+      const fnMatches  = fullText.matchAll(/\bfn\s+([A-Za-z_][A-Za-z0-9_]*)/g);
+      const agMatches  = fullText.matchAll(/\bagent\s+([A-Za-z_][A-Za-z0-9_]*)/g);
+      const seen = new Set([...INTHON_KEYWORDS, ...INTHON_TYPES, ...INTHON_LITERALS]);
+
+      for (const m of [...varMatches]) {
+        if (!seen.has(m[1])) { seen.add(m[1]); items.push({ label: m[1], kind: monaco.languages.CompletionItemKind.Variable, insertText: m[1], range }); }
+      }
+      for (const m of [...fnMatches]) {
+        if (!seen.has(m[1])) { seen.add(m[1]); items.push({ label: m[1], kind: monaco.languages.CompletionItemKind.Function, insertText: m[1] + '($0)', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, range }); }
+      }
+      for (const m of [...agMatches]) {
+        if (!seen.has(m[1])) { seen.add(m[1]); items.push({ label: m[1], kind: monaco.languages.CompletionItemKind.Class, insertText: m[1], range }); }
+      }
+
+      // Tool paths after "web."
+      if (beforeCursor.endsWith('web.') || beforeCursor.endsWith('use tool web')) {
+        ['search', 'read'].forEach(m => items.push({
+          label: m, kind: monaco.languages.CompletionItemKind.Method,
+          insertText: m + '($0)', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          detail: 'web tool', range,
+        }));
+      }
+
+      // Policy keys
+      if (beforeCursor.includes('policy') || beforeCursor.match(/^\s+[a-z]/)) {
+        ['allow_network', 'allow_memory_persist', 'allow_payment', 'max_tool_calls', 'max_cost_usd', 'max_runtime_sec'].forEach(pk => {
+          items.push({ label: pk, kind: monaco.languages.CompletionItemKind.Property, insertText: pk + ': ${1:true}', insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: 'policy key', range });
+        });
+      }
+
+      return { suggestions: items };
+    }
+  });
+
+  // ─── Hover Provider ─────────────────────────────────────────────────────
+  const HOVER_DOCS = {
+    let: 'Declares a **mutable** variable.\n```inthon\nlet name: str = "value"\n```',
+    const: 'Declares an **immutable** constant.\n```inthon\nconst MAX: int = 100\n```',
+    fn: 'Declares a **function**.\n```inthon\nfn add(a: int, b: int) -> int { return a + b }\n```',
+    agent: 'Declares an **agent block** with goal, policy, and plan.\n```inthon\nagent MyAgent { goal "..." plan { ... } }\n```',
+    use: 'Imports a tool or Python module.\n```inthon\nuse tool web.search\nuse py.numpy as np\n```',
+    remember: 'Stores a value in memory namespace.\n```inthon\nremember value in session\n```',
+    recall: 'Retrieves a value from memory.\n```inthon\nresult = recall "key" from session\n```',
+    guard: 'Asserts a condition — halts if false.\n```inthon\nguard response.status == 200\n```',
+    retry: 'Retries a block with backoff on failure.\n```inthon\nretry 3 with backoff exponential { ... } catch err { ... }\n```',
+    approve: 'Requires human approval before proceeding.\n```inthon\napprove action before execute\n```',
+  };
+
+  monaco.languages.registerHoverProvider(LANG_ID, {
+    provideHover(model, position) {
+      const word = model.getWordAtPosition(position);
+      if (!word) return null;
+      const doc = HOVER_DOCS[word.word];
+      if (!doc) return null;
+      return {
+        range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
+        contents: [{ value: `**${word.word}** — Inthon keyword\n\n${doc}` }],
+      };
+    }
+  });
+
+  // ─── Bracket Auto-close ─────────────────────────────────────────────────
+  monaco.languages.setLanguageConfiguration(LANG_ID, {
+    comments: { lineComment: '//', blockComment: ['/*', '*/'] },
+    brackets: [['{', '}'], ['[', ']'], ['(', ')']],
+    autoClosingPairs: [
+      { open: '{', close: '}' }, { open: '[', close: ']' },
+      { open: '(', close: ')' }, { open: '"', close: '"' },
+      { open: "'", close: "'" },
+    ],
+    surroundingPairs: [
+      { open: '{', close: '}' }, { open: '[', close: ']' },
+      { open: '(', close: ')' }, { open: '"', close: '"' },
+    ],
+    indentationRules: {
+      increaseIndentPattern: /^.*\{[^}]*$/,
+      decreaseIndentPattern: /^\s*\}/,
+    },
+    onEnterRules: [
+      { beforeText: /\{$/, action: { indentAction: monaco.languages.IndentAction.Indent } },
+    ],
+    wordPattern: /[A-Za-z_][A-Za-z0-9_]*/,
+    folding: { markers: { start: /\{/, end: /\}/ } },
+  });
+
+  // ─── Create Editor ──────────────────────────────────────────────────────
+  monacoEditor = monaco.editor.create(document.getElementById('monaco-container'), {
+    value: '',
+    language: LANG_ID,
+    theme: 'inthon-dark',
+    fontSize: 14,
+    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    fontLigatures: true,
+    lineNumbers: 'on',
+    minimap: { enabled: true },
+    scrollBeyondLastLine: false,
+    wordWrap: 'off',
+    automaticLayout: true,
+    tabSize: 4,
+    insertSpaces: true,
+    formatOnPaste: true,
+    formatOnType: false,
+    bracketPairColorization: { enabled: true },
+    guides: { bracketPairs: true, indentation: true },
+    renderWhitespace: 'selection',
+    smoothScrolling: true,
+    cursorBlinking: 'smooth',
+    cursorSmoothCaretAnimation: 'on',
+    padding: { top: 12, bottom: 12 },
+    suggest: { showIcons: true, showStatusBar: true, preview: true },
+    quickSuggestions: { other: true, comments: false, strings: true },
+    parameterHints: { enabled: true },
+    inlineSuggest: { enabled: true },
+    scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+  });
+
+  // Cursor position in status bar
+  monacoEditor.onDidChangeCursorPosition(e => {
+    document.getElementById('sb-pos').textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+  });
+
+  // Track dirty state
+  monacoEditor.onDidChangeModelContent(() => {
+    markDirty();
+    // Auto-lint (debounced)
+    if (document.getElementById('setting-autolint').checked) {
+      clearTimeout(lintTimeout);
+      lintTimeout = setTimeout(checkCode, 800);
+    }
+  });
+
+  // Keyboard shortcuts
+  monacoEditor.addCommand(monaco.KeyCode.F5, runProgram);
+  monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runProgram);
+  monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveFile);
+  monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyK, checkCode);
+  monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, formatCode);
+  monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, () => createTab('untitled.inth', ''));
+
+  // Load hello example on startup
+  openExample('hello');
+
+  // Start server health check loop
+  checkServer();
+  setInterval(checkServer, 15000);
+
+  console.log('%cInthon IDE loaded ✓', 'color:#00d4ff;font-weight:bold;font-size:14px;');
+});
+
+// ─── Event Wiring ─────────────────────────────────────────────────────────────
+document.getElementById('btn-run').addEventListener('click', runProgram);
+document.getElementById('btn-check').addEventListener('click', () => { checkCode(); showPanel('problems'); });
+document.getElementById('btn-format').addEventListener('click', formatCode);
+document.getElementById('btn-ast').addEventListener('click', viewAST);
+document.getElementById('btn-ir').addEventListener('click', viewIR);
+document.getElementById('btn-open-file').addEventListener('click', openFile);
+document.getElementById('btn-save-file').addEventListener('click', saveFile);
+document.getElementById('new-tab-btn').addEventListener('click', () => createTab('untitled.inth', ''));
+
+// File input
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => createTab(file.name, ev.target.result);
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// Panel tabs
+document.querySelectorAll('.panel-tab').forEach(tab => {
+  tab.addEventListener('click', () => showPanel(tab.dataset.panel));
+});
+
+// Sidebar tabs
+document.querySelectorAll('.sidebar-tab').forEach(tab => {
+  tab.addEventListener('click', () => showSidebarPanel(tab.dataset.panel));
+});
+
+// Example files
+document.querySelectorAll('[data-example]').forEach(el => {
+  el.addEventListener('click', () => openExample(el.dataset.example));
+});
+
+// Overlay click to close
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeModal();
+});
+
+// Settings
+document.getElementById('setting-cost').addEventListener('input', e => {
+  document.getElementById('cost-val').textContent = '$' + parseFloat(e.target.value).toFixed(2);
+});
+document.getElementById('setting-fontsize').addEventListener('input', e => {
+  const sz = parseInt(e.target.value);
+  document.getElementById('fontsize-val').textContent = sz + 'px';
+  if (monacoEditor) monacoEditor.updateOptions({ fontSize: sz });
+});
+document.getElementById('setting-wrap').addEventListener('change', e => {
+  if (monacoEditor) monacoEditor.updateOptions({ wordWrap: e.target.checked ? 'on' : 'off' });
+});
+document.getElementById('setting-minimap').addEventListener('change', e => {
+  if (monacoEditor) monacoEditor.updateOptions({ minimap: { enabled: e.target.checked } });
+});
+document.getElementById('setting-theme').addEventListener('change', e => {
+  if (monacoMonaco) monacoMonaco.editor.setTheme(e.target.value);
+});
+
+// Resize handles (sidebar)
+(function() {
+  let resizing = null;
+  let startX = 0;
+  let startW = 0;
+
+  document.getElementById('resize-sidebar').addEventListener('mousedown', e => {
+    resizing = 'sidebar';
+    startX = e.clientX;
+    startW = document.getElementById('sidebar').offsetWidth;
+    e.preventDefault();
+  });
+  document.getElementById('resize-panel').addEventListener('mousedown', e => {
+    resizing = 'panel';
+    startX = e.clientX;
+    startW = document.getElementById('right-panel').offsetWidth;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const dx = e.clientX - startX;
+    if (resizing === 'sidebar') {
+      const newW = Math.max(160, Math.min(400, startW + dx));
+      document.getElementById('sidebar').style.width = newW + 'px';
+      document.getElementById('sidebar').style.minWidth = newW + 'px';
+    } else if (resizing === 'panel') {
+      const newW = Math.max(240, Math.min(600, startW - dx));
+      document.getElementById('right-panel').style.width = newW + 'px';
+      document.getElementById('right-panel').style.minWidth = newW + 'px';
+    }
+  });
+  document.addEventListener('mouseup', () => { resizing = null; });
+})();
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>

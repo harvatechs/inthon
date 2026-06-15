@@ -26,9 +26,29 @@ class MemoryStore(ABC):
     def search(
         self, query: str, namespace: str, limit: int = 10
     ) -> list[MemoryEntry]: ...
+
     @classmethod
     def in_memory(cls) -> "InMemoryStore":
+        """Return a volatile in-memory store (data lost on process exit)."""
         return InMemoryStore()
+
+    @classmethod
+    def persistent(
+        cls, db_path: str = ".inthon/memory.db", use_embeddings: bool = True
+    ) -> "MemoryStore":
+        """
+        Return a persistent SQLite-backed store that survives restarts.
+        Falls back to InMemoryStore if SQLite is unavailable (unlikely).
+        """
+        from pathlib import Path
+
+        try:
+            from .sqlite_store import SQLiteMemoryStore
+
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            return SQLiteMemoryStore(db_path=db_path, use_embeddings=use_embeddings)
+        except Exception:
+            return InMemoryStore()
 
 
 class InMemoryStore(MemoryStore):

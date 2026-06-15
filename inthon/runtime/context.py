@@ -32,6 +32,46 @@ class ExecutionContext:
     # Agent state (populated when inside an agent block)
     current_agent: str | None = None
     agent_goal: str | None = None
+    config: dict = field(default_factory=dict, init=False)
+
+    def __post_init__(self) -> None:
+        from pathlib import Path
+        import tomllib
+
+        # Try to locate inthon.toml in the current directory or parents
+        for p in [Path.cwd(), *Path.cwd().parents]:
+            toml_path = p / "inthon.toml"
+            if toml_path.is_file():
+                try:
+                    with open(toml_path, "rb") as f:
+                        self.config = tomllib.load(f)
+                    break
+                except Exception:
+                    pass
+
+        # Apply sandbox settings from toml
+        sandbox_cfg = self.config.get("sandbox", {})
+        if "max_runtime_sec" in sandbox_cfg:
+            self.sandbox.max_runtime_sec = float(sandbox_cfg["max_runtime_sec"])
+        if "max_cost_usd" in sandbox_cfg:
+            self.sandbox.max_cost_usd = float(sandbox_cfg["max_cost_usd"])
+        if "max_tool_calls" in sandbox_cfg:
+            self.sandbox.max_tool_calls = int(sandbox_cfg["max_tool_calls"])
+
+        # Apply memory persistence from toml if memory is default InMemoryStore
+        permissions = self.config.get("permissions", {})
+        if permissions.get("memory_persist", False):
+            from ..memory.store import InMemoryStore
+
+            if isinstance(self.memory, InMemoryStore):
+                db_dir = (
+                    Path(self.filename).parent
+                    if self.filename and self.filename != "<stdin>"
+                    else Path.cwd()
+                )
+                self.memory = MemoryStore.persistent(
+                    db_path=str(db_dir / ".inthon" / "memory.db")
+                )
 
     # ── Scope helpers ────────────────────────────────────────────────────── #
     def push_scope(self) -> None:

@@ -293,7 +293,7 @@ class Interpreter(ASTVisitor):
     def visit_UsePyStmt(self, node: N.UsePyStmt) -> None:
         from ..pybridge.importer import SafeModuleImporter
 
-        importer = SafeModuleImporter()
+        importer = SafeModuleImporter(ctx=self._ctx)
         wrapper = importer.import_module(node.module_path, node.alias)
         alias = node.alias or node.module_path.split(".")[-1]
         self._ctx.set_var(alias, wrapper)

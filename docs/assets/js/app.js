@@ -238,19 +238,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Citation Copy logic
-  const copyBtn = document.getElementById('btn-copy-citation');
-  if (copyBtn) {
-    copyBtn.addEventListener('click', () => {
-      const citationText = document.getElementById('bibtex-citation').innerText;
-      navigator.clipboard.writeText(citationText).then(() => {
-        const originalText = copyBtn.innerText;
-        copyBtn.innerText = 'Copied!';
-        setTimeout(() => {
-          copyBtn.innerText = originalText;
-        }, 2000);
-      }).catch(err => {
-        console.error('Failed to copy citation: ', err);
+  // Guide Sidebar Toggle Logic
+  const sidebarItems = document.querySelectorAll('.sidebar-item');
+  const guideSections = document.querySelectorAll('.guide-section');
+
+  if (sidebarItems.length > 0) {
+    sidebarItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const targetId = item.getAttribute('data-target');
+
+        // Update active class on sidebar items
+        sidebarItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        // Update active class on sections
+        guideSections.forEach(section => {
+          if (section.id === targetId) {
+            section.classList.add('active');
+          } else {
+            section.classList.remove('active');
+          }
+        });
+
+        // Scroll to top of reading pane
+        const mainPane = document.querySelector('.guide-content');
+        if (mainPane) {
+          mainPane.scrollTop = 0;
+        }
       });
     });
   }
