@@ -1,0 +1,40 @@
+{
+    "name": "inthon",
+    "displayName": "INTHON Language Support",
+    "description": "Syntax highlighting and file icon support for the INTHON programming language.",
+    "version": "0.1.0",
+    "publisher": "harvadeeplabs",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "icon": "images/inthon-icon.png",
+    "contributes": {
+        "languages": [
+            {
+                "id": "inthon",
+                "aliases": [
+                    "INTHON",
+                    "inthon"
+                ],
+                "extensions": [
+                    ".inth"
+                ],
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./images/inthon-icon.png",
+                    "dark": "./images/inthon-icon.png"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "inthon",
+                "scopeName": "source.inth",
+                "path": "./syntaxes/inthon.tmLanguage.json"
+            }
+        ]
+    }
+}

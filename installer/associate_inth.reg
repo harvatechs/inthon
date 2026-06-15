@@ -1,0 +1,18 @@
+Windows Registry Editor Version 5.00
+
+; INTHON File Association Registry Configuration
+; This file associates .inth files with the INTHON interpreter/runner and sets the custom file icon.
+;
+; NOTE: Replace "C:\\Users\\<YourUsername>\\AppData\\Local\\Programs\\Inthon" with your actual installation directory.
+
+[HKEY_CURRENT_USER\Software\Classes\.inth]
+@="Inthon.File"
+
+[HKEY_CURRENT_USER\Software\Classes\Inthon.File]
+@="Inthon Source File"
+
+[HKEY_CURRENT_USER\Software\Classes\Inthon.File\DefaultIcon]
+@="\"C:\\Users\\<YourUsername>\\AppData\\Local\\Programs\\Inthon\\icon.ico\""
+
+[HKEY_CURRENT_USER\Software\Classes\Inthon.File\shell\open\command]
+@="\"C:\\Users\\<YourUsername>\\AppData\\Local\\Programs\\Inthon\\inthon.exe\" run \"%1\""

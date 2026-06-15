@@ -363,9 +363,7 @@ class Compiler(ASTVisitor):
                 {
                     "metric": c.metric,
                     "op": c.op,
-                    "threshold": lit
-                    if type(lit) is not object
-                    else str(c.threshold),
+                    "threshold": lit if type(lit) is not object else str(c.threshold),
                 }
             )
         self._emit(OpCode.AGENT_EVAL, (node.subject, node.rubric, criteria), node.span)

@@ -87,7 +87,9 @@ class SubprocessPyBridge:
 
         with self._lock:
             if worker.stdin is None or worker.stdout is None:
-                raise SubprocessBridgeError("INTHON_SANDBOX_PIPE: Failed to open pipes to worker process")
+                raise SubprocessBridgeError(
+                    "INTHON_SANDBOX_PIPE: Failed to open pipes to worker process"
+                )
             try:
                 line = json.dumps(request) + "\n"
                 worker.stdin.write(line)

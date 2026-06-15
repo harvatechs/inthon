@@ -58,7 +58,9 @@ class SafeModuleImporter:
 
         if self._sandbox_mode == "strict":
             if self._subprocess_bridge is None:
-                raise PyBridgeError("INTHON_PYBRIDGE_004: Strict sandbox mode active but SubprocessPyBridge is not initialized.")
+                raise PyBridgeError(
+                    "INTHON_PYBRIDGE_004: Strict sandbox mode active but SubprocessPyBridge is not initialized."
+                )
             return self._subprocess_bridge.import_module(module_path, alias)
         if module_path in self._cache:
             return self._cache[module_path]

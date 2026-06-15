@@ -35,6 +35,7 @@ def main():
             print(f"\n>>> Generating ICO from {png_path}...")
             try:
                 from PIL import Image
+
                 img = Image.open(png_path)
                 sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
                 img.save(ico_path, format="ICO", sizes=sizes)
@@ -96,6 +97,8 @@ def main():
         "--clean",
         "-y",
         "--onefile",
+        "--icon",
+        ico_path,
         "--name",
         "inthon",
         "--add-data",
@@ -197,7 +200,9 @@ def main():
 
     # 6. Copy compiled binaries to the root dist directory
     root_dist_dir = os.path.abspath(os.path.join(root_dir, "..", "dist"))
-    print(f"\n>>> Stage 4/3: Copying compiled binaries to root dist directory ({root_dist_dir})...")
+    print(
+        f"\n>>> Stage 4/3: Copying compiled binaries to root dist directory ({root_dist_dir})..."
+    )
     os.makedirs(root_dist_dir, exist_ok=True)
     for exe_name in ["inthon.exe", "uninstall.exe", "inthon-installer.exe"]:
         src_path = os.path.join(root_dir, "dist", exe_name)

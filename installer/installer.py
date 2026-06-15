@@ -377,7 +377,7 @@ class InthonInstaller(tk.Tk):
             self.set_progress(40)
             self.log("Copying executable files...")
 
-            files_to_copy = ["inthon.exe", "uninstall.exe", "inthon.toml"]
+            files_to_copy = ["inthon.exe", "uninstall.exe", "inthon.toml", "icon.ico"]
             for f in files_to_copy:
                 src = get_resource_path(f)
                 dst = os.path.join(target_dir, f)
@@ -505,11 +505,12 @@ class InthonInstaller(tk.Tk):
             ) as key:
                 winreg.SetValue(key, "", winreg.REG_SZ, "Inthon Source File")
 
-            # 3. Write HKEY_CURRENT_USER\Software\Classes\Inthon.File\DefaultIcon = "inthon.exe,0"
+            # 3. Write HKEY_CURRENT_USER\Software\Classes\Inthon.File\DefaultIcon = "icon.ico"
+            icon_file_path = os.path.join(target_dir, "icon.ico")
             with winreg.CreateKey(
                 winreg.HKEY_CURRENT_USER, r"Software\Classes\Inthon.File\DefaultIcon"
             ) as key:
-                winreg.SetValue(key, "", winreg.REG_SZ, f'"{exe_path}",0')
+                winreg.SetValue(key, "", winreg.REG_SZ, f'"{icon_file_path}"')
 
             # 4. Write HKEY_CURRENT_USER\Software\Classes\Inthon.File\shell\open\command = "inthon.exe" run "%1"
             with winreg.CreateKey(
