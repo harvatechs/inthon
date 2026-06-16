@@ -32,18 +32,24 @@ description: "A Python-hosted language layer for AI-native workflows, tool orche
         </a>
       </div>
     </div>
+  </section>
+
   <!-- Quick Install Section -->
   <section class="quick-install" id="quick-install">
     <div class="container container-narrow">
       <h2 class="section-title">Quick Installation</h2>
-      <div class="install-grid">
-        <!-- Users Card -->
-        <div class="install-card">
-          <div class="install-card-header">
-            <span class="badge badge-accent">For Users</span>
-            <h3>PyPI Stable Release</h3>
-          </div>
-          <p class="install-card-desc">Install the latest stable compiler layer and runtime library via pip.</p>
+      
+      <div class="install-toggle-wrapper">
+        <div class="install-toggle">
+          <button class="toggle-btn active" data-tab="users" id="toggle-users-btn">For Users</button>
+          <button class="toggle-btn" data-tab="testers" id="toggle-testers-btn">For Testers</button>
+        </div>
+      </div>
+
+      <div class="install-content-card">
+        <!-- Users Pane -->
+        <div class="install-pane active" id="pane-users">
+          <p class="install-desc">Install the stable package directly from PyPI:</p>
           <div class="code-container">
             <pre><code id="cmd-users">pip install inthon</code></pre>
             <button class="btn-copy-install" data-target="cmd-users" title="Copy to clipboard" aria-label="Copy installation command">
@@ -52,13 +58,9 @@ description: "A Python-hosted language layer for AI-native workflows, tool orche
           </div>
         </div>
 
-        <!-- Testers Card -->
-        <div class="install-card">
-          <div class="install-card-header">
-            <span class="badge badge-success">For Testers</span>
-            <h3>Source Build</h3>
-          </div>
-          <p class="install-card-desc">Clone the repository and install with development, data, and ML dependencies.</p>
+        <!-- Testers Pane -->
+        <div class="install-pane" id="pane-testers" style="display: none;">
+          <p class="install-desc">Clone the repository and install in development mode with all optional groups:</p>
           <div class="code-container">
             <pre><code id="cmd-testers">git clone https://github.com/harvatechs/inthon.git
 cd inthon
@@ -71,6 +73,7 @@ pip install -e .[dev,data,ml]</code></pre>
       </div>
     </div>
   </section>
+
 
   <!-- Abstract / TL;DR Section -->
   <section class="abstract" id="abstract">

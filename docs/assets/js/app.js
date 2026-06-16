@@ -310,4 +310,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // Toggle installation options
+  const toggleButtons = document.querySelectorAll('.toggle-btn');
+  const installPanes = document.querySelectorAll('.install-pane');
+  toggleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Deactivate all buttons
+      toggleButtons.forEach(b => b.classList.remove('active'));
+      // Activate clicked button
+      btn.classList.add('active');
+
+      const targetTab = btn.getAttribute('data-tab');
+      installPanes.forEach(pane => {
+        if (pane.id === `pane-${targetTab}`) {
+          pane.style.display = 'block';
+        } else {
+          pane.style.display = 'none';
+        }
+      });
+    });
+  });
 });
+
