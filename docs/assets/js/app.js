@@ -268,4 +268,46 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  // Citation Copy Button Logic
+  const copyCitationBtn = document.getElementById('btn-copy-citation');
+  const citationContent = document.getElementById('bibtex-citation');
+  if (copyCitationBtn && citationContent) {
+    copyCitationBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(citationContent.textContent.trim()).then(() => {
+        const originalText = copyCitationBtn.textContent;
+        copyCitationBtn.textContent = 'Copied!';
+        copyCitationBtn.style.color = '#22863a';
+        copyCitationBtn.style.borderColor = 'rgba(34, 134, 58, 0.3)';
+        copyCitationBtn.style.backgroundColor = 'rgba(34, 134, 58, 0.04)';
+        setTimeout(() => {
+          copyCitationBtn.textContent = originalText;
+          copyCitationBtn.style.color = '';
+          copyCitationBtn.style.borderColor = '';
+          copyCitationBtn.style.backgroundColor = '';
+        }, 2000);
+      });
+    });
+  }
+
+  // Installation Copy Buttons Logic
+  const copyInstallButtons = document.querySelectorAll('.btn-copy-install');
+  copyInstallButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const targetCode = document.getElementById(targetId);
+      if (targetCode) {
+        navigator.clipboard.writeText(targetCode.textContent.trim()).then(() => {
+          btn.classList.add('copied');
+          const originalSVG = btn.innerHTML;
+          // Set to checkmark SVG
+          btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = originalSVG;
+          }, 2000);
+        });
+      }
+    });
+  });
 });
