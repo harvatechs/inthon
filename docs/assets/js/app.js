@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadPreset(presetName) {
     activePreset = presetName;
-    codeDisplay.textContent = PRESETS[presetName];
+    if (codeDisplay) codeDisplay.textContent = PRESETS[presetName];
     
     // Clear tabs active state
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -155,9 +155,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeTab) activeTab.classList.add('active');
 
     // Reset console
-    consoleOutput.innerHTML = `<div class="console-line system-line">&gt; Code loaded. Ready to execute ${presetName} agent.</div>`;
-    consoleStatus.textContent = 'Idle';
-    consoleStatus.style.color = 'var(--text-muted)';
+    if (consoleOutput) consoleOutput.innerHTML = `<div class="console-line system-line">&gt; Code loaded. Ready to execute ${presetName} agent.</div>`;
+    if (consoleStatus) {
+      consoleStatus.textContent = 'Idle';
+      consoleStatus.style.color = 'var(--text-muted)';
+    }
   }
 
   // Bind Tabs
@@ -169,45 +171,55 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Run Button Logic
-  runBtn.addEventListener('click', async () => {
-    if (isExecuting) return;
-    isExecuting = true;
-    runBtn.disabled = true;
-    consoleStatus.textContent = 'Running';
-    consoleStatus.style.color = 'var(--color-accent)';
-
-    consoleOutput.innerHTML = '<div class="console-line system-line">&gt; Initiating INTHON environment runtime...</div>';
-
-    const steps = SIMULATION_LOGS[activePreset];
-    for (let i = 0; i < steps.length; i++) {
-      await delay(Math.floor(Math.random() * 200) + 150); // fast execution
-      
-      const step = steps[i];
-      let lineClass = 'compiler-line';
-      if (step.type === 'run') lineClass = 'run-line';
-      if (step.type === 'error') lineClass = 'error-line';
-      
-      let content = step.text;
-      if (step.type === 'trace') {
-        content = `<pre class="trace-json"><code>${step.text}</code></pre>`;
+  if (runBtn) {
+    runBtn.addEventListener('click', async () => {
+      if (isExecuting) return;
+      isExecuting = true;
+      runBtn.disabled = true;
+      if (consoleStatus) {
+        consoleStatus.textContent = 'Running';
+        consoleStatus.style.color = 'var(--color-accent)';
       }
 
-      consoleOutput.innerHTML += `<div class="console-line ${lineClass}">${content}</div>`;
-      consoleOutput.scrollTop = consoleOutput.scrollHeight;
-    }
+      if (consoleOutput) consoleOutput.innerHTML = '<div class="console-line system-line">&gt; Initiating INTHON environment runtime...</div>';
 
-    consoleStatus.textContent = 'Success';
-    consoleStatus.style.color = '#28a745';
-    isExecuting = false;
-    runBtn.disabled = false;
-  });
+      const steps = SIMULATION_LOGS[activePreset];
+      for (let i = 0; i < steps.length; i++) {
+        await delay(Math.floor(Math.random() * 200) + 150); // fast execution
+        
+        const step = steps[i];
+        let lineClass = 'compiler-line';
+        if (step.type === 'run') lineClass = 'run-line';
+        if (step.type === 'error') lineClass = 'error-line';
+        
+        let content = step.text;
+        if (step.type === 'trace') {
+          content = `<pre class="trace-json"><code>${step.text}</code></pre>`;
+        }
+
+        if (consoleOutput) {
+          consoleOutput.innerHTML += `<div class="console-line ${lineClass}">${content}</div>`;
+          consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+      }
+
+      if (consoleStatus) {
+        consoleStatus.textContent = 'Success';
+        consoleStatus.style.color = '#28a745';
+      }
+      isExecuting = false;
+      runBtn.disabled = false;
+    });
+  }
 
   function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Load first default preset
-  loadPreset('research');
+  // Load first default preset if codeDisplay exists
+  if (codeDisplay) {
+    loadPreset('research');
+  }
 
   // Pipeline Interactive Hover Logic
   const flowSteps = document.querySelectorAll('.flow-step');
@@ -231,10 +243,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateDetails(stepKey) {
     const info = PIPELINE_STEPS[stepKey];
     if (info) {
-      detailTitle.textContent = info.title;
-      detailDesc.textContent = info.desc;
-      detailBadge.textContent = info.file;
-      detailBadge.style.display = 'inline-block';
+      if (detailTitle) detailTitle.textContent = info.title;
+      if (detailDesc) detailDesc.textContent = info.desc;
+      if (detailBadge) {
+        detailBadge.textContent = info.file;
+        detailBadge.style.display = 'inline-block';
+      }
     }
   }
 

@@ -20,7 +20,7 @@ payment = false
 memory_persist = true
 
 [pybridge]
-allowed_modules = []
+allowed_modules = ["random", "time"]
 
 [tools]
 web.search = true

@@ -38,14 +38,17 @@ class SemanticError(Exception):
                 break
         msg = self.args[0].replace(code + ": ", "")
 
-        span_info = ""
+        from ..errors_diagnostic import format_source_diagnostic
+
         if self.span:
-            span_info = (
-                f"  File: {self.span.file}\n"
-                f"  Line: {self.span.line}, Column: {self.span.col}\n"
+            return format_source_diagnostic(
+                self.span.file,
+                self.span.line,
+                self.span.col,
+                f"{code}: {msg}",
             )
 
-        return f"\n{code}:\n{msg}\n{span_info}"
+        return f"\n{code}:\n{msg}"
 
 
 class ScopeChain:

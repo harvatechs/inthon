@@ -1,0 +1,72 @@
+{
+  "hallucination": {
+    "name": "Hallucination Recovery",
+    "description": "Errors: Gracefully catches syntax/schema errors and retries successfully.",
+    "inthon": {
+      "time_ms": 2612.24,
+      "memory_mb": 48.02,
+      "success": true
+    },
+    "python": {
+      "time_ms": 58.46,
+      "memory_mb": 13.06,
+      "success": true
+    }
+  },
+  "multi_tool": {
+    "name": "Multi-Tool Chain",
+    "description": "Orchestration: Search web, read baseline configuration, combine data, and write result.",
+    "inthon": {
+      "time_ms": 752.88,
+      "memory_mb": 55.73,
+      "success": true
+    },
+    "python": {
+      "time_ms": 54.58,
+      "memory_mb": 13.13,
+      "success": true
+    }
+  },
+  "memory_squeeze": {
+    "name": "Context Window Squeeze",
+    "description": "Memory: Recall key fact after 100 chatty questions fill the episodic memory.",
+    "inthon": {
+      "time_ms": 946.38,
+      "memory_mb": 51.67,
+      "success": true
+    },
+    "python": {
+      "time_ms": 53.88,
+      "memory_mb": 12.87,
+      "success": true
+    }
+  },
+  "fuzzy_parsing": {
+    "name": "Fuzzy Parsing Test",
+    "description": "Syntax: Parse and run INTHON code wrapped inside conversational markdown padding.",
+    "inthon": {
+      "time_ms": 725.65,
+      "memory_mb": 47.72,
+      "success": true
+    },
+    "python": {
+      "time_ms": 59.23,
+      "memory_mb": 13.26,
+      "success": true
+    }
+  },
+  "infinite_loop": {
+    "name": "Infinite Loop Escapement",
+    "description": "Safety: Terminate infinite tool loop dynamically via max_tool_calls: 5 sandbox policy.",
+    "inthon": {
+      "time_ms": 627.68,
+      "memory_mb": 47.96,
+      "success": true
+    },
+    "python": {
+      "time_ms": 53.11,
+      "memory_mb": 13.21,
+      "success": true
+    }
+  }
+}

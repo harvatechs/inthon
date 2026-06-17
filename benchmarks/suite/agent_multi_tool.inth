@@ -1,0 +1,29 @@
+use tool web.search
+use py.pathlib
+use py.numpy as np
+
+agent MultiToolChainAgent {
+    goal "Combine real-time search with local configuration"
+    policy {
+        allow_network: true
+        allow_filesystem_write: true
+    }
+    plan {
+        // 1. Search the web for real-time fact
+        let search_res = web.search("highest building", limit: 1)
+        let first = search_res[0]
+        let snippet = first.snippet
+
+        // 2. Read local baseline file
+        let p_base = pathlib.Path("benchmarks/suite/baseline.txt")
+        let baseline = p_base.read_text()
+
+        // 3. Combine fact with local config
+        let combined = "Fact: " + snippet + "\n" + baseline
+
+        // 4. Write result to new file using np.savetxt (module-level call unpacks args correctly)
+        np.savetxt("benchmarks/suite/chain_result.txt", [combined], fmt: "%s")
+
+        return combined
+    }
+}

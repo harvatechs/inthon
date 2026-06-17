@@ -32,6 +32,9 @@ MANIFEST
 *.inth.log
 msedge_error.log
 msedge_out.log
+benchmarks/suite/chain_result.txt
+benchmarks/suite/chain_result_py.txt
+benchmarks/suite/test_save.txt
 
 # Virtual Environments
 .venv/

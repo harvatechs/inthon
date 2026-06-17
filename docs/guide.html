@@ -14,6 +14,7 @@ description: "A complete step-by-step developer guide and comprehensive language
       <li class="sidebar-item" data-target="guide-part3">3. Agents, Tools & Policies</li>
       <li class="sidebar-item" data-target="guide-part4">4. PyBridge Sandbox & Security</li>
       <li class="sidebar-item" data-target="guide-part5">5. Advanced Primitives & Resiliency</li>
+      <li class="sidebar-item" data-target="guide-part6">6. Production Templates & Patterns</li>
     </ul>
   </aside>
   
@@ -36,7 +37,7 @@ description: "A complete step-by-step developer guide and comprehensive language
       <div class="guide-cards">
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part1\']').click()">
           <h3>1. Getting Started & Tooling</h3>
-          <p>Prerequisites, environment setup, CLI reference, and compiling standalone Windows installer binaries.</p>
+          <p>Prerequisites, environment setup, CLI reference, and configuring project settings inside <code>inthon.toml</code>.</p>
         </div>
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part2\']').click()">
           <h3>2. Scoping, Operators & Closures</h3>
@@ -54,6 +55,10 @@ description: "A complete step-by-step developer guide and comprehensive language
           <h3>5. Advanced Primitives & Resiliency</h3>
           <p>Human-in-the-loop approval gates, semantic memory stores, and exponential backoff retry math.</p>
         </div>
+        <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part6\']').click()">
+          <h3>6. Production Templates & Patterns</h3>
+          <p>Complete, production-ready boilerplates for web scrapers, data pipelines, payment gates, and memory-driven agents.</p>
+        </div>
       </div>
 
       <h2>Why Learn INTHON?</h2>
@@ -69,7 +74,7 @@ description: "A complete step-by-step developer guide and comprehensive language
     <!-- PART 1 SECTION -->
     <section id="guide-part1" class="guide-section">
       <h1 class="guide-title">Part 1: Getting Started & Tooling</h1>
-      <p class="guide-lead">Set up your local environment, run your first program, and explore CLI compiler commands.</p>
+      <p class="guide-lead">Set up your local environment, run your first program, configure project metadata, and explore CLI compiler commands.</p>
 
       <h2>1. Prerequisites</h2>
       <p>Ensure your local host has Python version 3.11 or higher and the `pip` package manager installed. Verify your environment:</p>
@@ -94,7 +99,42 @@ pip install -e .[dev,data,ml]</code></pre>
       <p>Verify that the command line tool is registered on the system PATH:</p>
       <pre><code class="language-bash">inthon --help</code></pre>
 
-      <h2>3. Your First Program: <code>hello.inth</code></h2>
+      <h2>3. Configuring <code>inthon.toml</code></h2>
+      <p>A project is defined by an <code>inthon.toml</code> file in the working directory. This file configures type checking sensitivity, default sandbox quotas, and safety permissions:</p>
+      <pre><code class="language-toml"># inthon.toml
+[project]
+name = "inthon-default"
+version = "0.1.0"
+description = "Default INTHON configuration"
+entry = "main.inth"
+
+[inthon]
+runtime = "python"
+version = ">=0.1.0"
+
+[type_checking]
+mode = "strict" # options: "strict", "warn", "none"
+
+[permissions]
+network = false        # Controls default raw network socket operations
+filesystem = "read_only" # options: "read_write", "read_only", "none"
+shell = false          # Blocks subprocess execution
+payment = false        # Blocks financial transactions by default
+memory_persist = true  # Enables episodic SQL memory persistence
+
+[pybridge]
+allowed_modules = ["numpy", "pandas"] # Whitelisted python modules for imports
+
+[sandbox]
+max_runtime_sec = 300  # Hard timeout duration
+max_cost_usd = 1.0     # Maximum LLM cost cap allowed
+max_tool_calls = 50    # Call volume quota
+
+[trace]
+enabled = true
+output_dir = ".inthon/traces"</code></pre>
+
+      <h2>4. Your First Program: <code>hello.inth</code></h2>
       <p>Create a file named <code>hello.inth</code> in your text editor:</p>
       <pre><code class="language-inth">// hello.inth
 // INTHON supports single-line comments using double-slashes
@@ -106,13 +146,14 @@ fn greet(name: str) -> str {
 let message = greet("INTHON Developer")
 message</code></pre>
 
-      <h2>4. Executing code</h2>
+      <h2>5. Executing code</h2>
       <p>Use the CLI to run the program via the AST-walking interpreter:</p>
       <pre><code class="language-bash">inthon run hello.inth</code></pre>
       <p><strong>Output:</strong></p>
       <pre><code class="language-text">Hello, INTHON Developer!</code></pre>
 
-      <h2>5. CLI Tooling Reference</h2>
+      <h2>6. CLI Tooling Reference</h2>
+      <p>The INTHON CLI provides a complete set of utilities for development, linting, formatting, and inspecting compilation steps.</p>
       <table class="guide-table">
         <thead>
           <tr>
@@ -130,12 +171,12 @@ message</code></pre>
           <tr>
             <td><code>check</code></td>
             <td><code>inthon check &lt;file.inth&gt;</code></td>
-            <td>Lints and statically verifies type safety and tool references without executing.</td>
+            <td>Lints and statically verifies type safety and tool references without executing. Displays compile-time errors.</td>
           </tr>
           <tr>
             <td><code>fmt</code></td>
             <td><code>inthon fmt &lt;file.inth&gt; --write</code></td>
-            <td>Formats spacing, brackets, and newlines. <code>--write</code> updates the file.</td>
+            <td>Formats spacing, brackets, and newlines. <code>--write</code> updates the file in place.</td>
           </tr>
           <tr>
             <td><code>ast</code></td>
@@ -145,20 +186,42 @@ message</code></pre>
           <tr>
             <td><code>ir</code></td>
             <td><code>inthon ir &lt;file.inth&gt;</code></td>
-            <td>Prints the lowered Intermediate Representation tree serialized as JSON.</td>
+            <td>Prints the lowered bytecode Intermediate Representation tree serialized as JSON.</td>
           </tr>
         </tbody>
       </table>
 
+      <h3>Statically Checking Variables & Types</h3>
+      <p>Before executing in production, always validate your scripts using the linter:</p>
+      <pre><code class="language-bash">inthon check hello.inth</code></pre>
+
       <h3>Specifying Execution Budgets</h3>
       <p>You can override default interpreter cost limits directly from the CLI:</p>
       <pre><code class="language-bash">inthon run hello.inth --max-cost 0.50 --trace-out trace_log.json</code></pre>
+
+      <h3>AST and Bytecode IR Diagnostics</h3>
+      <p>To inspect what the compiler produces, run the <code>ir</code> compiler pass:</p>
+      <pre><code class="language-bash">inthon ir hello.inth</code></pre>
+      <p>The lowered bytecode serialized output is represented as JSON instructions, mapping names to values for execution:</p>
+      <pre><code class="language-json">{
+  "constants": ["Hello, ", "!", "INTHON Developer"],
+  "instructions": [
+    {"op": "LOAD_CONST", "arg": 2},
+    {"op": "STORE_NAME", "arg": "name"},
+    {"op": "LOAD_CONST", "arg": 0},
+    {"op": "LOAD_NAME", "arg": "name"},
+    {"op": "BINARY_ADD"},
+    {"op": "LOAD_CONST", "arg": 1},
+    {"op": "BINARY_ADD"},
+    {"op": "RETURN_VALUE"}
+  ]
+}</code></pre>
     </section>
 
     <!-- PART 2 SECTION -->
     <section id="guide-part2" class="guide-section">
       <h1 class="guide-title">Part 2: Scoping, Operators & Closures</h1>
-      <p class="guide-lead">Deep-dive into INTHON scoping rules, data types, operators precedence, and call frame stacks.</p>
+      <p class="guide-lead">Deep-dive into INTHON scoping rules, data types, operators precedence, control flow statements, and call frame stacks.</p>
 
       <h2>1. Block Scoping (<code>let</code> and <code>const</code>)</h2>
       <p>INTHON implements strict block scoping. Variables declared within a block <code>{}</code> are invisible outside of it.</p>
@@ -178,34 +241,137 @@ if x > 5 {
 }
 // z // ERROR: Variable 'z' is undefined in this scope</code></pre>
 
-      <h2>2. Complete Operators Reference</h2>
-      <p>INTHON v0.1 evaluates operators using left-to-right precedence. Brackets are recommended to enforce specific mathematical precedence.</p>
+      <h2>2. Complete Data Types Reference</h2>
+      <p>INTHON features static type checking with structural support for primitive structures, functional objects, and generic containers.</p>
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Example Declaration</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>int</code></td>
+            <td>Signed 64-bit integer values.</td>
+            <td><code>let a: int = -42</code></td>
+          </tr>
+          <tr>
+            <td><code>float</code></td>
+            <td>64-bit double precision float points.</td>
+            <td><code>let b: float = 0.005</code></td>
+          </tr>
+          <tr>
+            <td><code>str</code></td>
+            <td>UTF-8 text character arrays.</td>
+            <td><code>let c: str = "agent-1"</code></td>
+          </tr>
+          <tr>
+            <td><code>bool</code></td>
+            <td>Boolean binary switches.</td>
+            <td><code>let d: bool = true</code></td>
+          </tr>
+          <tr>
+            <td><code>list[T]</code></td>
+            <td>Dynamic list of uniform type <code>T</code>.</td>
+            <td><code>let e: list[str] = ["url1", "url2"]</code></td>
+          </tr>
+          <tr>
+            <td><code>dict[K, V]</code></td>
+            <td>Key-value map mapping keys of type <code>K</code> to values of type <code>V</code>.</td>
+            <td><code>let f: dict[str, float] = {"rate": 0.82}</code></td>
+          </tr>
+          <tr>
+            <td><code>fn(A1, A2) -> R</code></td>
+            <td>First-class callable function type.</td>
+            <td><code>let g: fn(int) -> int = doubler</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>3. Operators & Precedence Table</h2>
+      <p>Operators are evaluated according to a strict mathematical hierarchy. Parentheses <code>()</code> should be used to override defaults:</p>
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Operators</th>
+            <th>Description</th>
+            <th>Associativity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1 (Highest)</td>
+            <td><code>!</code>, <code>-</code> (unary)</td>
+            <td>Logical negation, numeric sign conversion</td>
+            <td>Right-to-left</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><code>*</code>, <code>/</code></td>
+            <td>Multiplication, division</td>
+            <td>Left-to-right</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><code>+</code>, <code>-</code></td>
+            <td>Addition / Concatenation, subtraction</td>
+            <td>Left-to-right</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td>
+            <td>Relational comparison checks</td>
+            <td>Left-to-right</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><code>==</code>, <code>!=</code></td>
+            <td>Equality, inequality verification</td>
+            <td>Left-to-right</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><code>&amp;&amp;</code></td>
+            <td>Logical AND</td>
+            <td>Left-to-right</td>
+          </tr>
+          <tr>
+            <td>7 (Lowest)</td>
+            <td><code>||</code></td>
+            <td>Logical OR</td>
+            <td>Left-to-right</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>4. Control Flow Structures</h2>
+      <p>Control flow structures control code branch executions. Blocks are bounded by brackets <code>{}</code> and do not require parentheses around expression conditions.</p>
       
-      <h3>Mathematical Operators</h3>
-      <ul>
-        <li><code>+</code> (Addition / String Concatenation): Adds numbers or merges text.</li>
-        <li><code>-</code> (Subtraction): Subtracts numbers.</li>
-        <li><code>*</code> (Multiplication): Multiplies numbers.</li>
-        <li><code>/</code> (Division): Divides floats.</li>
-      </ul>
+      <h3>Branching (<code>if</code>, <code>elif</code>, <code>else</code>)</h3>
+      <pre><code class="language-inth">let score = 85
+let grade = ""
 
-      <h3>Comparison & Logical Operators</h3>
-      <ul>
-        <li><code>==</code> (Equality), <code>!=</code> (Inequality).</li>
-        <li><code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>: Relational comparisons.</li>
-        <li><code>&&</code> (Logical AND), <code>||</code> (Logical OR), <code>!</code> (Logical NOT).</li>
-      </ul>
+if score >= 90 {
+    grade = "A"
+} elif score >= 80 {
+    grade = "B"
+} else {
+    grade = "C"
+}</code></pre>
 
-      <h2>3. Collections & Custom Types</h2>
-      <p>INTHON lists and dicts are dynamic and strictly checked. Typing annotations are declared using brackets: <code>list[T]</code> and <code>dict[K, V]</code>.</p>
-      <pre><code class="language-inth">let items: list[str] = ["gpt-4o", "gemini-3.5"]
-let data: dict[str, float] = {"latency": 45.2, "cost": 0.001}</code></pre>
-      
-      <p>Use standard index notation to query and modify values:</p>
-      <pre><code class="language-inth">let first_item = items[0]
-data["cost"] = 0.002</code></pre>
+      <h3>Iteration (<code>while</code>)</h3>
+      <p>Loops execution while the condition resolves to <code>true</code>:</p>
+      <pre><code class="language-inth">let i = 0
+let sum = 0
+while i < 10 {
+    sum = sum + i
+    i = i + 1
+}</code></pre>
 
-      <h2>4. Functions & Closures</h2>
+      <h2>5. Functions & Closures</h2>
       <p>Functions are declared with <code>fn</code>, parameter names, type signatures, and an optional return type.</p>
       
       <h3>Activation Call Frames</h3>
@@ -227,7 +393,7 @@ let result = double(10) // Returns 20</code></pre>
     <!-- PART 3 SECTION -->
     <section id="guide-part3" class="guide-section">
       <h1 class="guide-title">Part 3: Agents, Tools & Policies</h1>
-      <p class="guide-lead">Learn how to declare structured agent containers, import capabilities, and apply sandbox constraints.</p>
+      <p class="guide-lead">Learn how to declare structured agent containers, import capabilities, write custom tools, and apply sandbox constraints.</p>
 
       <h2>1. Structured Agent Container</h2>
       <p>The <code>agent</code> block maps an execution lifecycle. It encapsulates a goals directive, boundary interfaces, sandboxing policies, and the tool workflow code.</p>
@@ -266,7 +432,55 @@ let result = double(10) // Returns 20</code></pre>
 use tool file.write</code></pre>
       <p>This imports the structural parameter schema of the tool. The semantic analyzer uses these schemas to verify argument counts, types, and names prior to compilation, ensuring the LLM cannot emit malformed API structures.</p>
 
-      <h2>3. Complete Policy Reference</h2>
+      <h2>3. Writing & Registering Custom Tools</h2>
+      <p>Developers can build their own custom tool integrations. This involves two steps: writing the execution code in Python and registering it with the compiler's tool schema registry.</p>
+      
+      <h3>Step A: Write the Python Tool Logic</h3>
+      <p>Write a standard Python function that handles inputs and executes the actions:</p>
+      <pre><code class="language-python"># tools/custom_io.py
+def file_writer_impl(filepath: str, content: str) -> dict:
+    """Writes content to a specific file within the sandbox directory."""
+    import os
+    try:
+        # Enforce sandbox scoping
+        safe_path = os.path.abspath(filepath)
+        if not safe_path.startswith(os.getcwd()):
+            return {"status": "error", "message": "Sandbox path violation"}
+            
+        with open(safe_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return {"status": "success", "written_bytes": len(content)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}</code></pre>
+
+      <h3>Step B: Register Tool Schema & Bind Callbacks</h3>
+      <p>Define specifications and register them using the <code>ToolRegistry</code> API in your application bootstrap routine:</p>
+      <pre><code class="language-python"># app.py
+from inthon.tools.registry import ToolRegistry
+from inthon.tools.schema import ToolSpec, ToolArgSchema, ToolCostModel
+from tools.custom_io import file_writer_impl
+
+def init_registry() -> ToolRegistry:
+    registry = ToolRegistry()
+    
+    registry.register(
+        spec=ToolSpec(
+            name="file.write",
+            description="Write text contents securely to local disk",
+            input_schema={
+                "filepath": ToolArgSchema(type="str", description="Target path relative to project"),
+                "content": ToolArgSchema(type="str", description="UTF-8 plain text data to write"),
+            },
+            output_schema={"status": "str", "written_bytes": "int"},
+            side_effects=["filesystem"],
+            required_permissions=["allow_fs"],
+            cost_model=ToolCostModel(base_usd=0.0, per_call_usd=0.001)
+        ),
+        impl=file_writer_impl
+    )
+    return registry</code></pre>
+
+      <h2>4. Complete Policy Reference</h2>
       <p>The <code>policy</code> block contains the execution boundaries. If code attempts to cross these limits, the runtime raises a <code>PolicyViolationError</code>.</p>
       
       <table class="guide-table">
@@ -309,6 +523,12 @@ use tool file.write</code></pre>
             <td><code>false</code></td>
             <td>Controls local disk read and write privileges.</td>
           </tr>
+          <tr>
+            <td><code>allow_payment</code></td>
+            <td><code>bool</code></td>
+            <td><code>false</code></td>
+            <td>Controls execution of transaction charges or Stripe API hooks.</td>
+          </tr>
         </tbody>
       </table>
 
@@ -341,7 +561,7 @@ agent Researcher {
       <p class="guide-lead">Import standard Python libraries safely. Leverage NumPy and Pandas under strict capability validation checks.</p>
 
       <h2>1. The Import Hook Filter (<code>sys.meta_path</code>)</h2>
-      <p>To enforce absolute sandbox safety, PyBridge intercepts module requests before loading them onto the Python process. It injects a custom meta-importer hook inside <code>sys.meta_path</code>. When the script parses <code>use py.numpy</code>, the hook performs strict name validations.</p>
+      <p>To enforce sandbox safety, PyBridge intercepts module requests before loading them onto the Python process. It injects a custom meta-importer hook inside <code>sys.meta_path</code>. When the script parses <code>use py.numpy</code>, the hook performs strict name validations.</p>
 
       <h3>SVG Diagram: PyBridge Sandbox Interception Flow</h3>
       <div class="sandbox-diagram-container">
@@ -372,14 +592,46 @@ agent Researcher {
       <h2>2. Permitted vs Blocked Packages</h2>
       <p>Pre-approved libraries contain no filesystem writes or system access wrappers:</p>
       <ul>
-        <li><strong>Approved</strong>: <code>numpy</code>, <code>pandas</code>, <code>math</code>, <code>json</code>, <code>datetime</code>, <code>collections</code>.</li>
-        <li><strong>Blocked</strong>: <code>os</code>, <code>sys</code>, <code>subprocess</code>, <code>ctypes</code>, <code>socket</code>, <code>shutil</code>.</li>
+        <li><strong>Approved Standard</strong>: <code>numpy</code>, <code>pandas</code>, <code>math</code>, <code>json</code>, <code>datetime</code>, <code>collections</code>, <code>itertools</code>, <code>functools</code>, <code>re</code>, <code>pathlib</code>.</li>
+        <li><strong>Approved Advanced</strong>: <code>torch</code>, <code>transformers</code>, <code>sklearn</code>, <code>scipy</code>, <code>matplotlib</code>, <code>seaborn</code>, <code>plotly</code>.</li>
+        <li><strong>Blocked System Modules</strong>: <code>os</code>, <code>sys</code>, <code>subprocess</code>, <code>ctypes</code>, <code>shutil</code>, <code>socket</code>, <code>multiprocessing</code>, <code>importlib</code>.</li>
       </ul>
-      <p>If you need to permit a new library, add it to the allowlist in <code>inthon/pybridge/allowlist.py</code>.</p>
+      <p>If you need to permit a new library for custom data environments, append it to the configuration whitelists inside your local <code>inthon.toml</code> configuration file:</p>
+      <pre><code class="language-toml">[pybridge]
+allowed_modules = ["scipy", "statsmodels"]</code></pre>
 
       <h2>3. Attribute Level Protection (<code>InthonPyObject</code>)</h2>
       <p>Even if a module is allowed, standard library functions can sometimes be exploited. PyBridge wraps all returned packages inside a proxy object called <code>InthonPyObject</code>.</p>
       <p>This proxy class overrides the Python attribute resolution dunder methods (<code>__getattribute__</code>, <code>__setattr__</code>). If code attempts to access private properties (e.g. <code>np.__dict__</code>) or traverse namespaces to access system commands (e.g. <code>np.__config__.__builtins__['eval']</code>), the proxy raises a <code>SecurityViolation</code> exception and terminates execution.</p>
+
+      <h3>Blocked Specific API Functions</h3>
+      <p>Certain whitelisted libraries have specific features restricted for execution safety. The <code>BLOCKED_ATTRIBUTES</code> configuration blocks the following access points:</p>
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>Module Name</th>
+            <th>Blocked Attribute Path</th>
+            <th>Safety Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>pandas</code></td>
+            <td><code>pandas.eval</code></td>
+            <td>Prevents executing arbitrary Python code strings.</td>
+          </tr>
+          <tr>
+            <td><code>pandas</code></td>
+            <td><code>pandas.read_clipboard</code></td>
+            <td>Prevents accessing host operating system clipboards.</td>
+          </tr>
+          <tr>
+            <td><code>numpy</code></td>
+            <td><code>numpy.frompyfunc</code></td>
+            <td>Prevents wrapping arbitrary python execution scopes.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <!-- PART 5 SECTION -->
@@ -420,7 +672,11 @@ agent Researcher {
 let val = recall "electrical resistance" from session</code></pre>
       
       <h3>Storage Architecture</h3>
-      <p>Under the hood, memory spaces are backed by a local SQLite relational store. The database computes embeddings of the textual statement using cosine similarity metric indexes to fetch the most semantically relevant fact matches on demand.</p>
+      <p>Under the hood, memory spaces are backed by a local SQLite relational store. When <code>remember</code> is called, the statement text is written to the database along with its calculated text embeddings vector. When <code>recall</code> is invoked, the engine searches the database for statements that have the highest cosine similarity with the query:</p>
+      <div style="text-align: center; margin: 15px 0; font-size: 1.1rem; color: var(--color-accent);">
+        \(\text{Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}\)
+      </div>
+      <p>This allows the agent to dynamically recall relevant contextual statements without querying raw external indexes on every step.</p>
     
       <h2>3. Resilient Retries & Backoff Mathematics</h2>
       <p>External APIs often fail due to network instability. INTHON includes structured <code>retry</code> loops with automatic backoff options:</p>
@@ -437,6 +693,191 @@ let val = recall "electrical resistance" from session</code></pre>
         \(t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\)
       </div>
       <p>Where <code>base</code> defaults to 1.0 second, <code>attempt</code> represents the zero-indexed retry number, and <code>jitter</code> is a random offset variable to prevent request synchronization bottlenecks on the host server.</p>
+    </section>
+
+    <!-- PART 6 SECTION -->
+    <section id="guide-part6" class="guide-section">
+      <h1 class="guide-title">Part 6: Production Templates & Design Patterns</h1>
+      <p class="guide-lead">Ready-to-use, copy-pasteable boilerplates and design patterns to solve common challenges in professional agent systems.</p>
+
+      <h2>Template 1: Web Scraper & Summarizer Agent</h2>
+      <p>This template demonstrates how to search the web, fetch the page content of matching links, and structure a unified research response under safety restrictions.</p>
+      <pre><code class="language-inth">// scraper_summarizer.inth
+use tool web.search
+use tool web.read
+
+agent ScraperAgent {
+    goal "Locate and summarize the key findings about new energy technologies"
+    inputs {
+        topic: str,
+        limit: int
+    }
+    outputs {
+        summary_report: dict[str, str]
+    }
+    policy {
+        allow_network: true
+        max_tool_calls: 5
+        max_cost_usd: 0.05
+    }
+    plan {
+        let results = web.search(topic, limit: limit)
+        let report = {}
+        let i = 0
+        
+        while i < limit {
+            let item = results[i]
+            let link = item["url"]
+            let title = item["title"]
+            
+            // Read content safely
+            let content = web.read(link)
+            
+            // Perform basic parsing and extract snippets
+            let snippet = content
+            if content.length > 300 {
+                snippet = content.slice(0, 300) + "..."
+            }
+            
+            report[title] = snippet
+            i = i + 1
+        }
+        
+        return {
+            "query_topic": topic,
+            "summary_report": report
+        }
+    }
+}</code></pre>
+
+      <h2>Template 2: Data Analysis & CSV Analytics Pipeline</h2>
+      <p>This template demonstrates how to leverage PyBridge to load dataset arrays, perform mathematical analysis using Pandas and NumPy, and return structured statistical results.</p>
+      <pre><code class="language-inth">// data_analytics.inth
+use py.pandas as pd
+use py.numpy as np
+
+fn process_metrics(data_points: list[dict]) -> dict {
+    // Convert input list of dictionaries to Pandas DataFrame safely
+    let df = pd.DataFrame(data_points)
+    
+    // Calculate statistics using pandas wrappers
+    let prices = df["price"]
+    let average_price = prices.mean()
+    let median_price = prices.median()
+    let deviation = prices.std()
+    
+    // Detect outliers using numpy math utilities
+    let threshold = average_price + deviation
+    let outliers = df[prices > threshold]
+    let outlier_items = outliers["item"].to_list()
+    
+    return {
+        "mean": average_price,
+        "median": median_price,
+        "std_dev": deviation,
+        "anomalous_outliers": outlier_items
+    }
+}
+
+// Execute logic with mock database values
+let dataset = [
+    {"item": "Server Unit A", "price": 1500.0},
+    {"item": "Server Unit B", "price": 1600.0},
+    {"item": "GPU Adapter X", "price": 4500.0}, // Outlier price point
+    {"item": "Cabling Kit", "price": 150.0},
+    {"item": "Network Switch", "price": 800.0}
+]
+
+let stats = process_metrics(dataset)
+stats</code></pre>
+
+      <h2>Template 3: HITL Stripe Payment Gate</h2>
+      <p>This template sets up a safe financial coordinator that calculates tier pricing and routes execution control through the human approval gateway before charging payments.</p>
+      <pre><code class="language-inth">// billing_agent.inth
+use tool stripe.charge
+
+agent BillingAgent {
+    goal "Securely charge clients based on execution limits"
+    inputs {
+        client_id: str,
+        compute_seconds: int,
+        tier: str
+    }
+    outputs {
+        charge_status: str,
+        transaction_id: str
+    }
+    policy {
+        allow_payment: true
+        max_cost_usd: 0.10
+    }
+    plan {
+        // Calculate price dynamically
+        let base_rate = 0.05
+        if tier == "enterprise" {
+            base_rate = 0.02
+        }
+        
+        let calculated_amount = compute_seconds * base_rate
+        
+        // Enforce human validation block prior to payment API call
+        approve client_payment before stripe.charge(
+            customer: client_id, 
+            amount: calculated_amount,
+            currency: "USD"
+        )
+        
+        let response = stripe.charge(calculated_amount)
+        return {
+            "charge_status": response["status"],
+            "transaction_id": response["id"]
+        }
+    }
+}</code></pre>
+
+      <h2>Template 4: Episodic Memory-Driven Q&A Agent</h2>
+      <p>This template showcases how an agent can store facts in its episodic memory store during interactions, and query it later via semantic search. If memory is empty, the agent falls back to external search.</p>
+      <pre><code class="language-inth">// memory_agent.inth
+use tool web.search
+
+agent MemoryAgent {
+    goal "Answer queries using historical context when available"
+    inputs {
+        user_query: str
+    }
+    outputs {
+        response_text: str,
+        context_source: str
+    }
+    policy {
+        allow_network: true
+        allow_memory_persist: true
+    }
+    plan {
+        // Attempt to recall historical facts semantically matching the query
+        let matched_fact = recall user_query from session
+        
+        if matched_fact != "" {
+            return {
+                "response_text": "Recalled context: " + matched_fact,
+                "context_source": "episodic_memory"
+            }
+        }
+        
+        // Fallback to searching the web if no relevant facts are remembered
+        let search_results = web.search(user_query, limit: 1)
+        let first_result = search_results[0]
+        let snippet = first_result["snippet"]
+        
+        // Remember this fact for future queries in the user session
+        remember snippet in session
+        
+        return {
+            "response_text": snippet,
+            "context_source": "web_search_fallback"
+        }
+    }
+}</code></pre>
     </section>
 
   </main>

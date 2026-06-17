@@ -192,5 +192,17 @@ def fmt_cmd(
         print(formatted)
 
 
+@app.command("repl")
+def repl_cmd(
+    mock_tools: bool = typer.Option(True, "--mock/--real-tools"),
+    vm: bool = typer.Option(
+        False, "--vm", help="Use bytecode VM backend (faster for loops)"
+    ),
+) -> None:
+    """Launch the interactive INTHON REPL."""
+    from .repl import run_repl
+    run_repl(use_vm=vm, mock_tools=mock_tools)
+
+
 if __name__ == "__main__":
     app()

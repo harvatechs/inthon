@@ -1,0 +1,33 @@
+use tool web.search
+
+agent HallucinationAgent {
+    goal "Recover from runtime hallucinations using retry logic"
+    policy {
+        allow_network: true
+    }
+    plan {
+        let result = ""
+        let attempts = 0
+
+        retry 3 with backoff none {
+            attempts = attempts + 1
+            if attempts == 1 {
+                // Hallucination 1: Schema validation error (missing required query parameter)
+                web.search(limit: 1)
+            }
+            if attempts == 2 {
+                // Hallucination 2: Schema validation error (pass string instead of int)
+                web.search(query: "INTHON", limit: "high")
+            }
+            if attempts == 3 {
+                // Attempt 3: Valid call
+                let search_res = web.search(query: "INTHON", limit: 1)
+                let first = search_res[0]
+                result = first.title
+            }
+        } catch err {
+            result = "Failed to recover: " + err
+        }
+        return result
+    }
+}

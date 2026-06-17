@@ -1,0 +1,13 @@
+let first_msg = "Secret key is: ZOLTREX_VIP_KEY"
+remember first_msg in session
+
+let i = 0
+while i < 100 {
+    let msg = "Chatty user question about system status or billing updates in Zoltrex Arena"
+    remember msg in session
+    i = i + 1
+}
+
+// Recall the key by semantic query
+secret_val = recall "secret key" from session
+secret_val

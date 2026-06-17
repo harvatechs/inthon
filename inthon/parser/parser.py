@@ -4,6 +4,7 @@ from typing import Any
 import lark
 from ..ast.nodes import Program
 from .transformer import InthonTransformer
+from ..errors_diagnostic import SOURCE_CACHE, format_source_diagnostic
 
 _GRAMMAR_PATH = Path(__file__).parent / "grammar.lark"
 _GRAMMAR_TEXT = _GRAMMAR_PATH.read_text(encoding="utf-8")
@@ -22,13 +23,11 @@ class ParseError(Exception):
         self.filename = filename
 
     def __str__(self) -> str:
-        return (
-            f"INTHON_PARSE_001:\n"
-            f"Expected token/statement.\n"
-            f"File: {self.filename}\n"
-            f"Line: {self.line}\n"
-            f"Column: {self.col}\n"
-            f"Hint: check syntax around line {self.line}."
+        return format_source_diagnostic(
+            self.filename,
+            self.line,
+            self.col,
+            f"INTHON_PARSE_001: Expected token/statement. {self.args[0]}",
         )
 
 
@@ -36,6 +35,21 @@ def parse(source: str, filename: str = "<stdin>") -> Program:
     """Parse INTHON source text into an AST. Raises ParseError on failure."""
     # Strip carriage returns to ensure Lark parser gets clean newlines
     source = source.replace("\r\n", "\n")
+
+    # Extract code from <inthon>...</inthon> or <inth>...</inth> tags
+    import re
+    xml_match = re.search(r"<(inthon|inth)>\s*(.*?)\s*</\1>", source, re.DOTALL | re.IGNORECASE)
+    if xml_match:
+        source = xml_match.group(2)
+    else:
+        # Extract code from markdown blocks: ```inthon ... ```
+        md_match = re.search(r"```(?:inthon|inth)?\s*(.*?)\s*```", source, re.DOTALL | re.IGNORECASE)
+        if md_match:
+            source = md_match.group(1)
+
+    # Cache the processed source text for diagnostics formatting
+    SOURCE_CACHE[filename] = source
+
     try:
         tree = _PARSER.parse(source)
         transformer = InthonTransformer(filename=filename)
@@ -46,7 +60,7 @@ def parse(source: str, filename: str = "<stdin>") -> Program:
             line=getattr(exc, "line", 0),
             col=getattr(exc, "column", 0),
             filename=filename,
-        ) from exc
+        )
 
 
 def _format_lark_error(exc: lark.exceptions.UnexpectedInput) -> str:

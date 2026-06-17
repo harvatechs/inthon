@@ -1,0 +1,45 @@
+// Fibonacci Sequence implementation in INTHON
+
+// 1. Recursive Approach (Exponential Time Complexity: O(2^n))
+fn fib_recursive(n: int) -> int {
+    if n <= 0 {
+        return 0
+    }
+    if n == 1 {
+        return 1
+    }
+    return fib_recursive(n - 1) + fib_recursive(n - 2)
+}
+
+// 2. Iterative Approach (Linear Time Complexity: O(n), Space Complexity: O(1))
+fn fib_iterative(n: int) -> int {
+    if n <= 0 {
+        return 0
+    }
+    if n == 1 {
+        return 1
+    }
+    
+    let prev = 0
+    let curr = 1
+    let i = 2
+    
+    while i <= n {
+        let temp = prev + curr
+        prev = curr
+        curr = temp
+        i = i + 1
+    }
+    return curr
+}
+
+// Calculate the 10th Fibonacci number using both approaches
+let result_rec = fib_recursive(10)
+let result_iter = fib_iterative(10)
+
+// Let the interpreter return a dictionary containing the results
+let results = {
+    "10th_fibonacci_recursive": result_rec,
+    "10th_fibonacci_iterative": result_iter
+}
+results

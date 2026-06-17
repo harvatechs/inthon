@@ -1,0 +1,4 @@
+KORA Institute of Technology - Baseline Config v2.4
+System Status: ACTIVE
+Memory Allocation: OPTIMIZED
+Sandbox Isolation: SECURE

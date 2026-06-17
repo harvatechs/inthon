@@ -1,0 +1,16 @@
+use tool web.search
+
+agent InfiniteLoopAgent {
+    goal "Find a non-existent secret in an infinite loop"
+    policy {
+        allow_network: true
+        max_tool_calls: 5
+    }
+    plan {
+        let found = false
+        while not found {
+            let res = web.search("secret_query")
+            // This loop will run indefinitely unless halted by the sandbox policy
+        }
+    }
+}
