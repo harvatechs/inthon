@@ -1,5 +1,4 @@
 from __future__ import annotations
-import sys
 from .parser.parser import parse, ParseError
 from .semantic.analyzer import SemanticAnalyzer
 from .semantic.scope import SemanticError
@@ -12,7 +11,7 @@ from .vm.compiler import compile_program
 from .vm.machine import InthonVM
 
 try:
-    import readline
+    import readline  # noqa: F401
 except ImportError:
     pass
 
@@ -63,15 +62,21 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
                     print("  .vars           - Print currently defined variables")
                     continue
                 elif cmd == "memory":
-                    print(f"Memory namespaces: {ctx.memory.namespaces() if hasattr(ctx.memory, 'namespaces') else ctx.memory}")
+                    print(
+                        f"Memory namespaces: {ctx.memory.namespaces() if hasattr(ctx.memory, 'namespaces') else ctx.memory}"
+                    )
                     continue
                 elif cmd == "trace":
                     import json
+
                     print(json.dumps(ctx.to_trace_summary(), indent=2))
                     continue
                 elif cmd == "vars":
                     if ctx._scope_stack:
-                        py_vars = {k: to_python(v) if isinstance(v, InthonValue) else v for k, v in ctx._scope_stack[-1].items()}
+                        py_vars = {
+                            k: to_python(v) if isinstance(v, InthonValue) else v
+                            for k, v in ctx._scope_stack[-1].items()
+                        }
                         print(f"Variables: {py_vars}")
                     continue
                 else:
@@ -99,7 +104,11 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
                 program = parse(source_text, filename="<stdin>")
             except ParseError as pe:
                 # If it looks like unexpected EOF or trailing structure, read more lines
-                if "Unexpected input" in str(pe) and (open_braces > 0 or line.strip().endswith("{") or line.strip().endswith("[")):
+                if "Unexpected input" in str(pe) and (
+                    open_braces > 0
+                    or line.strip().endswith("{")
+                    or line.strip().endswith("[")
+                ):
                     continue
                 print(pe)
                 input_lines.clear()
@@ -113,6 +122,7 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
 
             # Transform the last statement to ReturnStmt if it is an ExprStmt
             from .ast import nodes as N
+
             if program.body and isinstance(program.body[-1], N.ExprStmt):
                 expr_stmt = program.body[-1]
                 new_last = N.ReturnStmt(value=expr_stmt.expr, span=expr_stmt.span)
@@ -140,12 +150,18 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
                     result_val = vm.execute(code)
                     if result_val is not None:
                         # Output values cleanly
-                        py_val = to_python(result_val) if isinstance(result_val, InthonValue) else result_val
+                        py_val = (
+                            to_python(result_val)
+                            if isinstance(result_val, InthonValue)
+                            else result_val
+                        )
                         if not isinstance(py_val, InthonNone):
                             print(repr(py_val))
                 else:
                     result_val = interp.run(program)
-                    if result_val is not None and not isinstance(result_val, InthonNone):
+                    if result_val is not None and not isinstance(
+                        result_val, InthonNone
+                    ):
                         print(repr(to_python(result_val)))
             except IntHonRuntimeError as re:
                 print(re)

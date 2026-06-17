@@ -201,6 +201,7 @@ def repl_cmd(
 ) -> None:
     """Launch the interactive INTHON REPL."""
     from .repl import run_repl
+
     run_repl(use_vm=vm, mock_tools=mock_tools)
 
 

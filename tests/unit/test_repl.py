@@ -11,7 +11,10 @@ def test_repl_interpreter_flow() -> None:
         ".exit",
     ]
 
-    with patch("builtins.input", side_effect=inputs), patch("builtins.print") as mock_print:
+    with (
+        patch("builtins.input", side_effect=inputs),
+        patch("builtins.print") as mock_print,
+    ):
         run_repl(use_vm=False, mock_tools=True)
 
         # Let's verify prints
@@ -27,7 +30,10 @@ def test_repl_vm_flow() -> None:
         ".exit",
     ]
 
-    with patch("builtins.input", side_effect=inputs), patch("builtins.print") as mock_print:
+    with (
+        patch("builtins.input", side_effect=inputs),
+        patch("builtins.print") as mock_print,
+    ):
         run_repl(use_vm=True, mock_tools=True)
 
         calls = [call[0][0] for call in mock_print.call_args_list if call[0]]
@@ -37,12 +43,15 @@ def test_repl_vm_flow() -> None:
 def test_repl_error_handling() -> None:
     inputs = [
         "let x = 10",
-        "x = \"invalid\"",  # This triggers semantic type warning/error or runtime issue
-        "y",              # Undefined variable
+        'x = "invalid"',  # This triggers semantic type warning/error or runtime issue
+        "y",  # Undefined variable
         ".exit",
     ]
 
-    with patch("builtins.input", side_effect=inputs), patch("builtins.print") as mock_print:
+    with (
+        patch("builtins.input", side_effect=inputs),
+        patch("builtins.print") as mock_print,
+    ):
         run_repl(use_vm=False, mock_tools=True)
 
         calls = [str(call[0][0]) for call in mock_print.call_args_list if call[0]]

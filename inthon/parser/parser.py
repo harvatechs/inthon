@@ -38,12 +38,17 @@ def parse(source: str, filename: str = "<stdin>") -> Program:
 
     # Extract code from <inthon>...</inthon> or <inth>...</inth> tags
     import re
-    xml_match = re.search(r"<(inthon|inth)>\s*(.*?)\s*</\1>", source, re.DOTALL | re.IGNORECASE)
+
+    xml_match = re.search(
+        r"<(inthon|inth)>\s*(.*?)\s*</\1>", source, re.DOTALL | re.IGNORECASE
+    )
     if xml_match:
         source = xml_match.group(2)
     else:
         # Extract code from markdown blocks: ```inthon ... ```
-        md_match = re.search(r"```(?:inthon|inth)?\s*(.*?)\s*```", source, re.DOTALL | re.IGNORECASE)
+        md_match = re.search(
+            r"```(?:inthon|inth)?\s*(.*?)\s*```", source, re.DOTALL | re.IGNORECASE
+        )
         if md_match:
             source = md_match.group(1)
 

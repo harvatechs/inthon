@@ -1,16 +1,15 @@
-import sys
-
 # Simulated tools
 def mock_search(query, limit=5):
     if not isinstance(limit, int):
         raise TypeError("limit must be an int")
     return [{"title": f"Result for {query}", "snippet": "Snippet content"}]
 
+
 def main():
     result = ""
     attempts = 0
     max_retries = 3
-    
+
     for attempt in range(1, max_retries + 1):
         try:
             attempts += 1
@@ -28,8 +27,9 @@ def main():
         except Exception as e:
             if attempt == max_retries:
                 result = f"Failed to recover: {e}"
-                
+
     print(result)
+
 
 if __name__ == "__main__":
     main()
