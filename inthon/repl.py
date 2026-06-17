@@ -146,6 +146,7 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
             # 3. Execution
             try:
                 if use_vm:
+                    assert vm is not None
                     code = compile_program(program, filename="<stdin>")
                     result_val = vm.execute(code)
                     if result_val is not None:
