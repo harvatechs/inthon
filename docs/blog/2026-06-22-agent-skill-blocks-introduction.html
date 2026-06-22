@@ -1,0 +1,100 @@
+---
+layout: default
+title: "Introducing Agentic Skill Blocks: Bridging Unstructured Prompts & Sandboxed Tool Workflows"
+description: "Learn how INTHON's new convert-skill engine translates markdown instructions and python/shell scripts into type-safe programming language functions."
+---
+
+<main class="post-layout">
+  <div class="container container-narrow">
+    <!-- Post Header -->
+    <header class="post-header">
+      <div class="post-meta">
+        <span class="post-meta-date">June 22, 2026</span>
+        <span class="post-meta-author">By Harsha Vardhan</span>
+        <span class="post-meta-read">5 min read</span>
+      </div>
+      <h1 class="post-title">Introducing Agentic Skill Blocks: Bridging Unstructured Prompts & Sandboxed Tool Workflows</h1>
+    </header>
+
+    <!-- Post Content -->
+    <article class="post-content">
+      <p>
+        In modern AI engineering, <strong>"Skills"</strong> have become the dominant design pattern for extending LLM agent capabilities. Typically organized as folders containing an instruction sheet (<code>SKILL.md</code>) and a set of utility scripts (like Python or shell scripts), these skills teach agents how to perform complex, multi-step actions—such as downloading molecular databases or rendering videos.
+      </p>
+      <p>
+        However, using these skills programmatically is fragile. Developers are forced to write verbose custom boilerplate to trigger the scripts, manually manage command-line arguments, and hand-write execution flows. Moreover, running raw scripts on a host machine poses a massive security risk, as AI-generated code might execute dangerous side effects without sandboxing.
+      </p>
+      <p>
+        To solve this, we are thrilled to introduce <strong>Agentic Skill Blocks</strong> in INTHON v0.2. This new feature includes a compiler-level converter tool that dynamically translates unstructured skills into first-class, type-safe INTHON workflow functions and structured agent templates.
+      </p>
+
+      <h2>The Challenge: Unstructured Capabilities</h2>
+      <p>
+        Consider a typical biological research skill like <code>alphafold-database-fetch-and-analyze</code>. It contains scripts to download 3D protein structures and perform confidence analysis. Under traditional architectures, executing this requires parsing user prompts to find variables (like the UniProt ID), formatting a shell command string, and executing a subprocess.
+      </p>
+      <p>
+        This process lacks static verification, is highly error-prone, and exposes the system to command-injection vulnerabilities.
+      </p>
+
+      <h2>The INTHON Solution: Compiling Skills into Code</h2>
+      <p>
+        With the new INTHON release, you can compile any skill folder into type-safe language declarations using a single command:
+      </p>
+      <pre><code>python -m inthon convert-skill path/to/skill_folder</code></pre>
+      <p>
+        This command triggers a multi-stage compilation pipeline:
+      </p>
+      <ol>
+        <li><strong>Metadata Extraction:</strong> The compiler parses the YAML frontmatter inside <code>SKILL.md</code> to extract the skill's name and goal description.</li>
+        <li><strong>AST-Based Argparse Parsing:</strong> The converter scans the skill's <code>scripts/</code> directory. For Python scripts, it uses Python's Abstract Syntax Tree (<code>ast</code>) to analyze the code and dynamically discover parameters, defaults, and descriptions configured via <code>argparse.ArgumentParser</code>.</li>
+        <li><strong>Workflow Generation:</strong> It outputs a complete <code>.inth</code> workflow file containing dotted tool references (e.g. <code>use tool skill.alphafold_fetch.fetch_structure</code>), a structured <code>agent</code> block with security policies, and ready-to-run helper functions.</li>
+        <li><strong>JSON Schema Registry:</strong> It saves a JSON schema definition of the skill's interface into the workspace's <code>.inthon/skills/</code> registry folder.</li>
+      </ol>
+
+      <h2>An Example Workflow</h2>
+      <p>
+        When you run <code>convert-skill</code> on a protein analysis skill, INTHON auto-generates the following code structure:
+      </p>
+      <pre><code>// Auto-generated INTHON workflow for skill: alphafold-analysis
+use tool skill.alphafold_analysis.fetch_structure
+use tool skill.alphafold_analysis.analyze_plddt
+
+agent AlphaFoldAgent {
+    goal "Retrieve and analyze AlphaFold predicted structures for a protein."
+    
+    inputs {
+        uniprot_id: str
+        output_dir: str
+    }
+    outputs {
+        result: str
+    }
+    
+    policy {
+        allow_network: true
+        max_tool_calls: 10
+    }
+    
+    plan {
+        // Enforces type-safety on tool calls!
+        let metadata_path = skill.alphafold_analysis.fetch_structure(uniprot_id: uniprot_id, output_dir: output_dir)
+        let report = skill.alphafold_analysis.analyze_plddt(metadata_file: metadata_path)
+        return report
+    }
+}</code></pre>
+
+      <h2>Dynamic Registration & Safety Sandbox</h2>
+      <p>
+        At runtime, the INTHON engine automatically loads all JSON schemas present in <code>.inthon/skills/</code> and registers them in the <code>ToolRegistry</code>. When the INTHON program calls one of these skill tools, the runtime intercepts the invocation and executes it via a secure subprocess runner under the hood.
+      </p>
+      <p>
+        Crucially, because the tool is registered within INTHON's runtime, it respects the agent's capability-based policies. If the agent's policy blocks shell access or network communication, the tool call is instantly blocked, preventing malicious code traversal.
+      </p>
+
+      <h2>Summary</h2>
+      <p>
+        By treating prompt-level skills as standard, compileable modules, INTHON v0.2 makes agentic workflows reproducible, type-safe, and secure. Developers can now leverage complex scripts as simple function calls, unlocking a new level of productivity in AI-native engineering.
+      </p>
+    </article>
+  </div>
+</main>

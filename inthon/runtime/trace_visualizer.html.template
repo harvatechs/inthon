@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INTHON Flight Recorder - Visual Trace Replay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0f111a;
+            --bg-surface: #171a26;
+            --bg-card: #202438;
+            --accent: #5e66ff;
+            --accent-glow: rgba(94, 102, 255, 0.15);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --border: #2e354f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .logo-section h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a78bfa, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-section span {
+            font-size: 0.8rem;
+            background: var(--accent-glow);
+            color: #c084fc;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        .stats {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            min-width: 100px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Main Dashboard Area */
+        .dashboard-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar: Timeline of Steps */
+        .timeline-sidebar {
+            width: 320px;
+            background-color: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .events-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .event-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            margin-bottom: 0.3rem;
+        }
+
+        .event-item:hover {
+            background-color: var(--bg-card);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .event-item.active {
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(94, 102, 255, 0.1);
+        }
+
+        .event-item .badge {
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .event-item.active .badge {
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* Event Colors */
+        .badge-assign { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .badge-tool_call { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        .badge-py_call { background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .badge-agent_start { background-color: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .badge-agent_end { background-color: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .badge-approve { background-color: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .badge-remember { background-color: rgba(236, 72, 153, 0.15); color: #f472b6; }
+        .badge-eval { background-color: rgba(6, 182, 212, 0.15); color: #22d3ee; }
+        .badge-other { background-color: rgba(107, 114, 128, 0.15); color: #9ca3af; }
+
+        .event-item-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .event-item-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .event-item-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
+        }
+
+        /* Main Details Panel */
+        .detail-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-base);
+            overflow: hidden;
+        }
+
+        /* Step Scrubber / Player Controls */
+        .controls-bar {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.8rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(94, 102, 255, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .scrubber-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .scrubber-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .scrubber-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent);
+            transition: transform 0.1s;
+        }
+
+        .scrubber-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .step-label {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+
+        /* Detail Cards View */
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Source Code view styling */
+        .code-display {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #d1d5db;
+            overflow-x: auto;
+            flex: 1;
+        }
+
+        .code-line {
+            display: flex;
+        }
+
+        .line-num {
+            color: var(--text-muted);
+            width: 2.5rem;
+            text-align: right;
+            padding-right: 1rem;
+            user-select: none;
+        }
+
+        .line-content {
+            flex: 1;
+        }
+
+        .code-line.highlighted {
+            background-color: rgba(94, 102, 255, 0.15);
+            border-left: 3px solid var(--accent);
+            color: #fff;
+        }
+
+        /* State Inspector Styling */
+        .state-inspector {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .json-viewer {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.85rem;
+            color: #34d399;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .trace-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .trace-data-table th, .trace-data-table td {
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .trace-data-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            background-color: rgba(255,255,255,0.02);
+        }
+
+        /* Custom widgets */
+        .widget-remember {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), rgba(94, 102, 255, 0.05));
+            border: 1px solid rgba(236, 72, 15 pink, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .widget-eval {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.05), rgba(94, 102, 255, 0.05));
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .widget-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo-section">
+            <h1>INTHON Flight Recorder <span>v0.1</span></h1>
+        </div>
+        <div class="stats">
+            <div class="stat-card">
+                <span class="stat-label">Total Steps</span>
+                <span class="stat-value" id="stat-total-steps">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Runtime</span>
+                <span class="stat-value" id="stat-runtime">0ms</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Total Cost</span>
+                <span class="stat-value" id="stat-cost">$0.000000</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Area -->
+    <div class="dashboard-body">
+        
+        <!-- Sidebar -->
+        <div class="timeline-sidebar">
+            <div class="sidebar-header">Execution Timeline</div>
+            <div class="events-list" id="events-list">
+                <!-- Javascript populated -->
+            </div>
+        </div>
+
+        <!-- Detail Panel -->
+        <div class="detail-panel">
+            
+            <!-- Controls Bar -->
+            <div class="controls-bar">
+                <div class="playback-controls">
+                    <button class="btn" id="btn-first" title="Go to First Step">&lt;&lt;</button>
+                    <button class="btn" id="btn-prev" title="Previous Step">&lt; Prev</button>
+                    <button class="btn" id="btn-play" title="Play/Pause Trace Auto-play">▶ Play</button>
+                    <button class="btn" id="btn-next" title="Next Step">Next &gt;</button>
+                    <button class="btn" id="btn-last" title="Go to Last Step">&gt;&gt;</button>
+                </div>
+                <div class="scrubber-container">
+                    <input type="range" class="scrubber-slider" id="scrubber" min="0" max="0" value="0">
+                    <div class="step-label" id="step-label">0 / 0</div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                
+                <!-- Code View Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>Event Context / Details</span>
+                        <span id="event-line-indicator" style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--text-secondary);"></span>
+                    </div>
+                    
+                    <div id="event-action-details" style="margin-bottom: 1.5rem;">
+                        <!-- Populate event specifics -->
+                    </div>
+
+                    <div class="card-header" style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: auto;">
+                        <span>Data / Payload</span>
+                    </div>
+                    <div class="state-inspector">
+                        <pre class="json-viewer" id="json-viewer"></pre>
+                    </div>
+                </div>
+
+                <!-- Diagnostics & State Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>Agent Execution State</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1rem; flex: 1;">
+                        <div class="stat-card" style="width: 100%;">
+                            <span class="stat-label">Active Agent</span>
+                            <span class="stat-value" id="active-agent" style="color: var(--accent);">None</span>
+                        </div>
+                        <div class="stat-card" style="width: 100%;">
+                            <span class="stat-label">Agent Goal</span>
+                            <span class="stat-value" id="active-goal" style="font-size: 0.95rem; font-weight: normal; color: var(--text-secondary); margin-top: 0.3rem;">-</span>
+                        </div>
+                        
+                        <div class="card-header" style="margin-top: 1rem; margin-bottom: 0.5rem;">
+                            <span>Diagnostics & Properties</span>
+                        </div>
+                        
+                        <table class="trace-data-table">
+                            <thead>
+                                <tr>
+                                    <th>Property</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="diagnostics-tbody">
+                                <!-- JS populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Data Injection -->
+    <script>
+        // Placeholder replaced at generation time
+        const traceEvents = {{TRACE_DATA_JSON}};
+    </script>
+
+    <!-- Visualizer Logic -->
+    <script>
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // Elements
+        const scrubber = document.getElementById('scrubber');
+        const stepLabel = document.getElementById('step-label');
+        const eventsList = document.getElementById('events-list');
+        const jsonViewer = document.getElementById('json-viewer');
+        const eventActionDetails = document.getElementById('event-action-details');
+        const eventLineIndicator = document.getElementById('event-line-indicator');
+        const activeAgent = document.getElementById('active-agent');
+        const activeGoal = document.getElementById('active-goal');
+        const diagnosticsTbody = document.getElementById('diagnostics-tbody');
+
+        const statTotalSteps = document.getElementById('stat-total-steps');
+        const statRuntime = document.getElementById('stat-runtime');
+        const statCost = document.getElementById('stat-cost');
+
+        const btnFirst = document.getElementById('btn-first');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnPlay = document.getElementById('btn-play');
+        const btnNext = document.getElementById('btn-next');
+        const btnLast = document.getElementById('btn-last');
+
+        function init() {
+            if (!traceEvents || traceEvents.length === 0) {
+                eventsList.innerHTML = '<div style="padding: 1rem; color: var(--text-muted);">No trace events found.</div>';
+                return;
+            }
+
+            // Stats
+            statTotalSteps.innerText = traceEvents.length;
+            const totalDuration = traceEvents.reduce((acc, e) => acc + (e.duration_ms || 0), 0);
+            statRuntime.innerText = `${totalDuration.toFixed(2)}ms`;
+            
+            let totalCost = 0;
+            traceEvents.forEach(e => {
+                if (e.kind === 'tool_call' && e.data && e.data.cost_usd) {
+                    totalCost += e.data.cost_usd;
+                }
+            });
+            statCost.innerText = `$${totalCost.toFixed(6)}`;
+
+            // Scrubber bounds
+            scrubber.max = traceEvents.length - 1;
+            scrubber.value = 0;
+
+            // Render Timeline
+            eventsList.innerHTML = '';
+            traceEvents.forEach((ev, idx) => {
+                const item = document.createElement('div');
+                item.className = `event-item ${idx === 0 ? 'active' : ''}`;
+                item.dataset.index = idx;
+                item.onclick = () => selectStep(idx);
+
+                const badgeClass = `badge-${ev.kind}` || 'badge-other';
+                let titleText = ev.kind;
+                if (ev.kind === 'assign') titleText = `let ${ev.data.var || ev.data.name || 'var'}`;
+                if (ev.kind === 'tool_call') titleText = ev.data.tool || 'tool';
+                if (ev.kind === 'py_call') titleText = ev.data.func || 'python';
+                if (ev.kind === 'remember') titleText = `remember -> ${ev.data.namespace || 'mem'}`;
+                if (ev.kind === 'eval') titleText = `eval: ${ev.data.subject || 'criteria'}`;
+
+                item.innerHTML = `
+                    <span class="badge ${badgeClass}">${ev.kind}</span>
+                    <div class="event-item-info">
+                        <div class="event-item-title">${titleText}</div>
+                        <div class="event-item-meta">Step ${idx + 1} ${ev.line ? `| Line ${ev.line}` : ''}</div>
+                    </div>
+                `;
+                eventsList.appendChild(item);
+            });
+
+            // Playback controls
+            btnFirst.onclick = () => selectStep(0);
+            btnLast.onclick = () => selectStep(traceEvents.length - 1);
+            btnPrev.onclick = () => selectStep(Math.max(0, currentStepIndex - 1));
+            btnNext.onclick = () => selectStep(Math.min(traceEvents.length - 1, currentStepIndex + 1));
+            scrubber.oninput = (e) => selectStep(parseInt(e.target.value));
+
+            btnPlay.onclick = togglePlay;
+
+            selectStep(0);
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                clearInterval(playInterval);
+                btnPlay.innerText = '▶ Play';
+                isPlaying = false;
+            } else {
+                btnPlay.innerText = '⏸ Pause';
+                isPlaying = true;
+                playInterval = setInterval(() => {
+                    if (currentStepIndex >= traceEvents.length - 1) {
+                        togglePlay(); // Pause at the end
+                    } else {
+                        selectStep(currentStepIndex + 1);
+                    }
+                }, 1000);
+            }
+        }
+
+        function selectStep(index) {
+            currentStepIndex = index;
+            scrubber.value = index;
+            stepLabel.innerText = `${index + 1} / ${traceEvents.length}`;
+
+            // Update sidebar selection
+            document.querySelectorAll('.event-item').forEach((el, idx) => {
+                if (idx === index) {
+                    el.classList.add('active');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            const ev = traceEvents[index];
+
+            // Render details
+            eventLineIndicator.innerText = ev.line ? `LINE ${ev.line}` : '';
+            jsonViewer.innerText = JSON.stringify(ev.data, null, 2);
+
+            // Specific event rendering
+            renderEventSpecifics(ev);
+
+            // Update Agent State
+            updateAgentState(index);
+        }
+
+        function renderEventSpecifics(ev) {
+            let html = '';
+            if (ev.kind === 'assign') {
+                html = `
+                    <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">Assigned variable <b style="color: var(--green);">${ev.data.var || ev.data.name}</b></div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary);">Value: <code style="font-family: monospace; background: var(--bg-card); padding: 0.1rem 0.4rem; border-radius: 4px;">${ev.data.value}</code></div>
+                `;
+            } else if (ev.kind === 'tool_call') {
+                html = `
+                    <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">Called Tool <b style="color: var(--yellow);">${ev.data.tool}</b></div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.3rem;">Arguments: <code>${ev.data.args}</code></div>
+                    ${ev.data.cost_usd ? `<div style="font-size: 0.9rem; color: var(--text-secondary);">Cost: <b style="color: #f472b6;">$${ev.data.cost_usd.toFixed(6)}</b></div>` : ''}
+                `;
+            } else if (ev.kind === 'py_call') {
+                html = `
+                    <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">Executed Python Function <b style="color: var(--accent);">${ev.data.func}</b></div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary);">Arguments: <code>${ev.data.args}</code></div>
+                `;
+            } else if (ev.kind === 'remember') {
+                html = `
+                    <div class="widget-remember">
+                        <div class="widget-title">🧠 Stored Episodic Fact</div>
+                        <div style="font-size: 0.95rem; font-style: italic; color: var(--text-primary); margin-bottom: 0.5rem;">"${ev.data.fact || ev.data.key || 'Fact'}"</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Stored under key: <code>${ev.data.key}</code> in memory namespace: <b>${ev.data.namespace}</b></div>
+                    </div>
+                `;
+            } else if (ev.kind === 'eval') {
+                html = `
+                    <div class="widget-eval">
+                        <div class="widget-title">⚙️ Evaluation Gate Check</div>
+                        <div style="font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.5rem;">Checked criteria metrics for: <b>${ev.data.subject}</b></div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Rubric applied: <b>${ev.data.rubric}</b></div>
+                    </div>
+                `;
+            } else {
+                html = `<div style="font-size: 1rem; color: var(--text-secondary);">Generic execution trace element: <b>${ev.kind}</b></div>`;
+            }
+            eventActionDetails.innerHTML = html;
+        }
+
+        function updateAgentState(index) {
+            // Traverse backwards to find current agent
+            let agentName = 'None';
+            let agentGoalText = '-';
+
+            for (let i = index; i >= 0; i--) {
+                const ev = traceEvents[i];
+                if (ev.kind === 'agent_start') {
+                    agentName = ev.data.name || 'Agent';
+                    agentGoalText = ev.data.goal || '-';
+                    break;
+                }
+                if (ev.kind === 'agent_end' && ev.data.name === agentName) {
+                    agentName = 'None';
+                    agentGoalText = '-';
+                    break;
+                }
+            }
+
+            activeAgent.innerText = agentName;
+            activeGoal.innerText = agentGoalText;
+
+            // Populate diagnostics table
+            const ev = traceEvents[index];
+            let rowsHtml = '';
+            rowsHtml += `<tr><td>Timestamp</td><td>${new Date(ev.ts * 1000).toLocaleTimeString()}</td></tr>`;
+            rowsHtml += `<tr><td>Event ID</td><td><code>${ev.id}</code></td></tr>`;
+            if (ev.duration_ms) {
+                rowsHtml += `<tr><td>Step Duration</td><td><span style="color: var(--green);">${ev.duration_ms.toFixed(2)}ms</span></td></tr>`;
+            }
+            if (ev.line) {
+                rowsHtml += `<tr><td>Source Line</td><td>Line ${ev.line}</td></tr>`;
+            }
+
+            // Specific metadata rows
+            for (const [k, v] of Object.entries(ev.data)) {
+                if (typeof v !== 'object') {
+                    rowsHtml += `<tr><td>data.${k}</td><td><code>${v}</code></td></tr>`;
+                }
+            }
+
+            diagnosticsTbody.innerHTML = rowsHtml;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

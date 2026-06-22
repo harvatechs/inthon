@@ -29,6 +29,7 @@ class ExecutionContext:
     py_call_count: int = 0
     cost_usd: float = 0.0
     errors: list[dict] = field(default_factory=list)
+    dry_run: bool = False
     # Agent state (populated when inside an agent block)
     current_agent: str | None = None
     agent_goal: str | None = None

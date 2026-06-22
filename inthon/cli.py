@@ -25,6 +25,9 @@ def run_cmd(
     persist_memory: bool = typer.Option(
         False, "--persist-memory", help="Use SQLite-backed persistent memory"
     ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Run in dry-run simulation mode"
+    ),
 ) -> None:
     """Execute an INTHON program."""
     if vm:
@@ -36,6 +39,7 @@ def run_cmd(
                 mock_tools=mock_tools,
                 max_cost_usd=max_cost,
                 persist_memory=persist_memory,
+                dry_run=dry_run,
             )
     else:
         from . import run_file
@@ -45,6 +49,7 @@ def run_cmd(
                 file,
                 mock_tools=mock_tools,
                 max_cost_usd=max_cost,
+                dry_run=dry_run,
             )
 
     try:
@@ -73,6 +78,9 @@ def async_run_cmd(
     persist_memory: bool = typer.Option(False, "--persist-memory"),
     timeout: float = typer.Option(300.0, "--timeout"),
     verbose: bool = typer.Option(False, "-v"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Run in dry-run simulation mode"
+    ),
 ) -> None:
     """Execute an INTHON program using the async cooperative scheduler."""
     import asyncio
@@ -95,6 +103,7 @@ def async_run_cmd(
             else MemoryStore.in_memory()
         )
         ctx = ExecutionContext(filename=str(file), memory=memory)
+        ctx.dry_run = dry_run
         ctx.sandbox.max_cost_usd = max_cost
         ctx.sandbox.max_runtime_sec = timeout
         register_builtins(ctx.tools, mock=mock_tools)
@@ -205,5 +214,56 @@ def repl_cmd(
     run_repl(use_vm=vm, mock_tools=mock_tools)
 
 
+@app.command("trace-view")
+def trace_view_cmd(
+    trace_file: Path = typer.Argument(..., help="Path to execution trace JSON file"),
+    out: Path = typer.Option(Path("trace_replay.html"), "--out", "-o", help="Output HTML file path"),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the dashboard automatically in a browser"),
+) -> None:
+    """Generate a beautiful interactive HTML trace replay visualizer."""
+    if not trace_file.exists():
+        console.print(f"[red]Trace file not found: {trace_file}[/red]")
+        raise typer.Exit(code=1)
+
+    trace_json = trace_file.read_text(encoding="utf-8")
+    
+    # Read the template
+    template_path = Path(__file__).parent / "runtime" / "trace_visualizer.html.template"
+    if not template_path.exists():
+        console.print(f"[red]Template visualizer not found at {template_path}[/red]")
+        raise typer.Exit(code=1)
+
+    template_content = template_path.read_text(encoding="utf-8")
+    
+    # Replace placeholder with JSON string
+    html_content = template_content.replace("{{TRACE_DATA_JSON}}", trace_json)
+    
+    out.write_text(html_content, encoding="utf-8")
+    console.print(f"[green]Dashboard generated successfully: {out.absolute()}[/green]")
+    
+    if open_browser:
+        import webbrowser
+        webbrowser.open(out.absolute().as_uri())
+
+
+@app.command("convert-skill")
+def convert_skill_cmd(
+    skill_dir: Path = typer.Argument(..., help="Path to the skill directory or SKILL.md file"),
+    output_dir: Path | None = typer.Option(None, "--output", "-o", help="Target directory for generated workflow file"),
+) -> None:
+    """Convert an agentic Skill (with SKILL.md and scripts) into an INTHON workflow and dynamic tool registration."""
+    from .tools.skill_converter import convert_skill_to_workflow
+
+    try:
+        inth_path, schema_path = convert_skill_to_workflow(skill_dir, output_dir)
+        console.print(f"[green]Skill converted successfully![/green]")
+        console.print(f"  -> Generated INTHON workflow: [cyan]{inth_path}[/cyan]")
+        console.print(f"  -> Generated tool schema: [cyan]{schema_path}[/cyan]")
+    except Exception as exc:
+        console.print(f"[red]Error converting skill: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
+

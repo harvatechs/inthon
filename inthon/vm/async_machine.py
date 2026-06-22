@@ -236,23 +236,36 @@ class AsyncInthonVM(InthonVM):
             frame.push(d)
         elif op == OpCode.GET_ATTR:
             obj = _u(frame.pop())
-            val = obj.get(arg) if isinstance(obj, dict) else getattr(obj, arg, None)
+            from ..runtime.values import InthonToolRef
+            if isinstance(obj, dict):
+                val = obj.get(arg)
+            elif isinstance(obj, InthonToolRef):
+                val = InthonToolRef(obj.tool_path + "." + arg)
+            else:
+                val = getattr(obj, arg, None)
             frame.push(val)
         elif op == OpCode.GET_ITEM:
             idx = _s(frame.pop())
             obj = _u(frame.pop())
             frame.push(obj[int(idx)] if isinstance(obj, list) else obj[idx])
         elif op == OpCode.JUMP_ABSOLUTE:
+            if arg < frame.ip:
+                self._loop_guard.record_backward_jump(arg)
             frame.ip = arg
         elif op == OpCode.POP_JUMP_IF_FALSE:
             if not _t(frame.pop()):
+                if arg < frame.ip:
+                    self._loop_guard.record_backward_jump(arg)
                 frame.ip = arg
         elif op == OpCode.POP_JUMP_IF_TRUE:
             if _t(frame.pop()):
+                if arg < frame.ip:
+                    self._loop_guard.record_backward_jump(arg)
                 frame.ip = arg
         elif op == OpCode.GET_ITER:
             obj = _u(frame.pop())
-            frame.push(iter(obj) if hasattr(obj, "__iter__") else iter([]))
+            from .serialization import InthonIterator
+            frame.push(InthonIterator(list(obj)) if hasattr(obj, "__iter__") else InthonIterator([]))
         elif op == OpCode.FOR_ITER:
             it = frame.peek()
             try:

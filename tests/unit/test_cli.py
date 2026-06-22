@@ -85,3 +85,23 @@ def test_cli_main_module():
     )
     assert res.returncode == 0
     assert "INTHON" in res.stdout
+
+
+def test_cli_trace_view(temp_inth_file, tmp_path):
+    trace_json_file = tmp_path / "trace.json"
+    html_file = tmp_path / "replay.html"
+
+    # Step 1: Run program and output trace
+    res_run = runner.invoke(app, ["run", str(temp_inth_file), "--trace-out", str(trace_json_file)])
+    assert res_run.exit_code == 0
+    assert trace_json_file.exists()
+
+    # Step 2: Generate visual HTML replay dashboard
+    res_view = runner.invoke(app, ["trace-view", str(trace_json_file), "-o", str(html_file), "--no-open"])
+    assert res_view.exit_code == 0
+    assert html_file.exists()
+    
+    html_content = html_file.read_text(encoding="utf-8")
+    assert "INTHON Flight Recorder" in html_content
+    assert "traceEvents" in html_content
+

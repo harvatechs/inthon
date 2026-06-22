@@ -549,6 +549,16 @@ class Interpreter(ASTVisitor):
     def _call_tool(
         self, tool_path: str, args: list[InthonValue], kwargs: dict[str, InthonValue]
     ) -> InthonValue:
+        # Check dry run first
+        if self._ctx.dry_run:
+            from .dryrun import generate_mock_output
+            try:
+                spec = self._ctx.tools.get_spec(tool_path)
+                mock_out = generate_mock_output(spec.output_schema)
+                return from_python(mock_out)
+            except Exception:
+                return from_python({})
+
         # Check budget limits first
         self._ctx.sandbox.check_budget()
 

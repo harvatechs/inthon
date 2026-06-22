@@ -62,6 +62,7 @@ def run_file(
     mock_tools: bool = True,
     max_cost_usd: float = 1.0,
     max_runtime_sec: float = 300.0,
+    dry_run: bool = False,
 ) -> RunResult:
     from .parser.parser import parse as parser_parse
     from .semantic.analyzer import SemanticAnalyzer
@@ -79,6 +80,7 @@ def run_file(
     SemanticAnalyzer().analyze(program)
 
     ctx = ExecutionContext(filename=filename)
+    ctx.dry_run = dry_run
     ctx.sandbox.max_cost_usd = max_cost_usd
     ctx.sandbox.max_runtime_sec = max_runtime_sec
     register_builtins(ctx.tools, mock=mock_tools)
@@ -141,6 +143,7 @@ def run_file_vm(
     max_cost_usd: float = 1.0,
     max_runtime_sec: float = 300.0,
     persist_memory: bool = False,
+    dry_run: bool = False,
 ) -> RunResult:
     """
     Execute an INTHON file via the bytecode compiler + InthonVM stack machine.
@@ -171,6 +174,7 @@ def run_file_vm(
     )
 
     ctx = ExecutionContext(filename=filename, memory=memory)
+    ctx.dry_run = dry_run
     ctx.sandbox.max_cost_usd = max_cost_usd
     ctx.sandbox.max_runtime_sec = max_runtime_sec
     register_builtins(ctx.tools, mock=mock_tools)

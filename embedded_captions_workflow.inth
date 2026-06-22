@@ -1,0 +1,52 @@
+// Auto-generated INTHON workflow for skill: embedded-captions
+// Description: Add captions to a talking-head video. ONE catalog (CATALOG.md) of 32 visual identities behind two engines: column-flow (captions composited INTO the scene — matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and themed constitutions (anchor/ordnance/terminal/neonsign/stardust/stomp/scoreboard/transit/vhs/arcade/dossier/laser/thunder/hologram/biolume/aurora/spectrum/papercut/popup/chalkboard/graffiti/brush/inkwater/ransom/lastpage/nightcity — e.g. a glyph-decode climax, a neon sign WRITTEN stroke by stroke, or the quiet `anchor` rail default). Route by identity, never by mode. Trigger on "captions/subtitles", "embed/cinematic captions", "VFX captions", "炸/特效/酷炫字幕", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content — `anchor` is the verbatim default. Pipeline: transcription → hyperframes remove-background matting → HTML render → ffmpeg overlay. Requires hyperframes and a single-subject clip.
+
+use tool skill.embedded_captions.gen_stroke_path
+use tool skill.embedded_captions.prepare
+use tool skill.embedded_captions.render_and_composite
+use tool skill.embedded_captions.render_theme
+
+agent EmbeddedCaptionsAgent {
+    goal "Add captions to a talking-head video. ONE catalog (CATALOG.md) of 32 visual identities behind two engines: column-flow (captions composited INTO the scene \u2014 matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and themed constitutions (anchor/ordnance/terminal/neonsign/stardust/stomp/scoreboard/transit/vhs/arcade/dossier/laser/thunder/hologram/biolume/aurora/spectrum/papercut/popup/chalkboard/graffiti/brush/inkwater/ransom/lastpage/nightcity \u2014 e.g. a glyph-decode climax, a neon sign WRITTEN stroke by stroke, or the quiet `anchor` rail default). Route by identity, never by mode. Trigger on \"captions/subtitles\", \"embed/cinematic captions\", \"VFX captions\", \"\u70b8/\u7279\u6548/\u9177\u70ab\u5b57\u5e55\", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content \u2014 `anchor` is the verbatim default. Pipeline: transcription \u2192 hyperframes remove-background matting \u2192 HTML render \u2192 ffmpeg overlay. Requires hyperframes and a single-subject clip."
+    inputs {
+        args: list[str]
+    }
+    outputs {
+        result: str
+    }
+
+    policy {
+        allow_network: true
+        max_tool_calls: 10
+    }
+
+    plan {
+        // Example workflow execution plan:
+        let args = []
+        let res_gen_stroke_path = skill.embedded_captions.gen_stroke_path(args: args)
+        let res_prepare = skill.embedded_captions.prepare(args: args)
+        let res_render_and_composite = skill.embedded_captions.render_and_composite(args: args)
+        let res_render_theme = skill.embedded_captions.render_theme(args: args)
+        return "Skill execution completed successfully"
+    }
+}
+
+fn run_embedded_captions_gen_stroke_path(args: list[str]) -> str {
+    let result = skill.embedded_captions.gen_stroke_path(args)
+    return result
+}
+
+fn run_embedded_captions_prepare(args: list[str]) -> str {
+    let result = skill.embedded_captions.prepare(args)
+    return result
+}
+
+fn run_embedded_captions_render_and_composite(args: list[str]) -> str {
+    let result = skill.embedded_captions.render_and_composite(args)
+    return result
+}
+
+fn run_embedded_captions_render_theme(args: list[str]) -> str {
+    let result = skill.embedded_captions.render_theme(args)
+    return result
+}

@@ -49,6 +49,12 @@ from .opcodes import OpCode
 _SENTINEL = object()  # used to detect "no default"
 
 
+class PauseSignal(Exception):
+    """Exception raised to pause execution and serialize the current VM state."""
+    def __init__(self, frame: Frame) -> None:
+        self.frame = frame
+
+
 class VMError(IntHonRuntimeError):
     pass
 
@@ -69,8 +75,26 @@ class InthonVM:
         self._ctx = ctx
         # Global scope: module-level variables, shared across calls
         self._globals: dict[str, Any] = {}
+        from ..policy.loop_guard import LoopGuard
+        self._loop_guard = LoopGuard()
 
     # ── Public API ─────────────────────────────────────────────────────── #
+
+    def dehydrate_state(self, frame: Frame) -> dict:
+        """Dehydrate the current frame execution state into a JSON-serializable dictionary."""
+        from .serialization import serialize_frame
+        return serialize_frame(frame)
+
+    def resume_execution(self, state: dict) -> Any:
+        """Rehydrate and resume execution from a dehydrated state."""
+        from .serialization import deserialize_frame
+        frame = deserialize_frame(state)
+        # Reconstruct globals from the root parent's locals
+        root = frame
+        while root.parent is not None:
+            root = root.parent
+        self._globals.update(root.locals)
+        return self._run_frame(frame)
 
     def execute(self, code: CodeObject) -> Any:
         """Execute a top-level CodeObject and return the result value."""
@@ -228,6 +252,8 @@ class InthonVM:
                     val = to_python(val_opt) if val_opt is not None else None
                 elif isinstance(obj, InthonPyObject):
                     val = getattr(obj.obj, arg)
+                elif isinstance(obj, InthonToolRef):
+                    val = InthonToolRef(obj.tool_path + "." + arg)
                 else:
                     val = getattr(obj, arg, None)
                 frame.push(val)
@@ -280,40 +306,51 @@ class InthonVM:
 
             # ── Control flow ─────────────────────────────────────────── #
             elif op == OpCode.JUMP_ABSOLUTE:
+                if arg < frame.ip:
+                    self._loop_guard.record_backward_jump(arg)
                 frame.ip = arg
 
             elif op == OpCode.JUMP_IF_FALSE:
                 if not self._is_truthy(frame.peek()):
+                    if arg < frame.ip:
+                        self._loop_guard.record_backward_jump(arg)
                     frame.ip = arg
 
             elif op == OpCode.JUMP_IF_TRUE:
                 if self._is_truthy(frame.peek()):
+                    if arg < frame.ip:
+                        self._loop_guard.record_backward_jump(arg)
                     frame.ip = arg
 
             elif op == OpCode.POP_JUMP_IF_FALSE:
                 val = frame.pop()
                 if not self._is_truthy(val):
+                    if arg < frame.ip:
+                        self._loop_guard.record_backward_jump(arg)
                     frame.ip = arg
 
             elif op == OpCode.POP_JUMP_IF_TRUE:
                 val = frame.pop()
                 if self._is_truthy(val):
+                    if arg < frame.ip:
+                        self._loop_guard.record_backward_jump(arg)
                     frame.ip = arg
 
             # ── Iterators ────────────────────────────────────────────── #
             elif op == OpCode.GET_ITER:
                 obj = frame.pop()
                 obj = self._unwrap(obj)
+                from .serialization import InthonIterator
                 if isinstance(obj, list):
-                    frame.push(iter(obj))
+                    frame.push(InthonIterator(obj))
                 elif isinstance(obj, dict):
-                    frame.push(iter(obj.keys()))
+                    frame.push(InthonIterator(list(obj.keys())))
                 elif isinstance(obj, InthonList):
-                    frame.push(iter([to_python(i) for i in obj.items]))
+                    frame.push(InthonIterator([to_python(i) for i in obj.items]))
                 elif isinstance(obj, InthonDict):
-                    frame.push(iter(obj.pairs.keys()))
+                    frame.push(InthonIterator(list(obj.pairs.keys())))
                 elif hasattr(obj, "__iter__"):
-                    frame.push(iter(obj))
+                    frame.push(InthonIterator(list(obj)))
                 else:
                     raise VMError(
                         f"INTHON_RUNTIME_FOR: '{type(obj).__name__}' is not iterable"
@@ -507,7 +544,7 @@ class InthonVM:
         """Dispatch a call to a function, tool, or Python callable."""
 
         if isinstance(callee, InthonCallable):
-            return self._call_function(callee, args, kwargs)
+            return self._call_function(callee, args, kwargs, parent_frame=frame)
 
         if isinstance(callee, InthonToolRef):
             # Build full tool path from toolref + any chained attrs
@@ -532,7 +569,7 @@ class InthonVM:
         )
 
     def _call_function(
-        self, fn: InthonCallable, args: list[Any], kwargs: dict[str, Any]
+        self, fn: InthonCallable, args: list[Any], kwargs: dict[str, Any], parent_frame: Frame | None = None
     ) -> Any:
         """Execute a user-defined INTHON function (InthonCallable)."""
         body = fn.body
@@ -554,7 +591,7 @@ class InthonVM:
                         f"INTHON_RUNTIME_004: Missing argument '{param}' for '{fn.name}'"
                     )
 
-            child_frame = Frame(code=body, locals=child_locals, parent=None)
+            child_frame = Frame(code=body, locals=child_locals, parent=parent_frame)
             return self._run_frame(child_frame)
         else:
             # Legacy AST-body callable — fall back to interpreter
@@ -590,7 +627,15 @@ class InthonVM:
         self, tool_path: str, args: list[Any], kwargs: dict[str, Any]
     ) -> Any:
         """Call a registered tool, enforcing policy/budget checks."""
+        self._loop_guard.record_tool_call(tool_path, args, kwargs)
         ctx = self._ctx
+        if ctx.dry_run:
+            from ..runtime.dryrun import generate_mock_output
+            try:
+                spec = ctx.tools.get_spec(tool_path)
+                return generate_mock_output(spec.output_schema)
+            except Exception:
+                return {}
         ctx.sandbox.check_budget()
         ctx.policy.check_tool(tool_path)
 

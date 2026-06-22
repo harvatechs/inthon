@@ -1,0 +1,672 @@
+<template id="code-editor-template">
+  <div data-composition-id="code-editor" data-width="1920" data-height="1080">
+    <style>
+      [data-composition-id="code-editor"] {
+        width: 1920px;
+        height: 1080px;
+        background-color: transparent;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        padding: 40px;
+        padding-bottom: 80px;
+        font-family: 'Inter', sans-serif;
+        box-sizing: border-box;
+      }
+
+      /* Editor Frame */
+      .editor-window {
+        width: 1600px;
+        height: 850px;
+        background-color: #111827;
+        border: 1px solid #1F2937;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Title bar */
+      .editor-header {
+        height: 50px;
+        background-color: #0B0F19;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid #1F2937;
+        justify-content: space-between;
+      }
+
+      .window-controls {
+        display: flex;
+        gap: 8px;
+        width: 100px;
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+      .dot-red { background-color: #EF4444; }
+      .dot-yellow { background-color: #F59E0B; }
+      .dot-green { background-color: #10B981; }
+
+      .editor-tabs {
+        display: flex;
+        gap: 2px;
+        height: 100%;
+        align-items: flex-end;
+      }
+
+      .tab {
+        height: 38px;
+        background-color: #111827;
+        border: 1px solid #1F2937;
+        border-bottom: none;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #F9FAFB;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .tab.inactive {
+        background-color: #0B0F19;
+        color: #6B7280;
+        border-color: transparent;
+      }
+
+      .tab-icon {
+        width: 14px;
+        height: 14px;
+        background-size: contain;
+        background-repeat: no-repeat;
+      }
+
+      .tab-status {
+        font-size: 10px;
+        color: #8B5CF6;
+      }
+
+      .header-right {
+        width: 100px;
+        text-align: right;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: #6B7280;
+      }
+
+      /* Main Editor Workspace */
+      .editor-body {
+        flex: 1;
+        display: flex;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Multi-pane configuration */
+      .pane-container {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+
+      .pane-container.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* Line numbers gutter */
+      .gutter {
+        width: 60px;
+        background-color: #0B0F19;
+        border-right: 1px solid #1F2937;
+        padding: 20px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        padding-right: 15px;
+        user-select: none;
+      }
+
+      .line-num {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        line-height: 28px;
+        color: #374151;
+      }
+
+      /* Code container */
+      .code-container {
+        flex: 1;
+        background-color: #111827;
+        padding: 20px 24px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .code-line {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        line-height: 28px;
+        color: #F9FAFB;
+        white-space: pre;
+        position: relative;
+        display: block;
+      }
+
+      /* Syntax Highlighting */
+      .keyword { color: #8B5CF6; font-weight: bold; } /* Purple */
+      .cyan-kw { color: #00D4FF; } /* Cyan */
+      .orange-kw { color: #F59E0B; } /* Orange */
+      .green-kw { color: #10B981; } /* Green */
+      .string { color: #10B981; } /* Green string literal */
+      .type { color: #3B82F6; } /* Blue types */
+      .comment { color: #6B7280; font-style: italic; } /* Gray comments */
+      .number { color: #F59E0B; } /* Orange numbers */
+
+      /* Typewriter characters */
+      .typewriter-char {
+        opacity: 0;
+        display: inline;
+      }
+
+      .typewriter-char.visible {
+        opacity: 1;
+      }
+
+      /* Cursor */
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 22px;
+        background-color: #00D4FF;
+        box-shadow: 0 0 8px #00D4FF;
+        margin-left: 1px;
+        vertical-align: middle;
+        position: absolute;
+      }
+
+      /* Pane C Split view */
+      .split-pane {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .split-top {
+        height: 50%;
+        border-bottom: 1px solid #1F2937;
+        position: relative;
+        display: flex;
+      }
+
+      .split-bottom {
+        height: 50%;
+        position: relative;
+        display: flex;
+      }
+
+      .pane-title-tag {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        background-color: #1F2937;
+        border: 1px solid #374151;
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-family: 'JetBrains Mono', monospace;
+        color: #9CA3AF;
+        z-index: 10;
+      }
+
+
+
+      /* Memory graphic float panel (Scene 4 Demo B) */
+      .memory-visual-panel {
+        width: 400px;
+        border-left: 1px solid #1F2937;
+        background-color: #0B0F19;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      .memory-visual-header {
+        font-size: 12px;
+        font-weight: bold;
+        color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 20px;
+      }
+
+      .vector-cluster {
+        flex: 1;
+        border: 1px solid #1F2937;
+        border-radius: 8px;
+        background-color: #0D1321;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .vector-dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #8B5CF6;
+        opacity: 0.3;
+        transition: all 0.5s ease;
+      }
+
+      .vector-dot.highlighted {
+        background-color: #00D4FF;
+        box-shadow: 0 0 8px #00D4FF;
+        opacity: 1;
+      }
+
+      .vector-connection {
+        position: absolute;
+        stroke: #00D4FF;
+        stroke-width: 1px;
+        stroke-dasharray: 4;
+        opacity: 0;
+      }
+
+      .approval-gate-overlay {
+        position: absolute;
+        top: 20%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(245, 158, 11, 0.15);
+        border: 2px solid #F59E0B;
+        border-radius: 8px;
+        padding: 15px 30px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        opacity: 0;
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+        z-index: 10;
+      }
+
+      .gate-icon {
+        font-size: 24px;
+        animation: pulse 1s infinite alternate;
+      }
+
+      @keyframes pulse {
+        0% { opacity: 0.4; }
+        100% { opacity: 1; }
+      }
+
+      .gate-text {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        color: #F59E0B;
+        font-weight: bold;
+      }
+
+      .backoff-attempt-container {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background-color: #0B0F19;
+        border: 1px solid #1F2937;
+        border-radius: 6px;
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 200px;
+        opacity: 0;
+      }
+
+      .backoff-title {
+        font-size: 11px;
+        font-family: 'JetBrains Mono', monospace;
+        color: #6B7280;
+      }
+
+      .attempt-bar-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 11px;
+        color: #9CA3AF;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      .attempt-bar {
+        height: 6px;
+        background-color: #1F2937;
+        border-radius: 3px;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .attempt-fill {
+        height: 100%;
+        width: 0%;
+        background-color: #10B981;
+      }
+    </style>
+
+    <div class="editor-window">
+      <!-- Header / Tabs -->
+      <div class="editor-header">
+        <div class="window-controls">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+        </div>
+        <div class="editor-tabs">
+          <div class="tab" id="tab-a">
+            <span class="tab-status">&#9679;</span>
+            <span>Researcher.inth</span>
+          </div>
+          <div class="tab inactive" id="tab-b">
+            <span>memory.inth</span>
+          </div>
+          <div class="tab inactive" id="tab-c">
+            <span>payment_gate.inth</span>
+          </div>
+        </div>
+        <div class="header-right">INTHON v2026</div>
+      </div>
+
+      <!-- Editor Content Workspace -->
+      <div class="editor-body">
+        
+        <!-- PANE A: Agent Block (34s - 43s) -->
+        <div class="pane-container active" id="pane-a">
+          <div class="gutter">
+            <div class="line-num">1</div><div class="line-num">2</div><div class="line-num">3</div>
+            <div class="line-num">4</div><div class="line-num">5</div><div class="line-num">6</div>
+            <div class="line-num">7</div><div class="line-num">8</div><div class="line-num">9</div>
+            <div class="line-num">10</div><div class="line-num">11</div><div class="line-num">12</div>
+            <div class="line-num">13</div><div class="line-num">14</div><div class="line-num">15</div>
+          </div>
+          <div class="code-container" id="code-a">
+            <div class="code-line"><span class="keyword">agent</span> Researcher {</div>
+            <div class="code-line">    <span class="keyword cyan-kw">goal</span> <span class="string">"Find papers on room-temperature superconductors"</span></div>
+            <div class="code-line"></div>
+            <div class="code-line">    inputs  { query: <span class="type">str</span>  limit: <span class="type">int</span> }</div>
+            <div class="code-line">    outputs { papers: <span class="type">list[dict]</span> }</div>
+            <div class="code-line"></div>
+            <div class="code-line">    <span class="keyword">use</span> tool web.search</div>
+            <div class="code-line"></div>
+            <div class="code-line">    <span class="keyword orange-kw">policy</span> {</div>
+            <div class="code-line">        max_tool_calls: <span class="number">10</span></div>
+            <div class="code-line">        max_cost_usd:   <span class="number">0.05</span></div>
+            <div class="code-line">    }</div>
+            <div class="code-line"></div>
+            <div class="code-line">    <span class="keyword green-kw">plan</span> {</div>
+            <div class="code-line">        <span class="keyword">let</span> raw = web.search(query: query, count: limit)</div>
+            <div class="code-line">        <span class="keyword">return</span> raw</div>
+            <div class="code-line">    }</div>
+            <div class="code-line">}</div>
+          </div>
+        </div>
+
+        <!-- PANE B: Episodic Memory (43s - 51s) -->
+        <div class="pane-container" id="pane-b">
+          <div class="gutter">
+            <div class="line-num">1</div><div class="line-num">2</div><div class="line-num">3</div>
+            <div class="line-num">4</div><div class="line-num">5</div><div class="line-num">6</div>
+            <div class="line-num">7</div><div class="line-num">8</div><div class="line-num">9</div>
+          </div>
+          <div class="code-container" id="code-b">
+            <div class="code-line"><span class="keyword">use</span> tool web.search</div>
+            <div class="code-line"></div>
+            <div class="code-line"><span class="keyword">let</span> results = web.search(<span class="string">"AI compiler research"</span>, limit: <span class="number">5</span>)</div>
+            <div class="code-line"></div>
+            <div class="code-line"><span class="keyword cyan-kw">remember</span> results <span class="keyword">in</span> semantic_memory</div>
+            <div class="code-line"></div>
+            <div class="code-line"><span class="keyword">let</span> recalled = <span class="keyword cyan-kw">recall</span> <span class="string">"compiler"</span> <span class="keyword">from</span> semantic_memory</div>
+            <div class="code-line"></div>
+            <div class="code-line"><span class="keyword">return</span> recalled</div>
+          </div>
+          <!-- Memory Visual Float Panel -->
+          <div class="memory-visual-panel">
+            <div class="memory-visual-header">Semantic Store</div>
+            <div class="vector-cluster" id="vector-container">
+              <!-- Animated SVG vector clusters -->
+              <svg width="100%" height="100%" id="vector-svg" style="position: absolute; inset:0;">
+                <line id="conn-line-1" class="vector-connection" x1="100" y1="200" x2="250" y2="280"/>
+                <line id="conn-line-2" class="vector-connection" x1="250" y1="280" x2="180" y2="400"/>
+              </svg>
+              <!-- Dots -->
+              <div class="vector-dot" style="top: 15%; left: 20%;" data-idx="0"></div>
+              <div class="vector-dot" style="top: 25%; left: 70%;" data-idx="1"></div>
+              <div class="vector-dot" style="top: 45%; left: 40%;" data-idx="2"></div>
+              <div class="vector-dot" style="top: 65%; left: 80%;" data-idx="3"></div>
+              <div class="vector-dot" style="top: 80%; left: 30%;" data-idx="4"></div>
+              <div class="vector-dot" style="top: 35%; left: 55%;" data-idx="5"></div>
+              <div class="vector-dot" style="top: 55%; left: 15%;" data-idx="6"></div>
+              <div class="vector-dot" style="top: 70%; left: 60%;" data-idx="7"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE C: Approval Gate + Retry (51s - 62s) -->
+        <div class="pane-container" id="pane-c" style="flex-direction: row;">
+          <div class="split-pane">
+            <!-- Top Split -->
+            <div class="split-top">
+              <span class="pane-title-tag">HUMAN GATE</span>
+              <div class="gutter">
+                <div class="line-num">1</div><div class="line-num">2</div><div class="line-num">3</div>
+                <div class="line-num">4</div><div class="line-num">5</div><div class="line-num">6</div><div class="line-num">7</div>
+              </div>
+              <div class="code-container" id="code-c-top">
+                <div class="code-line"><span class="keyword">agent</span> PaymentAgent {</div>
+                <div class="code-line">    <span class="keyword cyan-kw">goal</span> <span class="string">"Process payment with human approval"</span></div>
+                <div class="code-line">    <span class="keyword orange-kw">policy</span> { allow_payment: <span class="type">true</span> }</div>
+                <div class="code-line">    <span class="keyword green-kw">plan</span> {</div>
+                <div class="code-line">        <span class="keyword orange-kw">approve</span> subscription_fee <span class="keyword cyan-kw">before</span> pay</div>
+                <div class="code-line">    }</div>
+                <div class="code-line">}</div>
+              </div>
+              <!-- Approval Gate Alert Popup -->
+              <div class="approval-gate-overlay" id="approval-gate">
+                <span class="gate-icon">⏸</span>
+                <span class="gate-text">WAITING FOR HUMAN APPROVAL...</span>
+              </div>
+            </div>
+            <!-- Bottom Split -->
+            <div class="split-bottom">
+              <span class="pane-title-tag">RECOVERY ENGINE</span>
+              <div class="gutter">
+                <div class="line-num">8</div><div class="line-num">9</div><div class="line-num">10</div>
+                <div class="line-num">11</div><div class="line-num">12</div><div class="line-num">13</div>
+              </div>
+              <div class="code-container" id="code-c-bottom">
+                <div class="code-line"><span class="keyword orange-kw">retry</span> <span class="number">3</span> <span class="keyword cyan-kw">with</span> backoff exponential {</div>
+                <div class="code-line">    <span class="keyword">let</span> raw = web.search(<span class="string">"AI research"</span>)</div>
+                <div class="code-line">    <span class="keyword orange-kw">guard</span> raw.status == <span class="number">200</span></div>
+                <div class="code-line">} <span class="keyword orange-kw">catch</span> err {</div>
+                <div class="code-line">    <span class="keyword">return</span> <span class="string">"Failed: "</span> + err.message</div>
+                <div class="code-line">}</div>
+              </div>
+              <!-- Backoff graph indicator -->
+              <div class="backoff-attempt-container" id="backoff-indicators">
+                <div class="backoff-title">EXPONENTIAL RETRIES</div>
+                <div class="attempt-bar-wrapper">
+                  <span>Try 1</span>
+                  <div class="attempt-bar"><div class="attempt-fill" id="try-1" style="background-color: #EF4444;"></div></div>
+                </div>
+                <div class="attempt-bar-wrapper">
+                  <span>Try 2</span>
+                  <div class="attempt-bar"><div class="attempt-fill" id="try-2" style="background-color: #EF4444;"></div></div>
+                </div>
+                <div class="attempt-bar-wrapper">
+                  <span>Try 3</span>
+                  <div class="attempt-bar"><div class="attempt-fill" id="try-3"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+    </div>
+
+    <!-- Typewriter Cursor Template -->
+    <span class="cursor" id="editor-cursor" style="display:none;"></span>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function() {
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Utility to convert text nodes to individual span chars for typewriter
+        function prepareTypewriter(element) {
+          const chars = [];
+          function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              const text = node.nodeValue;
+              const parent = node.parentNode;
+              const fragment = document.createDocumentFragment();
+              for (let i = 0; i < text.length; i++) {
+                const span = document.createElement('span');
+                span.className = 'typewriter-char';
+                span.textContent = text[i];
+                fragment.appendChild(span);
+                chars.push(span);
+              }
+              parent.replaceChild(fragment, node);
+            } else {
+              const children = Array.from(node.childNodes);
+              for (const child of children) {
+                traverse(child);
+              }
+            }
+          }
+          traverse(element);
+          return chars;
+        }
+
+        // Initialize typewriter characters in containers
+        const codeA = document.getElementById('code-a');
+        const codeB = document.getElementById('code-b');
+        const codeCTop = document.getElementById('code-c-top');
+        const codeCBot = document.getElementById('code-c-bottom');
+
+        const charsA = prepareTypewriter(codeA);
+        const charsB = prepareTypewriter(codeB);
+        const charsCTop = prepareTypewriter(codeCTop);
+        const charsCBot = prepareTypewriter(codeCBot);
+
+        const cursor = document.getElementById('editor-cursor');
+
+        // Blinking cursor setup
+        tl.to(cursor, { opacity: 0, duration: 0.265, yoyo: true, repeat: 100, ease: "steps(1)" }, 0);
+
+        // Helper to programmatically type characters onto the timeline
+        function buildTypewriterTweens(chars, startT, charsPerSec) {
+          const dur = 1 / charsPerSec;
+          chars.forEach((char, idx) => {
+            const t = startT + idx * dur;
+            // Reveal character
+            tl.set(char, { className: "typewriter-char visible" }, t);
+            // Move cursor to follow character
+            tl.call(() => {
+              cursor.style.display = "inline-block";
+              char.parentNode.insertBefore(cursor, char.nextSibling);
+            }, null, t);
+          });
+          return startT + chars.length * dur;
+        }
+
+        // --- SCENE 4 SCHEDULE (Timeline relative: total 28s: 0s to 28s) ---
+        // 0s to 9s: Demo A (Agent Block)
+        // 9s to 17s: Demo B (Episodic Memory)
+        // 17s to 28s: Demo C (Approval Gate + Retry)
+
+
+        const tabA = document.getElementById('tab-a');
+        const tabB = document.getElementById('tab-b');
+        const tabC = document.getElementById('tab-c');
+        const paneA = document.getElementById('pane-a');
+        const paneB = document.getElementById('pane-b');
+        const paneC = document.getElementById('pane-c');
+
+        // 1. DEMO A: Agent Block
+
+        // Type Demo A code
+        const endTypeA = buildTypewriterTweens(charsA, 0.5, 40);
+
+        // 2. Transition to DEMO B (9s)
+        tl.set([paneA, tabA], { className: (i, el) => el.id === 'tab-a' ? 'tab inactive' : 'pane-container' }, 9.0);
+        tl.set([paneB, tabB], { className: (i, el) => el.id === 'tab-b' ? 'tab' : 'pane-container active' }, 9.0);
+
+        // Type Demo B code
+        const endTypeB = buildTypewriterTweens(charsB, 9.5, 40);
+
+        // Demo B Visual Animation (Vector Clusters)
+        // Stagger high-lighting vector dots and drawing lines
+        const dots = document.querySelectorAll('#vector-container .vector-dot');
+        const connLine1 = document.getElementById('conn-line-1');
+        const connLine2 = document.getElementById('conn-line-2');
+
+        tl.to(dots[0], { className: 'vector-dot highlighted', duration: 0.3 }, 11.0);
+        tl.to(dots[5], { className: 'vector-dot highlighted', duration: 0.3 }, 11.4);
+        tl.to(connLine1, { opacity: 0.8, duration: 0.5 }, 11.6);
+        tl.to(dots[2], { className: 'vector-dot highlighted', duration: 0.3 }, 12.0);
+        tl.to(connLine2, { opacity: 0.8, duration: 0.5 }, 12.2);
+        tl.to(dots[7], { className: 'vector-dot highlighted', duration: 0.3 }, 13.0);
+
+        // 3. Transition to DEMO C (17s)
+        tl.set([paneB, tabB], { className: (i, el) => el.id === 'tab-b' ? 'tab inactive' : 'pane-container' }, 17.0);
+        tl.set([paneC, tabC], { className: (i, el) => el.id === 'tab-c' ? 'tab' : 'pane-container active' }, 17.0);
+
+        // Type Demo C top code
+        const endTypeCTop = buildTypewriterTweens(charsCTop, 17.5, 40);
+
+        // Gate Pause Animation (20.5s to 22.5s)
+        const gate = document.getElementById('approval-gate');
+        tl.to(gate, { opacity: 1, duration: 0.4 }, 20.5);
+        tl.to(gate, { opacity: 0, duration: 0.4 }, 22.5);
+
+        // Type Demo C bottom code
+        const endTypeCBot = buildTypewriterTweens(charsCBot, 23.0, 40);
+
+        // Retry Backoff Animation
+        const indicators = document.getElementById('backoff-indicators');
+        const try1 = document.getElementById('try-1');
+        const try2 = document.getElementById('try-2');
+        const try3 = document.getElementById('try-3');
+
+        tl.to(indicators, { opacity: 1, duration: 0.3 }, 24.5);
+        tl.to(try1, { width: '100%', duration: 0.5 }, 25.0);
+        tl.to(try2, { width: '100%', duration: 0.8 }, 26.0);
+        tl.to(try3, { width: '100%', backgroundColor: '#10B981', duration: 1.2 }, 27.0);
+
+        // Fade cursor out at the end of Scene 4
+        tl.set(cursor, { display: 'none' }, 27.9);
+
+        window.__timelines["code-editor"] = tl;
+      })();
+    </script>
+  </div>
+</template>
