@@ -1,6 +1,4 @@
 from __future__ import annotations
-import sys
-import shutil
 from pathlib import Path
 import pytest
 from typer.testing import CliRunner

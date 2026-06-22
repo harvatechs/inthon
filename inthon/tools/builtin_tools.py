@@ -96,7 +96,6 @@ def register_skills(registry: ToolRegistry) -> None:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 
-            skill_name = data.get("skill_name")
             for t in data.get("tools", []):
                 name = t.get("name")
                 description = t.get("description", "")

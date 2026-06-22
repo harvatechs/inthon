@@ -8,7 +8,8 @@ stroke-order reveal is exact by construction for any text, no per-word tuning.
 Usage: gen-stroke-path.py <font.svg> <text> <target_width_px> <baseline_y> <x0>
 Prints: the path `d` string + layout info on stderr.
 """
-import re, sys
+import re
+import sys
 
 font_path, text, target_w, baseline_y, x0 = (
     sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))

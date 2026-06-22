@@ -256,7 +256,7 @@ def convert_skill_cmd(
 
     try:
         inth_path, schema_path = convert_skill_to_workflow(skill_dir, output_dir)
-        console.print(f"[green]Skill converted successfully![/green]")
+        console.print("[green]Skill converted successfully![/green]")
         console.print(f"  -> Generated INTHON workflow: [cyan]{inth_path}[/cyan]")
         console.print(f"  -> Generated tool schema: [cyan]{schema_path}[/cyan]")
     except Exception as exc:

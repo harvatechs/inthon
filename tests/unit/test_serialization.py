@@ -3,14 +3,11 @@ tests/unit/test_serialization.py — Unit tests for INTHON VM state dehydration/
 """
 
 from __future__ import annotations
-import pytest
 from inthon.runtime.context import ExecutionContext
 from inthon.parser.parser import parse
 from inthon.vm.compiler import compile_program
 from inthon.vm.machine import InthonVM, PauseSignal
 from inthon.vm.serialization import (
-    serialize_frame,
-    deserialize_frame,
     serialize_value,
     deserialize_value,
 )
@@ -24,7 +21,7 @@ class PauseHelper:
 
 
 def test_value_serialization():
-    from inthon.runtime.values import InthonInt, InthonStr, InthonList, InthonDict
+    from inthon.runtime.values import InthonInt, InthonStr, InthonList
 
     # Primitives
     assert serialize_value(10) == 10
@@ -92,7 +89,7 @@ let z = x + y
 
     # Re-run from the serialized state
     vm2 = InthonVM(ctx)
-    result = vm2.resume_execution(state)
+    vm2.resume_execution(state)
 
     # After resuming, let's verify z's value in vm2 globals
     assert vm2._globals["z"] == 20
