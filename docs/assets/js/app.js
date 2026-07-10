@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // 2. Load micropip and install lark
       await pyodideInstance.loadPackage("micropip");
-      const micropip = pyodideInstance.pyimports("micropip");
+      const micropip = pyodideInstance.pyimport("micropip");
       await micropip.install("lark");
       
       if (consoleOutput) {
