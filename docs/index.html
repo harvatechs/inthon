@@ -172,8 +172,8 @@ pip install -e .[dev,data,ml]</code></pre>
             </div>
             <div class="editor-badge">.inth</div>
           </div>
-          <div class="editor-body">
-            <pre><code id="code-display" class="language-inth">// Select a program from the tabs above</code></pre>
+          <div class="editor-body" style="flex: 1; display: flex; flex-direction: column;">
+            <pre style="margin: 0; flex: 1; display: flex; flex-direction: column;"><code id="code-display" class="language-inth" contenteditable="true" spellcheck="false" style="outline: none; flex: 1; display: block; min-height: 280px; width: 100%; white-space: pre-wrap; word-break: break-all;">// Select a program from the tabs above</code></pre>
           </div>
           <div class="editor-footer">
             <button class="btn btn-primary btn-run" id="run-code-btn">
@@ -302,14 +302,15 @@ pip install -e .[dev,data,ml]</code></pre>
       <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center;">If you use INTHON in your research, please cite our concept paper:</p>
       <div class="citation-box">
         <button class="btn-copy" id="btn-copy-citation">Copy BibTeX</button>
-        <pre id="bibtex-citation">@article{vardhan2026inthon,
-  title={INTHON: Agent-Level Programming Language Layer for AI-Native Workflows},
-  author={Vardhan, Harsha},
-  journal={Department of Advanced Computing \& Research, HarVa DeepLabs},
-  year={2026},
-  url={https://github.com/harvatechs/inthon}
+        <pre id="bibtex-citation">@article{harva2026inthon,
+  title     = {INTHON: Agent-Level Programming Language Layer for AI-Native Workflows},
+  author    = {Harsha Vardhan},
+  journal   = {Department of Advanced Computing & Research, HarVa DeepLabs},
+  year      = {2026},
+  url       = {https://github.com/harvatechs/inthon}
 }</pre>
       </div>
-    </div>
   </section>
 </main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>

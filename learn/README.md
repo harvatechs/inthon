@@ -27,6 +27,12 @@ Follow these modules in sequence to master INTHON:
 ### 5. [Advanced Agent Capabilities](05_advanced_features.md)
 * Master advanced runtime primitives: Human-in-the-loop (HITL) approval gates, short-term/long-term episodic memory (`remember` and `recall`), and resilient execution via `retry` loops with exponential backoff.
 
+### 6. [Production Templates & Design Patterns](06_templates.md)
+* Ready-to-use copy-pasteable boilerplates and design patterns to solve common challenges in professional agent systems: web scraper, CSV analytics, Stripe billing gates, and Q&A memory agents.
+
+### 7. [The End-to-End Playbook](playbook.md)
+* An exhaustive, comprehensive reference manual and scenario guide containing deep syntax references, sandboxing internals, interactive dashboard development guidelines, and troubleshooting tips.
+
 ---
 
 ## Why Learn INTHON?

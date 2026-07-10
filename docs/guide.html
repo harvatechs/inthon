@@ -15,6 +15,7 @@ description: "A complete step-by-step developer guide and comprehensive language
       <li class="sidebar-item" data-target="guide-part4">4. PyBridge Sandbox & Security</li>
       <li class="sidebar-item" data-target="guide-part5">5. Advanced Primitives & Resiliency</li>
       <li class="sidebar-item" data-target="guide-part6">6. Production Templates & Patterns</li>
+      <li class="sidebar-item" data-target="guide-part7">7. End-to-End Playbook</li>
     </ul>
   </aside>
   
@@ -58,6 +59,10 @@ description: "A complete step-by-step developer guide and comprehensive language
         <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part6\']').click()">
           <h3>6. Production Templates & Patterns</h3>
           <p>Complete, production-ready boilerplates for web scrapers, data pipelines, payment gates, and memory-driven agents.</p>
+        </div>
+        <div class="guide-card" onclick="document.querySelector('[data-target=\'guide-part7\']').click()">
+          <h3>7. End-to-End Playbook</h3>
+          <p>Exhaustive syntax reference, PyBridge namespaces, interactive UI creation, and step-by-step troubleshooting.</p>
         </div>
       </div>
 
@@ -878,6 +883,307 @@ agent MemoryAgent {
         }
     }
 }</code></pre>
+    </section>
+    
+    <!-- PART 7 SECTION -->
+    <section id="guide-part7" class="guide-section">
+      <h1 class="guide-title">Part 7: The End-to-End Playbook</h1>
+      <p class="guide-lead">The complete reference handbook and scenario guide for building, sandboxing, and troubleshooting production INTHON agents.</p>
+
+      <h2>1. Philosophy & Paradigm Comparison</h2>
+      <p>INTHON represents a fundamental shift in how developers orchestrate autonomous agents. Traditional approaches rely on the Large Language Model generating unstructured natural language or verbose, nested JSON schemas to call APIs. This introduces several critical limitations:
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>Feature / Metric</th>
+            <th>Natural Language Prompting</th>
+            <th>JSON Schema Tool-Calling</th>
+            <th>INTHON Language Layer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Token Efficiency</strong></td>
+            <td>Low (verbose syntax, heavy repetition)</td>
+            <td>Medium-Low (heavy wrapper schemas)</td>
+            <td><strong>High (-75% token reduction)</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Execution Safety</strong></td>
+            <td>N/A (unmanaged execution on host)</td>
+            <td>Restricted (hardcoded schema bindings)</td>
+            <td><strong>Strictly Sandboxed (fine-grained controls)</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Control Flow</strong></td>
+            <td>Non-deterministic / Multi-turn loops</td>
+            <td>Multi-turn loops required</td>
+            <td><strong>Turing Complete (local branches, loops)</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Traceability & Audits</strong></td>
+            <td>Very difficult (log parsing)</td>
+            <td>Partial (API logs)</td>
+            <td><strong>Deterministic JSON traces out-of-the-box</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>2. Exhaustive Syntax Reference</h2>
+      <h3>Data Types & Declarations</h3>
+      <p>Variables and constants are strictly block-scoped and verified at compile-time:</p>
+      <pre><code class="language-inth">// Variables must be declared before use
+let count: int = 10
+count = count + 5 // OK: let is mutable
+
+const pi: float = 3.14159
+// pi = 3.0 // Compile-time Error: Cannot reassign const variable</code></pre>
+
+      <p>INTHON's type checker supports collections, heterogeneous pairs, and agent structures:</p>
+      <ul>
+        <li><code>list[T]</code>: A dynamic array containing uniform elements of type <code>T</code>. E.g., <code>let names: list[str] = ["A", "B"]</code></li>
+        <li><code>dict[K, V]</code>: An associative key-value map mapping keys of type <code>K</code> to values of type <code>V</code>. E.g., <code>let map: dict[str, float] = {"price": 9.99}</code></li>
+        <li><code>tuple[T1, T2]</code>: A fixed-size sequence of elements. E.g., <code>let pair: tuple[str, int] = ["id", 10]</code></li>
+      </ul>
+
+      <h3>Operator Precedence Hierarchy</h3>
+      <p>Expressions are parsed using the following standard mathematical precedence levels (highest to lowest):</p>
+      <ol>
+        <li>Unary operators (<code>!</code>, <code>-</code>)</li>
+        <li>Exponentiation (<code>**</code>)</li>
+        <li>Multiplicative (<code>*</code>, <code>/</code>, <code>%</code>)</li>
+        <li>Additive (<code>+</code>, <code>-</code>)</li>
+        <li>Relational comparisons (<code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>)</li>
+        <li>Equality checks (<code>==</code>, <code>!=</code>)</li>
+        <li>Logical AND (<code>and</code>)</li>
+        <li>Logical OR (<code>or</code>)</li>
+      </ol>
+
+      <h2>3. Fine-Grained Capability Policies</h2>
+      <p>Every agent block configures its own safety sandbox boundary inside its <code>policy</code> block. The capability guard intercepts execution at the boundary to verify permissions. If an agent block tries to execute a statement that violates its policy, the interpreter halts execution immediately.</p>
+      <pre><code class="language-inth">agent RestrictedSearcher {
+    policy {
+        allow_network: false // Blocks all network operations
+        max_tool_calls: 0
+    }
+    plan {
+        // Calling web.search here triggers a PolicyViolationError!
+        let results = web.search("quantum computation")
+        return results
+    }
+}</code></pre>
+
+      <h2>4. PyBridge Meta-Path Interception Internals</h2>
+      <p>PyBridge allows safe execution of Python libraries like NumPy and Pandas. It enforces isolation through a two-tiered defense:</p>
+      <ol>
+        <li><strong>sys.meta_path Interception Hook</strong>: When the script executes <code>use py.numpy</code>, PyBridge checks the module name against the approved allowlist in <code>inthon.toml</code>. System modules like <code>os</code>, <code>sys</code>, and <code>subprocess</code> are rejected immediately.</li>
+        <li><strong>InthonPyObject Wrappers</strong>: Permitted packages are wrapped inside a proxy. When the code attempts to traverse attributes to reach private properties (such as <code>__builtins__</code> or <code>__dict__</code>), the proxy raises a <code>SecurityViolation</code> exception and stops execution.</li>
+      </ol>
+
+      <h2>5. Advanced Control Flow & Primitives</h2>
+      
+      <h3>Human-in-the-Loop Approval Gates (<code>approve</code>)</h3>
+      <p>For critical actions, INTHON suspends execution until a human administrator reviews and yields permission:</p>
+      <pre><code class="language-inth">approve database_deletion before db</code></pre>
+      <p>If denied, the interpreter throws an <code>ApprovalDeniedError</code>, aborting the process.</p>
+
+      <h3>Episodic Memory cosine similarity match (<code>remember</code> / <code>recall</code>)</h3>
+      <p>Episodic statements are written to a SQLite database and queried semantically. When you query memory, the VM calculates the cosine similarity between the query embedding and database vectors:</p>
+      <div style="text-align: center; margin: 15px 0; font-size: 1.1rem; color: var(--color-accent);">
+        \(\text{Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}\)
+      </div>
+      <pre><code class="language-inth">remember "User prefers a dark UI layout" in session
+let preference = recall "UI preference" from session // Returns the fact</code></pre>
+
+      <h3>Retry loops with Exponential Backoff (<code>retry</code>)</h3>
+      <p>To withstand intermittent network failures, INTHON includes native retry blocks:</p>
+      <pre><code class="language-inth">retry 3 with backoff exponential {
+    let raw = web.search("Inthon compilers")
+    guard raw.length > 0
+} catch err {
+    return "API failed: " + err.message
+}</code></pre>
+      <p>The time interval (in seconds) between retry attempts is computed as:</p>
+      <div style="text-align: center; margin: 20px 0; font-size: 1.15rem; font-family: var(--font-heading); color: var(--color-accent);">
+        \(t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\)
+      </div>
+
+      <h2>6. Interactive Web Dashboards (<code>py.inthon.ui</code>)</h2>
+      <p>Developers can build interactive web dashboards with INTHON. This allows you to handle user events, trigger agents, and update state reactively.</p>
+      
+      <h3>Key Layout and Widget APIs</h3>
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th>API Method</th>
+            <th>Arguments</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ui.init</code></td>
+            <td><code>title: str, port: int</code></td>
+            <td>Launches the dashboard web server.</td>
+          </tr>
+          <tr>
+            <td><code>ui.sidebar_start / ui.sidebar_end</code></td>
+            <td>None</td>
+            <td>Groups widgets into a sidebar layout.</td>
+          </tr>
+          <tr>
+            <td><code>ui.chat_history_add</code></td>
+            <td><code>role: str, text: str</code></td>
+            <td>Appends a message to the chat view.</td>
+          </tr>
+          <tr>
+            <td><code>ui.button</code></td>
+            <td><code>label: str, callback: fn</code></td>
+            <td>Renders a button and binds a click handler.</td>
+          </tr>
+          <tr>
+            <td><code>ui.status_start</code></td>
+            <td><code>label: str</code></td>
+            <td>Starts a visual loading spinner, returning an ID.</td>
+          </tr>
+          <tr>
+            <td><code>ui.status_complete</code></td>
+            <td><code>id: str, label: str, success: bool</code></td>
+            <td>Closes the visual loader with success or error status.</td>
+          </tr>
+          <tr>
+            <td><code>ui.on_message</code></td>
+            <td><code>callback: fn(str)</code></td>
+            <td>Binds a callback to handle chat inputs.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>7. End-to-End Scenarios</h2>
+
+      <h3>Scenario A: Customer Support Auto-Responder with HITL Fallback</h3>
+      <p>This script processes support tickets. If the ticket is categorized as a refund, the agent routes execution to the human approval gate before triggering Stripe API charges.</p>
+      <pre><code class="language-inth">// support_responder.inth
+use tool db.delete
+use tool email.send
+
+let ticket_id = "tx_9011"
+let category = "refund"
+let customer_email = "user@example.com"
+
+agent SupportAgent {
+    goal "Respond to customer tickets and process refund updates"
+    inputs {
+        ticket_id: str
+        category: str
+        customer_email: str
+    }
+    outputs {
+        status: str
+        message: str
+    }
+    policy {
+        allow_payment: true
+        allow_network: true
+    }
+    plan {
+        if category == "refund" {
+            // Require human validation before executing database deletion
+            approve refund_approval before db
+            
+            let res = db.delete(table: "transactions", id: ticket_id)
+            email.send(
+                to: customer_email, 
+                subject: "Refund Approved", 
+                body: "Your refund ticket has been processed successfully."
+            )
+            return {
+                "status": "refunded",
+                "message": "Refund processed and confirmation email sent."
+            }
+        }
+        
+        email.send(
+            to: customer_email, 
+            subject: "Ticket Received", 
+            body: "We have received your ticket and are reviewing it."
+        )
+        return {
+            "status": "ticket_opened",
+            "message": "Standard ticket response sent."
+        }
+    }
+}</code></pre>
+
+      <h3>Scenario B: Financial Market Tracker with Retries and Data Aggregation</h3>
+      <p>This script fetches ticker prices, performs analysis via NumPy, and retries the network tool on failures.</p>
+      <pre><code class="language-inth">// market_tracker.inth
+use tool web.search
+use py.numpy as np
+
+let ticker = "AAPL"
+
+agent MarketTracker {
+    goal "Fetch daily stock tickers and calculate price averages"
+    inputs {
+        ticker: str
+    }
+    outputs {
+        average_price: float
+        outlier_detected: bool
+    }
+    policy {
+        allow_network: true
+        max_tool_calls: 5
+    }
+    plan {
+        let prices = []
+        
+        // Wrap network call in a retry loop with exponential backoff
+        retry 3 with backoff exponential {
+            let data = web.search("stock price " + ticker)
+            guard data.length >= 3
+            
+            prices = [
+                data[0]["price"],
+                data[1]["price"],
+                data[2]["price"]
+            ]
+        } catch err {
+            // Fallback default values on failure
+            prices = [100.0, 101.2, 99.8]
+        }
+        
+        // Calculate average using NumPy
+        let arr = np.array(prices)
+        let mean_val = arr.mean()
+        let max_val = arr.max()
+        
+        let is_outlier = false
+        if max_val > (mean_val * 1.05) {
+            is_outlier = true
+        }
+        
+        return {
+            "average_price": mean_val,
+            "outlier_detected": is_outlier
+        }
+    }
+}</code></pre>
+
+      <h2>8. Troubleshooting Guide</h2>
+      <h3>Common Linter Diagnostics</h3>
+      <ul>
+        <li><strong><code>SymbolNotFoundError: Name 'X' is not defined</code></strong>: Ensure all variables are defined using <code>let X = value</code> or <code>const X = value</code> before referencing them. Check for typos.</li>
+        <li><strong><code>TypeMismatchError: Cannot assign type 'float' to variable of type 'int'</code></strong>: INTHON requires matching types on assignment. Convert variables explicitly or modify the variable's type annotations.</li>
+      </ul>
+
+      <h3>Common Runtime Exceptions</h3>
+      <ul>
+        <li><strong><code>PolicyViolationError: Operation disallowed under current policy</code></strong>: The plan attempted an action (e.g. <code>web.search</code>) restricted by the agent's <code>policy</code> block. Add the necessary permission (e.g. <code>allow_network: true</code>) to the policy block.</li>
+        <li><strong><code>PyBridgeError: Module 'X' is not permitted</code></strong>: You tried to import a package that is not in the allowed modules list. Verify that you aren't importing a system module (like <code>os</code> or <code>subprocess</code>). For safe custom modules, whitelist them under <code>[pybridge]</code> in <code>inthon.toml</code>.</li>
+        <li><strong><code>ApprovalDeniedError: Human validator rejected action</code></strong>: The human operator rejected the action. Wrap critical operations in try-catch retry blocks to handle rejections gracefully.</li>
+      </ul>
     </section>
 
   </main>

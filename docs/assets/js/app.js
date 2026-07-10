@@ -142,6 +142,135 @@ document.addEventListener('DOMContentLoaded', () => {
   const runBtn = document.getElementById('run-code-btn');
   const consoleStatus = document.getElementById('console-status-indicator');
 
+  let pyodideInstance = null;
+  let isPyodideReady = false;
+
+  async function initPyodide() {
+    if (consoleStatus) {
+      consoleStatus.textContent = 'Booting';
+      consoleStatus.style.color = 'var(--text-muted)';
+    }
+    if (consoleOutput) {
+      consoleOutput.innerHTML = `
+        <div class="console-line system-line">&gt; Loading WebAssembly Python environment...</div>
+      `;
+    }
+    
+    try {
+      // 1. Load Pyodide WASM
+      pyodideInstance = await loadPyodide();
+      
+      if (consoleOutput) {
+        consoleOutput.innerHTML += `
+          <div class="console-line system-line">&gt; Installing lark compiler parser package...</div>
+        `;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+      
+      // 2. Load micropip and install lark
+      await pyodideInstance.loadPackage("micropip");
+      const micropip = pyodideInstance.pyimports("micropip");
+      await micropip.install("lark");
+      
+      if (consoleOutput) {
+        consoleOutput.innerHTML += `
+          <div class="console-line system-line">&gt; Fetching and unpacking inthon package...</div>
+        `;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+      
+      // 3. Fetch inthon.zip compiler files
+      const response = await fetch('assets/inthon.zip');
+      if (!response.ok) throw new Error("Failed to fetch assets/inthon.zip");
+      const zipData = await response.arrayBuffer();
+      
+      // Write zip data to Pyodide MEMFS
+      pyodideInstance.FS.writeFile("inthon.zip", new Uint8Array(zipData));
+      
+      // Extract inthon.zip
+      pyodideInstance.runPython(`
+import zipfile
+with zipfile.ZipFile("inthon.zip", "r") as zip_ref:
+    zip_ref.extractall(".")
+      `);
+      
+      // Inject python runner helper
+      pyodideInstance.runPython(`
+import sys
+import json
+from inthon.parser.parser import parse
+from inthon.runtime.context import ExecutionContext
+from inthon.runtime.interpreter import Interpreter
+from inthon.tools.builtin_tools import register_builtins
+from inthon.semantic.scope import SemanticError
+from inthon.runtime.errors import IntHonRuntimeError
+
+class TraceCapturer:
+    def __init__(self):
+        self.logs = []
+    def emit(self, event_type, data=None):
+        self.logs.append({"type": event_type, "data": data})
+
+def run_inthon(code_str):
+    logs = []
+    logs.append(("[Compiler]", "Analyzing token stream & parsing Lark grammar..."))
+    try:
+        prog = parse(code_str)
+        logs.append(("[Parser]", "Concrete Syntax Tree parsed and AST built successfully."))
+        
+        ctx = ExecutionContext()
+        register_builtins(ctx.tools, mock=True)
+        
+        tracer = TraceCapturer()
+        ctx.tracer = tracer
+        
+        interp = Interpreter(ctx)
+        logs.append(("[Runtime]", "Spawning isolated sandbox workspace..."))
+        
+        res = interp.run(prog)
+        logs.append(("[Runtime]", f"Execution completed. Result: {res}"))
+        
+        for event in tracer.logs:
+            logs.append(("[Trace]", f"Event '{event['type']}':\\n{json.dumps(event['data'], indent=2)}"))
+            
+        return json.dumps({"success": True, "logs": logs, "result": str(res)})
+    except SemanticError as e:
+        logs.append(("[Semantic Error]", f"Static check failed: {str(e)}"))
+        return json.dumps({"success": False, "logs": logs, "error": str(e)})
+    except IntHonRuntimeError as e:
+        logs.append(("[Runtime Error]", f"Execution failed: {str(e)}"))
+        return json.dumps({"success": False, "logs": logs, "error": str(e)})
+    except Exception as e:
+        logs.append(("[System Error]", f"General error: {str(e)}"))
+        return json.dumps({"success": False, "logs": logs, "error": str(e)})
+      `);
+      
+      isPyodideReady = true;
+      if (consoleOutput) {
+        consoleOutput.innerHTML += `
+          <div class="console-line system-line">&gt; Live compiler environment initialized. Ready to execute code!</div>
+        `;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+      if (consoleStatus) {
+        consoleStatus.textContent = 'Ready';
+        consoleStatus.style.color = '#28a745';
+      }
+    } catch (err) {
+      console.error(err);
+      if (consoleOutput) {
+        consoleOutput.innerHTML += `
+          <div class="console-line error-line">&gt; Initialization Error: ${err.message}</div>
+        `;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+      if (consoleStatus) {
+        consoleStatus.textContent = 'Error';
+        consoleStatus.style.color = '#d73a49';
+      }
+    }
+  }
+
   function loadPreset(presetName) {
     activePreset = presetName;
     if (codeDisplay) codeDisplay.textContent = PRESETS[presetName];
@@ -155,10 +284,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeTab) activeTab.classList.add('active');
 
     // Reset console
-    if (consoleOutput) consoleOutput.innerHTML = `<div class="console-line system-line">&gt; Code loaded. Ready to execute ${presetName} agent.</div>`;
-    if (consoleStatus) {
-      consoleStatus.textContent = 'Idle';
-      consoleStatus.style.color = 'var(--text-muted)';
+    if (consoleOutput) {
+      if (isPyodideReady) {
+        consoleOutput.innerHTML = `<div class="console-line system-line">&gt; Code loaded. Ready to execute ${presetName} agent.</div>`;
+      } else {
+        consoleOutput.innerHTML = `<div class="console-line system-line">&gt; Code loaded. Ready to execute ${presetName} agent (WASM still initializing).</div>`;
+      }
+    }
+    if (consoleStatus && isPyodideReady) {
+      consoleStatus.textContent = 'Ready';
+      consoleStatus.style.color = '#28a745';
     }
   }
 
@@ -174,6 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (runBtn) {
     runBtn.addEventListener('click', async () => {
       if (isExecuting) return;
+      
+      if (!isPyodideReady) {
+        if (consoleOutput) {
+          consoleOutput.innerHTML += '<div class="console-line error-line">&gt; Live compiler environment is booting. Please wait...</div>';
+          consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        return;
+      }
+
       isExecuting = true;
       runBtn.disabled = true;
       if (consoleStatus) {
@@ -183,30 +327,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (consoleOutput) consoleOutput.innerHTML = '<div class="console-line system-line">&gt; Initiating INTHON environment runtime...</div>';
 
-      const steps = SIMULATION_LOGS[activePreset];
-      for (let i = 0; i < steps.length; i++) {
-        await delay(Math.floor(Math.random() * 200) + 150); // fast execution
+      const code = codeDisplay.innerText || codeDisplay.textContent;
+
+      try {
+        const runResultStr = pyodideInstance.globals.get('run_inthon')(code);
+        const runResult = JSON.parse(runResultStr);
         
-        const step = steps[i];
-        let lineClass = 'compiler-line';
-        if (step.type === 'run') lineClass = 'run-line';
-        if (step.type === 'error') lineClass = 'error-line';
-        
-        let content = step.text;
-        if (step.type === 'trace') {
-          content = `<pre class="trace-json"><code>${step.text}</code></pre>`;
+        const steps = runResult.logs;
+        for (let i = 0; i < steps.length; i++) {
+          await delay(Math.floor(Math.random() * 80) + 40); // fast execution simulation
+          
+          const stepText = steps[i];
+          let type = 'run';
+          if (stepText.startsWith('[Compiler]') || stepText.startsWith('[Parser]')) {
+            type = 'compiler';
+          } else if (stepText.startsWith('[Semantic Error]') || stepText.startsWith('[Runtime Error]') || stepText.startsWith('[System Error]')) {
+            type = 'error';
+          } else if (stepText.startsWith('[Trace]')) {
+            type = 'trace';
+          }
+          
+          let lineClass = 'compiler-line';
+          if (type === 'run') lineClass = 'run-line';
+          if (type === 'error') lineClass = 'error-line';
+          
+          let content = stepText;
+          if (type === 'trace') {
+            content = `<pre class="trace-json"><code>${stepText.substring(8)}</code></pre>`;
+          }
+
+          if (consoleOutput) {
+            consoleOutput.innerHTML += `<div class="console-line ${lineClass}">${content}</div>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+          }
         }
 
+        if (runResult.success) {
+          if (consoleStatus) {
+            consoleStatus.textContent = 'Ready';
+            consoleStatus.style.color = '#28a745';
+          }
+        } else {
+          if (consoleStatus) {
+            consoleStatus.textContent = 'Failed';
+            consoleStatus.style.color = '#d73a49';
+          }
+        }
+      } catch (runErr) {
         if (consoleOutput) {
-          consoleOutput.innerHTML += `<div class="console-line ${lineClass}">${content}</div>`;
+          consoleOutput.innerHTML += `<div class="console-line error-line">[System Error] ${runErr.message}</div>`;
           consoleOutput.scrollTop = consoleOutput.scrollHeight;
         }
+        if (consoleStatus) {
+          consoleStatus.textContent = 'Error';
+          consoleStatus.style.color = '#d73a49';
+        }
       }
-
-      if (consoleStatus) {
-        consoleStatus.textContent = 'Success';
-        consoleStatus.style.color = '#28a745';
-      }
+      
       isExecuting = false;
       runBtn.disabled = false;
     });
@@ -220,6 +397,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (codeDisplay) {
     loadPreset('research');
   }
+
+  // Initialize Pyodide compiler environment
+  initPyodide();
 
   // Pipeline Interactive Hover Logic
   const flowSteps = document.querySelectorAll('.flow-step');
