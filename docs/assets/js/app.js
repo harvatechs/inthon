@@ -218,10 +218,10 @@ class TraceCapturer:
 
 def run_inthon(code_str):
     logs = []
-    logs.append(("[Compiler]", "Analyzing token stream & parsing Lark grammar..."))
+    logs.append("[Compiler] Analyzing token stream & parsing Lark grammar...")
     try:
         prog = parse(code_str)
-        logs.append(("[Parser]", "Concrete Syntax Tree parsed and AST built successfully."))
+        logs.append("[Parser] Concrete Syntax Tree parsed and AST built successfully.")
         
         ctx = ExecutionContext()
         register_builtins(ctx.tools, mock=True)
@@ -230,23 +230,23 @@ def run_inthon(code_str):
         ctx.tracer = tracer
         
         interp = Interpreter(ctx)
-        logs.append(("[Runtime]", "Spawning isolated sandbox workspace..."))
+        logs.append("[Runtime] Spawning isolated sandbox workspace...")
         
         res = interp.run(prog)
-        logs.append(("[Runtime]", f"Execution completed. Result: {res}"))
+        logs.append(f"[Runtime] Execution completed. Result: {res}")
         
         for event in tracer.logs:
-            logs.append(("[Trace]", f"Event '{event['type']}':\\n{json.dumps(event['data'], indent=2)}"))
+            logs.append(f"[Trace] Event '{event['type']}':\n{json.dumps(event['data'], indent=2)}")
             
         return json.dumps({"success": True, "logs": logs, "result": str(res)})
     except SemanticError as e:
-        logs.append(("[Semantic Error]", f"Static check failed: {str(e)}"))
+        logs.append(f"[Semantic Error] Static check failed: {str(e)}")
         return json.dumps({"success": False, "logs": logs, "error": str(e)})
     except IntHonRuntimeError as e:
-        logs.append(("[Runtime Error]", f"Execution failed: {str(e)}"))
+        logs.append(f"[Runtime Error] Execution failed: {str(e)}")
         return json.dumps({"success": False, "logs": logs, "error": str(e)})
     except Exception as e:
-        logs.append(("[System Error]", f"General error: {str(e)}"))
+        logs.append(f"[System Error] General error: {str(e)}")
         return json.dumps({"success": False, "logs": logs, "error": str(e)})
       `);
       
