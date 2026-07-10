@@ -5,7 +5,6 @@ import threading
 from typing import Any, Callable
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
 
 from inthon.runtime.trace import TraceLogger
 from inthon.policy.approval import ApprovalRequest
@@ -300,7 +299,7 @@ async def run_callback_in_thread(callback: Callable, *args):
     
     def worker():
         try:
-            from inthon.runtime.values import from_python, to_python, InthonCallable
+            from inthon.runtime.values import from_python, InthonCallable
             from inthon.runtime.interpreter import Interpreter
             
             inthon_args = [from_python(a) for a in args]

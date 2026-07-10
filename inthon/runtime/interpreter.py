@@ -634,7 +634,7 @@ class Interpreter(ASTVisitor):
         from ..pybridge.allowlist import is_safe_callable
         if not is_safe_callable(callee.obj):
             raise IntHonRuntimeError(
-                f"INTHON_SANDBOX: Call to dangerous callable is denied."
+                "INTHON_SANDBOX: Call to dangerous callable is denied."
             )
         res = callee.obj(*args, **kwargs)
         return from_python(res)

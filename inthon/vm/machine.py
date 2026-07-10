@@ -568,7 +568,7 @@ class InthonVM:
             from ..pybridge.allowlist import is_safe_callable
             if not is_safe_callable(callee):
                 raise VMError(
-                    f"INTHON_SANDBOX: Call to dangerous callable is denied."
+                    "INTHON_SANDBOX: Call to dangerous callable is denied."
                 )
             py_args = [self._coerce(a) for a in args]
             py_kwargs = {k: self._coerce(v) for k, v in kwargs.items()}
@@ -694,7 +694,7 @@ class InthonVM:
         from ..pybridge.allowlist import is_safe_callable
         if not is_safe_callable(callee.obj):
             raise VMError(
-                f"INTHON_SANDBOX: Call to dangerous callable is denied."
+                "INTHON_SANDBOX: Call to dangerous callable is denied."
             )
         result = callee.obj(*py_args, **py_kwargs)
         return result

@@ -32,7 +32,7 @@ from pathlib import Path
 _workspace_root = str(Path(__file__).resolve().parents[2])
 if _workspace_root not in sys.path:
     sys.path.append(_workspace_root)
-from inthon.pybridge.allowlist import is_safe_attribute_access, is_safe_callable
+from inthon.pybridge.allowlist import is_safe_attribute_access, is_safe_callable  # noqa: E402
 
 
 # ── Allowlist (kept in sync with pybridge/allowlist.py) ───────────────────────
@@ -279,7 +279,7 @@ def _dispatch(req: dict) -> object:
     if callable(obj):
         if not is_safe_callable(obj):
             raise PermissionError(
-                f"INTHON_SANDBOX: Call to dangerous callable is denied."
+                "INTHON_SANDBOX: Call to dangerous callable is denied."
             )
         return obj(*args, **kwargs)
     return obj

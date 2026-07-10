@@ -1,13 +1,10 @@
-import pytest
 import asyncio
 from fastapi.testclient import TestClient
-from inthon import run, parse
+from inthon import parse
 from inthon.runtime.context import ExecutionContext
 from inthon.runtime.interpreter import Interpreter
-from inthon.pybridge.importer import SafeModuleImporter
 import inthon.ui as ui
-from inthon.ui.server import app, session_state, ui_approval_handler, UITraceLogger
-from inthon.policy.approval import ApprovalRequest
+from inthon.ui.server import app, session_state
 
 def test_ui_api_state_accumulation():
     # Reset state
