@@ -113,7 +113,7 @@ def convert_skill_to_workflow(
     sanitized_skill_name = skill_name.replace("-", "_")
 
     scripts_dir = skill_dir / "scripts"
-    tools_list = []
+    tools_list: list[dict[str, Any]] = []
 
     # Scan scripts directory if it exists
     if scripts_dir.is_dir():

@@ -3,8 +3,8 @@ import asyncio
 import uuid
 import threading
 from typing import Any, Callable
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # type: ignore
+from fastapi.responses import HTMLResponse  # type: ignore
 
 from inthon.runtime.trace import TraceLogger
 from inthon.policy.approval import ApprovalRequest
@@ -197,7 +197,7 @@ def ui_approval_handler(req: ApprovalRequest) -> bool:
 
     del session_state.approvals[req_id]
     broadcast({"event": "approval_resolved", "data": {"id": req_id}})
-    return app_info["approved"]
+    return bool(app_info["approved"])
 
 
 def get_metrics() -> dict:
@@ -383,6 +383,6 @@ def start_server(port: int = 8000) -> None:
 
         threading.Thread(target=open_browser, daemon=True).start()
 
-    import uvicorn
+    import uvicorn  # type: ignore
 
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
