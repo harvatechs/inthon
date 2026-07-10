@@ -36,13 +36,15 @@ def test_tool_repetition_loop_detection():
     ctx = ExecutionContext()
     # Authorize network capability for web.search
     from inthon.policy.model import Capability
+
     ctx.policy.active_caps.add(Capability.NETWORK)
-    
+
     vm = InthonVM(ctx)
     vm._loop_guard.max_tool_repetitions = 2
 
     # Register a mock tool in execution context
     from inthon.tools.builtin_tools import register_builtins
+
     register_builtins(ctx.tools, mock=True)
 
     src = """
@@ -66,13 +68,15 @@ def test_tool_cycle_loop_detection():
     ctx = ExecutionContext()
     # Authorize network and payment capability
     from inthon.policy.model import Capability
+
     ctx.policy.active_caps.add(Capability.NETWORK)
     ctx.policy.active_caps.add(Capability.PAYMENT_EXECUTE)
 
     vm = InthonVM(ctx)
-    vm._loop_guard.max_tool_repetitions = 5 # don't trigger simple repetition
+    vm._loop_guard.max_tool_repetitions = 5  # don't trigger simple repetition
 
     from inthon.tools.builtin_tools import register_builtins
+
     register_builtins(ctx.tools, mock=True)
 
     # Let's call web.search and web.read alternatively in a loop

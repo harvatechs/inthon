@@ -7,6 +7,7 @@ Generates synthetic data conforming to declared tool output schemas.
 from __future__ import annotations
 from typing import Any
 
+
 def mock_type_value(type_str: str) -> Any:
     """Generate a mock value of a given type string."""
     type_str = type_str.strip().lower()

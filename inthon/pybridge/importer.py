@@ -102,6 +102,7 @@ class SafeModuleWrapper:
             )
         attr = getattr(self._module, name)
         from .allowlist import is_safe_attribute_access
+
         if not is_safe_attribute_access(self._module, name, attr):
             raise PyBridgeError(
                 f"INTHON_PYBRIDGE_004: Attribute '{self._path}.{name}' is blocked by sandbox policy."

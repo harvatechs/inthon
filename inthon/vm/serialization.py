@@ -22,6 +22,7 @@ from ..runtime.values import (
     InthonPyObject,
 )
 
+
 class InthonIterator:
     """A JSON-serializable iterator wrapper for INTHON collections."""
 
@@ -57,13 +58,27 @@ def serialize_value(val: Any) -> Any:
         return {"__type__": "inthon_none"}
 
     if isinstance(val, InthonList):
-        return {"__type__": "inthon_list", "items": [serialize_value(x) for x in val.items]}
+        return {
+            "__type__": "inthon_list",
+            "items": [serialize_value(x) for x in val.items],
+        }
     if isinstance(val, InthonDict):
-        return {"__type__": "inthon_dict", "pairs": {k: serialize_value(v) for k, v in val.pairs.items()}}
+        return {
+            "__type__": "inthon_dict",
+            "pairs": {k: serialize_value(v) for k, v in val.pairs.items()},
+        }
 
     if isinstance(val, InthonCallable):
-        body_data = serialize_code_object(val.body) if isinstance(val.body, CodeObject) else val.body
-        closure_data = {k: serialize_value(v) for k, v in val.closure.items() if not k.startswith("__")}
+        body_data = (
+            serialize_code_object(val.body)
+            if isinstance(val.body, CodeObject)
+            else val.body
+        )
+        closure_data = {
+            k: serialize_value(v)
+            for k, v in val.closure.items()
+            if not k.startswith("__")
+        }
         return {
             "__type__": "inthon_callable",
             "name": val.name,
@@ -190,12 +205,14 @@ def serialize_code_object(co: CodeObject) -> dict:
                 arg_val = list(arg_val)
             arg_val = serialize_value(arg_val)
 
-        instructions_data.append({
-            "op": instr.op.name,
-            "arg": arg_val,
-            "lineno": instr.lineno,
-            "colno": instr.colno,
-        })
+        instructions_data.append(
+            {
+                "op": instr.op.name,
+                "arg": arg_val,
+                "lineno": instr.lineno,
+                "colno": instr.colno,
+            }
+        )
 
     return {
         "__type__": "code_object",
@@ -252,12 +269,14 @@ def serialize_frame(frame: Frame) -> dict:
     """Dehydrate a Frame and its call chain into a JSON-serializable dict."""
     retry_stack_data = []
     for r in frame.retry_stack:
-        retry_stack_data.append({
-            "count": r.count,
-            "backoff": r.backoff,
-            "attempt": r.attempt,
-            "last_error": str(r.last_error) if r.last_error else None,
-        })
+        retry_stack_data.append(
+            {
+                "count": r.count,
+                "backoff": r.backoff,
+                "attempt": r.attempt,
+                "last_error": str(r.last_error) if r.last_error else None,
+            }
+        )
 
     parent_data = serialize_frame(frame.parent) if frame.parent else None
 

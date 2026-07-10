@@ -90,7 +90,9 @@ class Rule:
     recommendation: str
 
 
-def _regex_matcher(pattern: re.Pattern[str]) -> Callable[[str], Iterable[tuple[int, str | None]]]:
+def _regex_matcher(
+    pattern: re.Pattern[str],
+) -> Callable[[str], Iterable[tuple[int, str | None]]]:
     def _match(src: str) -> Iterable[tuple[int, str | None]]:
         for m in pattern.finditer(src):
             yield m.start(), None
@@ -123,7 +125,10 @@ def _custom_hook(src: str) -> Iterable[tuple[int, str | None]]:
         name = m.group(1)
         if name in _REMOTION_BUILTIN_HOOKS:
             continue
-        yield m.start(), f"Custom hook `{name}` defined locally — may need manual rewrite"
+        yield (
+            m.start(),
+            f"Custom hook `{name}` defined locally — may need manual rewrite",
+        )
 
 
 _IMPORT_FROM = re.compile(r"from\s+['\"]([^'\"]+)['\"]")
@@ -133,7 +138,10 @@ def _third_party_react_ui(src: str) -> Iterable[tuple[int, str | None]]:
     for m in _IMPORT_FROM.finditer(src):
         pkg = m.group(1)
         if any(pkg.startswith(p) for p in THIRD_PARTY_UI_PACKAGES):
-            yield m.start(), f"Imports `{pkg}` — third-party React UI library has no HF equivalent"
+            yield (
+                m.start(),
+                f"Imports `{pkg}` — third-party React UI library has no HF equivalent",
+            )
 
 
 RULES: list[Rule] = [
@@ -219,7 +227,7 @@ RULES: list[Rule] = [
         INFO,
         _regex_matcher(re.compile(r"\bstaticFile\s*\(")),
         "staticFile() reference — convert to a relative path in the HF composition",
-        "Replace `staticFile(\"x.png\")` with `\"x.png\"` and copy the asset alongside the HTML",
+        'Replace `staticFile("x.png")` with `"x.png"` and copy the asset alongside the HTML',
     ),
     Rule(
         "r2hf/interpolate-colors",
@@ -302,7 +310,9 @@ def lint_file(path: Path) -> list[Finding]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("path", type=Path, help="Directory or file to lint")
-    ap.add_argument("--json", action="store_true", help="Emit JSON instead of human-readable output")
+    ap.add_argument(
+        "--json", action="store_true", help="Emit JSON instead of human-readable output"
+    )
     args = ap.parse_args()
 
     if not args.path.exists():
@@ -347,9 +357,13 @@ def main() -> int:
             print(f"{f.file}:{f.line}:{f.column} [{f.severity}] {f.rule}: {f.message}")
             print(f"    -> {f.recommendation}")
         print()
-        print(f"{len(files)} files scanned · {blockers} blocker · {warnings} warning · {infos} info")
+        print(
+            f"{len(files)} files scanned · {blockers} blocker · {warnings} warning · {infos} info"
+        )
         if blockers:
-            print("RECOMMENDATION: do not attempt translation. Use the runtime interop pattern from PR #214.")
+            print(
+                "RECOMMENDATION: do not attempt translation. Use the runtime interop pattern from PR #214."
+            )
 
     return 1 if blockers else 0
 

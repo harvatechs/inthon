@@ -1,16 +1,13 @@
-<!-- hyperframes-registry-item: data-chart -->
-<!doctype html>
+<!DOCTYPE html><!-- hyperframes-registry-item: data-chart -->
+
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
     <title>Data Chart</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Libre+Franklin:wght@300;400;600&display=block"
-      rel="stylesheet"
-    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Libre+Franklin:wght@300;400;600&display=block" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       * {
@@ -29,60 +26,53 @@
     </style>
   </head>
   <body>
-    <div
-      id="data-chart"
-      data-composition-id="data-chart"
-      data-width="1920"
-      data-height="1080"
-      data-start="0"
-      data-duration="15"
-    >
-      <div class="chart-container">
+    <div data-hf-id="hf-i8l3" id="data-chart" data-composition-id="data-chart" data-width="1920" data-height="1080" data-start="0" data-duration="15">
+      <div data-hf-id="hf-ig1q" class="chart-container">
         <!-- Header Section -->
-        <div class="header">
-          <h1 class="headline">Monthly Revenue vs. Conversion Rate</h1>
-          <p class="subtitle">Jan–Jun 2024, in thousands</p>
-          <div class="key">
-            <div class="key-item">
-              <div class="key-box revenue-box"></div>
-              <span class="key-text">Revenue</span>
+        <div data-hf-id="hf-4y7z" class="header">
+          <h1 data-hf-id="hf-hxjm" class="headline">Monthly Revenue vs. Conversion Rate</h1>
+          <p data-hf-id="hf-qruu" class="subtitle">Jan–Jun 2024, in thousands</p>
+          <div data-hf-id="hf-l8jp" class="key">
+            <div data-hf-id="hf-0ten" class="key-item">
+              <div data-hf-id="hf-xjm9" class="key-box revenue-box"></div>
+              <span data-hf-id="hf-3zr2" class="key-text">Revenue</span>
             </div>
-            <div class="key-item">
-              <div class="key-line conversion-line"></div>
-              <span class="key-text">Conversion Rate</span>
+            <div data-hf-id="hf-9cv3" class="key-item">
+              <div data-hf-id="hf-v1qr" class="key-line conversion-line"></div>
+              <span data-hf-id="hf-rg8o" class="key-text">Conversion Rate</span>
             </div>
           </div>
         </div>
 
         <!-- SVG Chart Area -->
-        <svg class="chart-svg" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid meet">
+        <svg data-hf-id="hf-cmal" class="chart-svg" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid meet">
           <!-- Gridlines Group -->
-          <g class="gridlines"></g>
+          <g data-hf-id="hf-enf3" class="gridlines" />
 
           <!-- X-Axis Labels -->
-          <g class="x-axis-labels"></g>
+          <g data-hf-id="hf-80xk" class="x-axis-labels" />
 
           <!-- Bars Group (Revenue) -->
-          <g class="bars-group"></g>
+          <g data-hf-id="hf-pe8e" class="bars-group" />
 
           <!-- Bar Labels Group -->
-          <g class="bar-labels-group"></g>
+          <g data-hf-id="hf-71dd" class="bar-labels-group" />
 
           <!-- Line Group (Conversion Rate) -->
-          <g class="line-group">
-            <path class="conversion-path" fill="none" stroke="#326FA8" stroke-width="1.5" />
-            <circle class="line-dot" r="5" fill="#326FA8" style="opacity: 0" />
+          <g data-hf-id="hf-6p5a" class="line-group">
+            <path data-hf-id="hf-0eg4" class="conversion-path" fill="none" stroke="#326FA8" stroke-width="1.5" />
+            <circle data-hf-id="hf-01n9" class="line-dot" r="5" fill="#326FA8" style="opacity: 0" />
           </g>
 
           <!-- Line Labels Group -->
-          <g class="line-labels-group"></g>
+          <g data-hf-id="hf-v9iq" class="line-labels-group" />
 
           <!-- Baseline -->
-          <line x1="100" y1="600" x2="1500" y2="600" stroke="black" stroke-width="1" />
+          <line data-hf-id="hf-i85w" x1="100" y1="600" x2="1500" y2="600" stroke="black" stroke-width="1" />
         </svg>
 
         <!-- Source Line -->
-        <div class="source">Source: Internal analytics</div>
+        <div data-hf-id="hf-1fht" class="source">Source: Internal analytics</div>
       </div>
 
       <style>

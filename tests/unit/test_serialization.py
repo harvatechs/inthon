@@ -12,6 +12,7 @@ from inthon.vm.serialization import (
     deserialize_value,
 )
 
+
 class PauseHelper:
     def __init__(self):
         self.frame = None
@@ -36,7 +37,10 @@ def test_value_serialization():
     ser_lst = serialize_value(lst)
     assert ser_lst == {
         "__type__": "inthon_list",
-        "items": [{"__type__": "inthon_int", "v": 1}, {"__type__": "inthon_int", "v": 2}],
+        "items": [
+            {"__type__": "inthon_int", "v": 1},
+            {"__type__": "inthon_int", "v": 2},
+        ],
     }
     assert deserialize_value(ser_lst) == lst
 
@@ -59,10 +63,12 @@ let z = x + y
 
     # Intercept Pauser in VM._call for the test
     original_call = vm._call
+
     def mock_call(callee, args, kwargs, frame):
         if callee is pauser:
             pauser.frame = frame
         return original_call(callee, args, kwargs, frame)
+
     vm._call = mock_call
 
     # Run the VM. It should raise PauseSignal when it hits pause()

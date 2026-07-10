@@ -114,7 +114,10 @@ class Interpreter(ASTVisitor):
             if kind == "attr":
                 if isinstance(obj, InthonPyObject):
                     from ..pybridge.allowlist import is_safe_attribute_access
-                    if not is_safe_attribute_access(obj.obj, key, getattr(obj.obj, key, None)):
+
+                    if not is_safe_attribute_access(
+                        obj.obj, key, getattr(obj.obj, key, None)
+                    ):
                         raise IntHonRuntimeError(
                             f"INTHON_SANDBOX: Access to attribute '{key}' is denied."
                         )
@@ -141,7 +144,10 @@ class Interpreter(ASTVisitor):
         if last_kind == "attr":
             if isinstance(obj, InthonPyObject):
                 from ..pybridge.allowlist import is_safe_attribute_access
-                if last_key.startswith("_") or not is_safe_attribute_access(obj.obj, last_key, getattr(obj.obj, last_key, None)):
+
+                if last_key.startswith("_") or not is_safe_attribute_access(
+                    obj.obj, last_key, getattr(obj.obj, last_key, None)
+                ):
                     raise IntHonRuntimeError(
                         f"INTHON_SANDBOX: Modifying attribute '{last_key}' is denied."
                     )
@@ -495,7 +501,10 @@ class Interpreter(ASTVisitor):
             return InthonToolRef(obj.tool_path + "." + node.attr)
         if isinstance(obj, InthonPyObject):
             from ..pybridge.allowlist import is_safe_attribute_access
-            if not is_safe_attribute_access(obj.obj, node.attr, getattr(obj.obj, node.attr, None)):
+
+            if not is_safe_attribute_access(
+                obj.obj, node.attr, getattr(obj.obj, node.attr, None)
+            ):
                 raise IntHonRuntimeError(
                     f"INTHON_SANDBOX: Access to attribute '{node.attr}' is denied."
                 )
@@ -567,6 +576,7 @@ class Interpreter(ASTVisitor):
         # Check dry run first
         if self._ctx.dry_run:
             from .dryrun import generate_mock_output
+
             try:
                 spec = self._ctx.tools.get_spec(tool_path)
                 mock_out = generate_mock_output(spec.output_schema)
@@ -632,6 +642,7 @@ class Interpreter(ASTVisitor):
         # but our _wrap_callable already unpacks them. If callee.obj is the wrapper,
         # we call it directly.
         from ..pybridge.allowlist import is_safe_callable
+
         if not is_safe_callable(callee.obj):
             raise IntHonRuntimeError(
                 "INTHON_SANDBOX: Call to dangerous callable is denied."

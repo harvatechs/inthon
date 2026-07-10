@@ -51,6 +51,7 @@ _SENTINEL = object()  # used to detect "no default"
 
 class PauseSignal(Exception):
     """Exception raised to pause execution and serialize the current VM state."""
+
     def __init__(self, frame: Frame) -> None:
         self.frame = frame
 
@@ -76,6 +77,7 @@ class InthonVM:
         # Global scope: module-level variables, shared across calls
         self._globals: dict[str, Any] = {}
         from ..policy.loop_guard import LoopGuard
+
         self._loop_guard = LoopGuard()
 
     # ── Public API ─────────────────────────────────────────────────────── #
@@ -83,11 +85,13 @@ class InthonVM:
     def dehydrate_state(self, frame: Frame) -> dict:
         """Dehydrate the current frame execution state into a JSON-serializable dictionary."""
         from .serialization import serialize_frame
+
         return serialize_frame(frame)
 
     def resume_execution(self, state: dict) -> Any:
         """Rehydrate and resume execution from a dehydrated state."""
         from .serialization import deserialize_frame
+
         frame = deserialize_frame(state)
         # Reconstruct globals from the root parent's locals
         root = frame
@@ -254,6 +258,7 @@ class InthonVM:
                     val = InthonToolRef(obj.tool_path + "." + arg)
                 else:
                     from ..pybridge.allowlist import is_safe_attribute_access
+
                     if not is_safe_attribute_access(obj, arg, getattr(obj, arg, None)):
                         raise VMError(
                             f"INTHON_SANDBOX: Access to attribute '{arg}' is denied."
@@ -269,7 +274,10 @@ class InthonVM:
                     obj[arg] = value
                 else:
                     from ..pybridge.allowlist import is_safe_attribute_access
-                    if arg.startswith("_") or not is_safe_attribute_access(obj, arg, getattr(obj, arg, None)):
+
+                    if arg.startswith("_") or not is_safe_attribute_access(
+                        obj, arg, getattr(obj, arg, None)
+                    ):
                         raise VMError(
                             f"INTHON_SANDBOX: Modifying attribute '{arg}' is denied."
                         )
@@ -347,6 +355,7 @@ class InthonVM:
                 obj = frame.pop()
                 obj = self._unwrap(obj)
                 from .serialization import InthonIterator
+
                 if isinstance(obj, list):
                     frame.push(InthonIterator(obj))
                 elif isinstance(obj, dict):
@@ -566,10 +575,9 @@ class InthonVM:
         # Plain Python callables (from SafeModuleWrapper)
         if callable(callee):
             from ..pybridge.allowlist import is_safe_callable
+
             if not is_safe_callable(callee):
-                raise VMError(
-                    "INTHON_SANDBOX: Call to dangerous callable is denied."
-                )
+                raise VMError("INTHON_SANDBOX: Call to dangerous callable is denied.")
             py_args = [self._coerce(a) for a in args]
             py_kwargs = {k: self._coerce(v) for k, v in kwargs.items()}
             result = callee(*py_args, **py_kwargs)
@@ -580,7 +588,11 @@ class InthonVM:
         )
 
     def _call_function(
-        self, fn: InthonCallable, args: list[Any], kwargs: dict[str, Any], parent_frame: Frame | None = None
+        self,
+        fn: InthonCallable,
+        args: list[Any],
+        kwargs: dict[str, Any],
+        parent_frame: Frame | None = None,
     ) -> Any:
         """Execute a user-defined INTHON function (InthonCallable)."""
         body = fn.body
@@ -642,6 +654,7 @@ class InthonVM:
         ctx = self._ctx
         if ctx.dry_run:
             from ..runtime.dryrun import generate_mock_output
+
             try:
                 spec = ctx.tools.get_spec(tool_path)
                 return generate_mock_output(spec.output_schema)
@@ -692,10 +705,9 @@ class InthonVM:
             },
         )
         from ..pybridge.allowlist import is_safe_callable
+
         if not is_safe_callable(callee.obj):
-            raise VMError(
-                "INTHON_SANDBOX: Call to dangerous callable is denied."
-            )
+            raise VMError("INTHON_SANDBOX: Call to dangerous callable is denied.")
         result = callee.obj(*py_args, **py_kwargs)
         return result
 

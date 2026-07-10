@@ -250,6 +250,7 @@ def main() -> None:
             tb = traceback.format_exc(limit=5)
             _respond(req_id, None, f"{type(e).__name__}: {e}\n{tb}")
 
+
 def _dispatch(req: dict) -> object:
     module_path: str = req["module"]
     attr_chain: list[str] = req.get("attr_chain", [])
@@ -283,7 +284,6 @@ def _dispatch(req: dict) -> object:
             )
         return obj(*args, **kwargs)
     return obj
-
 
 
 def _respond(req_id: int, result: object, error: str | None) -> None:

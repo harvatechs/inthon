@@ -217,8 +217,12 @@ def repl_cmd(
 @app.command("trace-view")
 def trace_view_cmd(
     trace_file: Path = typer.Argument(..., help="Path to execution trace JSON file"),
-    out: Path = typer.Option(Path("trace_replay.html"), "--out", "-o", help="Output HTML file path"),
-    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the dashboard automatically in a browser"),
+    out: Path = typer.Option(
+        Path("trace_replay.html"), "--out", "-o", help="Output HTML file path"
+    ),
+    open_browser: bool = typer.Option(
+        True, "--open/--no-open", help="Open the dashboard automatically in a browser"
+    ),
 ) -> None:
     """Generate a beautiful interactive HTML trace replay visualizer."""
     if not trace_file.exists():
@@ -226,7 +230,7 @@ def trace_view_cmd(
         raise typer.Exit(code=1)
 
     trace_json = trace_file.read_text(encoding="utf-8")
-    
+
     # Read the template
     template_path = Path(__file__).parent / "runtime" / "trace_visualizer.html.template"
     if not template_path.exists():
@@ -234,22 +238,27 @@ def trace_view_cmd(
         raise typer.Exit(code=1)
 
     template_content = template_path.read_text(encoding="utf-8")
-    
+
     # Replace placeholder with JSON string
     html_content = template_content.replace("{{TRACE_DATA_JSON}}", trace_json)
-    
+
     out.write_text(html_content, encoding="utf-8")
     console.print(f"[green]Dashboard generated successfully: {out.absolute()}[/green]")
-    
+
     if open_browser:
         import webbrowser
+
         webbrowser.open(out.absolute().as_uri())
 
 
 @app.command("convert-skill")
 def convert_skill_cmd(
-    skill_dir: Path = typer.Argument(..., help="Path to the skill directory or SKILL.md file"),
-    output_dir: Path | None = typer.Option(None, "--output", "-o", help="Target directory for generated workflow file"),
+    skill_dir: Path = typer.Argument(
+        ..., help="Path to the skill directory or SKILL.md file"
+    ),
+    output_dir: Path | None = typer.Option(
+        None, "--output", "-o", help="Target directory for generated workflow file"
+    ),
 ) -> None:
     """Convert an agentic Skill (with SKILL.md and scripts) into an INTHON workflow and dynamic tool registration."""
     from .tools.skill_converter import convert_skill_to_workflow
@@ -266,4 +275,3 @@ def convert_skill_cmd(
 
 if __name__ == "__main__":
     app()
-

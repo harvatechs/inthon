@@ -237,6 +237,7 @@ class AsyncInthonVM(InthonVM):
         elif op == OpCode.GET_ATTR:
             obj = _u(frame.pop())
             from ..runtime.values import InthonToolRef
+
             if isinstance(obj, dict):
                 val = obj.get(arg)
             elif isinstance(obj, InthonToolRef):
@@ -265,7 +266,12 @@ class AsyncInthonVM(InthonVM):
         elif op == OpCode.GET_ITER:
             obj = _u(frame.pop())
             from .serialization import InthonIterator
-            frame.push(InthonIterator(list(obj)) if hasattr(obj, "__iter__") else InthonIterator([]))
+
+            frame.push(
+                InthonIterator(list(obj))
+                if hasattr(obj, "__iter__")
+                else InthonIterator([])
+            )
         elif op == OpCode.FOR_ITER:
             it = frame.peek()
             try:

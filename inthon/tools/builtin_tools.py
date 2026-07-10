@@ -38,7 +38,7 @@ def register_builtins(registry: ToolRegistry, mock: bool = True) -> None:
         impl=_web_read_real,
         mock_impl=_web_read_mock,
     )
-    
+
     # Register converted skills dynamically
     register_skills(registry)
 
@@ -87,21 +87,21 @@ def register_skills(registry: ToolRegistry) -> None:
         if d.is_dir():
             skills_dir = d
             break
-            
+
     if not skills_dir:
         return
-        
+
     for json_path in sorted(skills_dir.glob("*.json")):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                
+
             for t in data.get("tools", []):
                 name = t.get("name")
                 description = t.get("description", "")
                 script_path = t.get("script_path")
                 args_list = t.get("args", [])
-                
+
                 # Build ToolSpec
                 input_schema = {}
                 for arg in args_list:
@@ -109,9 +109,9 @@ def register_skills(registry: ToolRegistry) -> None:
                         type=arg.get("type", "str"),
                         description=arg.get("description", ""),
                         required=arg.get("required", True),
-                        default=arg.get("default", None)
+                        default=arg.get("default", None),
                     )
-                
+
                 spec = ToolSpec(
                     name=name,
                     description=description,
@@ -119,20 +119,20 @@ def register_skills(registry: ToolRegistry) -> None:
                     output_schema={"output": "str"},
                     side_effects=["shell"],
                     required_permissions=["allow_shell"],
-                    cost_model=ToolCostModel(base_usd=0.0, per_call_usd=0.01)
+                    cost_model=ToolCostModel(base_usd=0.0, per_call_usd=0.01),
                 )
-                
+
                 # Real implementation
                 def make_impl(spath, alist):
                     def impl(**kwargs):
                         uv_path = shutil.which("uv")
-                        
+
                         cmd = []
                         if uv_path:
                             cmd = [uv_path, "run", spath]
                         else:
                             cmd = [sys.executable, spath]
-                            
+
                         for arg in alist:
                             val = kwargs.get(arg["name"])
                             if val is not None:
@@ -141,13 +141,13 @@ def register_skills(registry: ToolRegistry) -> None:
                                     cmd.append(str(val))
                                 else:
                                     cmd.append(str(val))
-                        
+
                         res = subprocess.run(
                             cmd,
                             capture_output=True,
                             text=True,
                             encoding="utf-8",
-                            errors="replace"
+                            errors="replace",
                         )
                         if res.returncode != 0:
                             raise RuntimeError(
@@ -156,20 +156,21 @@ def register_skills(registry: ToolRegistry) -> None:
                                 f"STDERR:\n{res.stderr}"
                             )
                         return res.stdout
+
                     return impl
-                
+
                 # Mock implementation
                 def make_mock(n, spath, alist):
                     def mock_impl(**kwargs):
                         args_str = ", ".join(f"{k}={v}" for k, v in kwargs.items())
                         return f"[Mock execution of {n} using {spath} with args: {args_str}]"
+
                     return mock_impl
-                
+
                 registry.register(
                     spec=spec,
                     impl=make_impl(script_path, args_list),
-                    mock_impl=make_mock(name, script_path, args_list)
+                    mock_impl=make_mock(name, script_path, args_list),
                 )
         except Exception:
             pass
-

@@ -1,5 +1,5 @@
 <template id="code-editor-template">
-  <div data-composition-id="code-editor" data-width="1920" data-height="1080">
+  <div data-hf-id="hf-zljm" data-composition-id="code-editor" data-width="1920" data-height="1080">
     <style>
       [data-composition-id="code-editor"] {
         width: 1920px;
@@ -368,157 +368,157 @@
       }
     </style>
 
-    <div class="editor-window">
+    <div data-hf-id="hf-8hm0" class="editor-window">
       <!-- Header / Tabs -->
-      <div class="editor-header">
-        <div class="window-controls">
-          <span class="dot dot-red"></span>
-          <span class="dot dot-yellow"></span>
-          <span class="dot dot-green"></span>
+      <div data-hf-id="hf-t8yb" class="editor-header">
+        <div data-hf-id="hf-dyvb" class="window-controls">
+          <span data-hf-id="hf-2fdx" class="dot dot-red"></span>
+          <span data-hf-id="hf-wq2o" class="dot dot-yellow"></span>
+          <span data-hf-id="hf-sb41" class="dot dot-green"></span>
         </div>
-        <div class="editor-tabs">
-          <div class="tab" id="tab-a">
-            <span class="tab-status">&#9679;</span>
-            <span>Researcher.inth</span>
+        <div data-hf-id="hf-pw74" class="editor-tabs">
+          <div data-hf-id="hf-5zcq" class="tab" id="tab-a">
+            <span data-hf-id="hf-yd7e" class="tab-status">●</span>
+            <span data-hf-id="hf-aigs">Researcher.inth</span>
           </div>
-          <div class="tab inactive" id="tab-b">
-            <span>memory.inth</span>
+          <div data-hf-id="hf-pzja" class="tab inactive" id="tab-b">
+            <span data-hf-id="hf-lc5z">memory.inth</span>
           </div>
-          <div class="tab inactive" id="tab-c">
-            <span>payment_gate.inth</span>
+          <div data-hf-id="hf-w593" class="tab inactive" id="tab-c">
+            <span data-hf-id="hf-7ysa">payment_gate.inth</span>
           </div>
         </div>
-        <div class="header-right">INTHON v2026</div>
+        <div data-hf-id="hf-qt8g" class="header-right">INTHON v2026</div>
       </div>
 
       <!-- Editor Content Workspace -->
-      <div class="editor-body">
+      <div data-hf-id="hf-jyko" class="editor-body">
         
         <!-- PANE A: Agent Block (34s - 43s) -->
-        <div class="pane-container active" id="pane-a">
-          <div class="gutter">
-            <div class="line-num">1</div><div class="line-num">2</div><div class="line-num">3</div>
-            <div class="line-num">4</div><div class="line-num">5</div><div class="line-num">6</div>
-            <div class="line-num">7</div><div class="line-num">8</div><div class="line-num">9</div>
-            <div class="line-num">10</div><div class="line-num">11</div><div class="line-num">12</div>
-            <div class="line-num">13</div><div class="line-num">14</div><div class="line-num">15</div>
+        <div data-hf-id="hf-qhyw" class="pane-container active" id="pane-a">
+          <div data-hf-id="hf-5xv1" class="gutter">
+            <div data-hf-id="hf-g4yo" class="line-num">1</div><div data-hf-id="hf-ey1l" class="line-num">2</div><div data-hf-id="hf-fccm" class="line-num">3</div>
+            <div data-hf-id="hf-e5fj" class="line-num">4</div><div data-hf-id="hf-ejqk" class="line-num">5</div><div data-hf-id="hf-dcth" class="line-num">6</div>
+            <div data-hf-id="hf-dr4i" class="line-num">7</div><div data-hf-id="hf-ck7f" class="line-num">8</div><div data-hf-id="hf-cyig" class="line-num">9</div>
+            <div data-hf-id="hf-pcfk" class="line-num">10</div><div data-hf-id="hf-oy4j" class="line-num">11</div><div data-hf-id="hf-ojti" class="line-num">12</div>
+            <div data-hf-id="hf-o5ih" class="line-num">13</div><div data-hf-id="hf-nr7g" class="line-num">14</div><div data-hf-id="hf-ncwf" class="line-num">15</div>
           </div>
-          <div class="code-container" id="code-a">
-            <div class="code-line"><span class="keyword">agent</span> Researcher {</div>
-            <div class="code-line">    <span class="keyword cyan-kw">goal</span> <span class="string">"Find papers on room-temperature superconductors"</span></div>
-            <div class="code-line"></div>
-            <div class="code-line">    inputs  { query: <span class="type">str</span>  limit: <span class="type">int</span> }</div>
-            <div class="code-line">    outputs { papers: <span class="type">list[dict]</span> }</div>
-            <div class="code-line"></div>
-            <div class="code-line">    <span class="keyword">use</span> tool web.search</div>
-            <div class="code-line"></div>
-            <div class="code-line">    <span class="keyword orange-kw">policy</span> {</div>
-            <div class="code-line">        max_tool_calls: <span class="number">10</span></div>
-            <div class="code-line">        max_cost_usd:   <span class="number">0.05</span></div>
-            <div class="code-line">    }</div>
-            <div class="code-line"></div>
-            <div class="code-line">    <span class="keyword green-kw">plan</span> {</div>
-            <div class="code-line">        <span class="keyword">let</span> raw = web.search(query: query, count: limit)</div>
-            <div class="code-line">        <span class="keyword">return</span> raw</div>
-            <div class="code-line">    }</div>
-            <div class="code-line">}</div>
+          <div data-hf-id="hf-18cy" class="code-container" id="code-a">
+            <div data-hf-id="hf-rxe9" class="code-line"><span data-hf-id="hf-b6jf" class="keyword">agent</span> Researcher {</div>
+            <div data-hf-id="hf-pnna" class="code-line">    <span data-hf-id="hf-tlpt" class="keyword cyan-kw">goal</span> <span data-hf-id="hf-56tm" class="string">"Find papers on room-temperature superconductors"</span></div>
+            <div data-hf-id="hf-2esa" class="code-line"></div>
+            <div data-hf-id="hf-ecjs" class="code-line">    inputs  { query: <span data-hf-id="hf-rme0" class="type">str</span>  limit: <span data-hf-id="hf-j2xy" class="type">int</span> }</div>
+            <div data-hf-id="hf-5ngh" class="code-line">    outputs { papers: <span data-hf-id="hf-ngs5" class="type">list[dict]</span> }</div>
+            <div data-hf-id="hf-2t3b" class="code-line"></div>
+            <div data-hf-id="hf-8cfo" class="code-line">    <span data-hf-id="hf-9uvd" class="keyword">use</span> tool web.search</div>
+            <div data-hf-id="hf-37ec" class="code-line"></div>
+            <div data-hf-id="hf-gtmf" class="code-line">    <span data-hf-id="hf-azp1" class="keyword orange-kw">policy</span> {</div>
+            <div data-hf-id="hf-09kh" class="code-line">        max_tool_calls: <span data-hf-id="hf-2e9n" class="number">10</span></div>
+            <div data-hf-id="hf-34on" class="code-line">        max_cost_usd:   <span data-hf-id="hf-mvjb" class="number">0.05</span></div>
+            <div data-hf-id="hf-hm8h" class="code-line">    }</div>
+            <div data-hf-id="hf-3lpd" class="code-line"></div>
+            <div data-hf-id="hf-3ugn" class="code-line">    <span data-hf-id="hf-dauh" class="keyword green-kw">plan</span> {</div>
+            <div data-hf-id="hf-n210" class="code-line">        <span data-hf-id="hf-u2zb" class="keyword">let</span> raw = web.search(query: query, count: limit)</div>
+            <div data-hf-id="hf-9cgw" class="code-line">        <span data-hf-id="hf-4jvs" class="keyword">return</span> raw</div>
+            <div data-hf-id="hf-t1l1" class="code-line">    }</div>
+            <div data-hf-id="hf-u8i4" class="code-line">}</div>
           </div>
         </div>
 
         <!-- PANE B: Episodic Memory (43s - 51s) -->
-        <div class="pane-container" id="pane-b">
-          <div class="gutter">
-            <div class="line-num">1</div><div class="line-num">2</div><div class="line-num">3</div>
-            <div class="line-num">4</div><div class="line-num">5</div><div class="line-num">6</div>
-            <div class="line-num">7</div><div class="line-num">8</div><div class="line-num">9</div>
+        <div data-hf-id="hf-6dut" class="pane-container" id="pane-b">
+          <div data-hf-id="hf-uue9" class="gutter">
+            <div data-hf-id="hf-9law" class="line-num">1</div><div data-hf-id="hf-dy25" class="line-num">2</div><div data-hf-id="hf-twlm" class="line-num">3</div>
+            <div data-hf-id="hf-xerj" class="line-num">4</div><div data-hf-id="hf-nmro" class="line-num">5</div><div data-hf-id="hf-srcp" class="line-num">6</div>
+            <div data-hf-id="hf-knva" class="line-num">7</div><div data-hf-id="hf-h4mj" class="line-num">8</div><div data-hf-id="hf-ee1c" class="line-num">9</div>
           </div>
-          <div class="code-container" id="code-b">
-            <div class="code-line"><span class="keyword">use</span> tool web.search</div>
-            <div class="code-line"></div>
-            <div class="code-line"><span class="keyword">let</span> results = web.search(<span class="string">"AI compiler research"</span>, limit: <span class="number">5</span>)</div>
-            <div class="code-line"></div>
-            <div class="code-line"><span class="keyword cyan-kw">remember</span> results <span class="keyword">in</span> semantic_memory</div>
-            <div class="code-line"></div>
-            <div class="code-line"><span class="keyword">let</span> recalled = <span class="keyword cyan-kw">recall</span> <span class="string">"compiler"</span> <span class="keyword">from</span> semantic_memory</div>
-            <div class="code-line"></div>
-            <div class="code-line"><span class="keyword">return</span> recalled</div>
+          <div data-hf-id="hf-xa8x" class="code-container" id="code-b">
+            <div data-hf-id="hf-ldzg" class="code-line"><span data-hf-id="hf-qohp" class="keyword">use</span> tool web.search</div>
+            <div data-hf-id="hf-400e" class="code-line"></div>
+            <div data-hf-id="hf-xy07" class="code-line"><span data-hf-id="hf-qlxz" class="keyword">let</span> results = web.search(<span data-hf-id="hf-1bmi" class="string">"AI compiler research"</span>, limit: <span data-hf-id="hf-1is5" class="number">5</span>)</div>
+            <div data-hf-id="hf-4ebf" class="code-line"></div>
+            <div data-hf-id="hf-5k7i" class="code-line"><span data-hf-id="hf-udm9" class="keyword cyan-kw">remember</span> results <span data-hf-id="hf-ypld" class="keyword">in</span> semantic_memory</div>
+            <div data-hf-id="hf-4smg" class="code-line"></div>
+            <div data-hf-id="hf-1svt" class="code-line"><span data-hf-id="hf-q7my" class="keyword">let</span> recalled = <span data-hf-id="hf-90mb" class="keyword cyan-kw">recall</span> <span data-hf-id="hf-ysjt" class="string">"compiler"</span> <span data-hf-id="hf-zka2" class="keyword">from</span> semantic_memory</div>
+            <div data-hf-id="hf-56xh" class="code-line"></div>
+            <div data-hf-id="hf-ztmi" class="code-line"><span data-hf-id="hf-ox40" class="keyword">return</span> recalled</div>
           </div>
           <!-- Memory Visual Float Panel -->
-          <div class="memory-visual-panel">
-            <div class="memory-visual-header">Semantic Store</div>
-            <div class="vector-cluster" id="vector-container">
+          <div data-hf-id="hf-s9wb" class="memory-visual-panel">
+            <div data-hf-id="hf-fuhl" class="memory-visual-header">Semantic Store</div>
+            <div data-hf-id="hf-sn9t" class="vector-cluster" id="vector-container">
               <!-- Animated SVG vector clusters -->
-              <svg width="100%" height="100%" id="vector-svg" style="position: absolute; inset:0;">
-                <line id="conn-line-1" class="vector-connection" x1="100" y1="200" x2="250" y2="280"/>
-                <line id="conn-line-2" class="vector-connection" x1="250" y1="280" x2="180" y2="400"/>
+              <svg data-hf-id="hf-nb74" width="100%" height="100%" id="vector-svg" style="position: absolute; inset:0;">
+                <line data-hf-id="hf-anxk" id="conn-line-1" class="vector-connection" x1="100" y1="200" x2="250" y2="280" />
+                <line data-hf-id="hf-4o1x" id="conn-line-2" class="vector-connection" x1="250" y1="280" x2="180" y2="400" />
               </svg>
               <!-- Dots -->
-              <div class="vector-dot" style="top: 15%; left: 20%;" data-idx="0"></div>
-              <div class="vector-dot" style="top: 25%; left: 70%;" data-idx="1"></div>
-              <div class="vector-dot" style="top: 45%; left: 40%;" data-idx="2"></div>
-              <div class="vector-dot" style="top: 65%; left: 80%;" data-idx="3"></div>
-              <div class="vector-dot" style="top: 80%; left: 30%;" data-idx="4"></div>
-              <div class="vector-dot" style="top: 35%; left: 55%;" data-idx="5"></div>
-              <div class="vector-dot" style="top: 55%; left: 15%;" data-idx="6"></div>
-              <div class="vector-dot" style="top: 70%; left: 60%;" data-idx="7"></div>
+              <div data-hf-id="hf-w7w2" class="vector-dot" style="top: 15%; left: 20%;" data-idx="0"></div>
+              <div data-hf-id="hf-hgxd" class="vector-dot" style="top: 25%; left: 70%;" data-idx="1"></div>
+              <div data-hf-id="hf-l4db" class="vector-dot" style="top: 45%; left: 40%;" data-idx="2"></div>
+              <div data-hf-id="hf-8eg6" class="vector-dot" style="top: 65%; left: 80%;" data-idx="3"></div>
+              <div data-hf-id="hf-z35z" class="vector-dot" style="top: 80%; left: 30%;" data-idx="4"></div>
+              <div data-hf-id="hf-pdxb" class="vector-dot" style="top: 35%; left: 55%;" data-idx="5"></div>
+              <div data-hf-id="hf-fbew" class="vector-dot" style="top: 55%; left: 15%;" data-idx="6"></div>
+              <div data-hf-id="hf-bqkq" class="vector-dot" style="top: 70%; left: 60%;" data-idx="7"></div>
             </div>
           </div>
         </div>
 
         <!-- PANE C: Approval Gate + Retry (51s - 62s) -->
-        <div class="pane-container" id="pane-c" style="flex-direction: row;">
-          <div class="split-pane">
+        <div data-hf-id="hf-wxyc" class="pane-container" id="pane-c" style="flex-direction: row;">
+          <div data-hf-id="hf-iqyr" class="split-pane">
             <!-- Top Split -->
-            <div class="split-top">
-              <span class="pane-title-tag">HUMAN GATE</span>
-              <div class="gutter">
-                <div class="line-num">1</div><div class="line-num">2</div><div class="line-num">3</div>
-                <div class="line-num">4</div><div class="line-num">5</div><div class="line-num">6</div><div class="line-num">7</div>
+            <div data-hf-id="hf-zfre" class="split-top">
+              <span data-hf-id="hf-284d" class="pane-title-tag">HUMAN GATE</span>
+              <div data-hf-id="hf-w1bc" class="gutter">
+                <div data-hf-id="hf-8edt" class="line-num">1</div><div data-hf-id="hf-f4z8" class="line-num">2</div><div data-hf-id="hf-uawn" class="line-num">3</div>
+                <div data-hf-id="hf-x0gi" class="line-num">4</div><div data-hf-id="hf-mful" class="line-num">5</div><div data-hf-id="hf-ty9s" class="line-num">6</div><div data-hf-id="hf-l26b" class="line-num">7</div>
               </div>
-              <div class="code-container" id="code-c-top">
-                <div class="code-line"><span class="keyword">agent</span> PaymentAgent {</div>
-                <div class="code-line">    <span class="keyword cyan-kw">goal</span> <span class="string">"Process payment with human approval"</span></div>
-                <div class="code-line">    <span class="keyword orange-kw">policy</span> { allow_payment: <span class="type">true</span> }</div>
-                <div class="code-line">    <span class="keyword green-kw">plan</span> {</div>
-                <div class="code-line">        <span class="keyword orange-kw">approve</span> subscription_fee <span class="keyword cyan-kw">before</span> pay</div>
-                <div class="code-line">    }</div>
-                <div class="code-line">}</div>
+              <div data-hf-id="hf-w59m" class="code-container" id="code-c-top">
+                <div data-hf-id="hf-bxis" class="code-line"><span data-hf-id="hf-6fbv" class="keyword">agent</span> PaymentAgent {</div>
+                <div data-hf-id="hf-5l8i" class="code-line">    <span data-hf-id="hf-wd9h" class="keyword cyan-kw">goal</span> <span data-hf-id="hf-o8ir" class="string">"Process payment with human approval"</span></div>
+                <div data-hf-id="hf-tj62" class="code-line">    <span data-hf-id="hf-lgmh" class="keyword orange-kw">policy</span> { allow_payment: <span data-hf-id="hf-wdfh" class="type">true</span> }</div>
+                <div data-hf-id="hf-3g5m" class="code-line">    <span data-hf-id="hf-7zml" class="keyword green-kw">plan</span> {</div>
+                <div data-hf-id="hf-dodu" class="code-line">        <span data-hf-id="hf-sn94" class="keyword orange-kw">approve</span> subscription_fee <span data-hf-id="hf-2yu1" class="keyword cyan-kw">before</span> pay</div>
+                <div data-hf-id="hf-tu73" class="code-line">    }</div>
+                <div data-hf-id="hf-v146" class="code-line">}</div>
               </div>
               <!-- Approval Gate Alert Popup -->
-              <div class="approval-gate-overlay" id="approval-gate">
-                <span class="gate-icon">⏸</span>
-                <span class="gate-text">WAITING FOR HUMAN APPROVAL...</span>
+              <div data-hf-id="hf-m2m1" class="approval-gate-overlay" id="approval-gate">
+                <span data-hf-id="hf-y8py" class="gate-icon">⏸</span>
+                <span data-hf-id="hf-drd2" class="gate-text">WAITING FOR HUMAN APPROVAL...</span>
               </div>
             </div>
             <!-- Bottom Split -->
-            <div class="split-bottom">
-              <span class="pane-title-tag">RECOVERY ENGINE</span>
-              <div class="gutter">
-                <div class="line-num">8</div><div class="line-num">9</div><div class="line-num">10</div>
-                <div class="line-num">11</div><div class="line-num">12</div><div class="line-num">13</div>
+            <div data-hf-id="hf-fp5k" class="split-bottom">
+              <span data-hf-id="hf-nkl0" class="pane-title-tag">RECOVERY ENGINE</span>
+              <div data-hf-id="hf-vn0b" class="gutter">
+                <div data-hf-id="hf-gqbi" class="line-num">8</div><div data-hf-id="hf-9555" class="line-num">9</div><div data-hf-id="hf-e9zc" class="line-num">10</div>
+                <div data-hf-id="hf-ix4z" class="line-num">11</div><div data-hf-id="hf-2n96" class="line-num">12</div><div data-hf-id="hf-aqql" class="line-num">13</div>
               </div>
-              <div class="code-container" id="code-c-bottom">
-                <div class="code-line"><span class="keyword orange-kw">retry</span> <span class="number">3</span> <span class="keyword cyan-kw">with</span> backoff exponential {</div>
-                <div class="code-line">    <span class="keyword">let</span> raw = web.search(<span class="string">"AI research"</span>)</div>
-                <div class="code-line">    <span class="keyword orange-kw">guard</span> raw.status == <span class="number">200</span></div>
-                <div class="code-line">} <span class="keyword orange-kw">catch</span> err {</div>
-                <div class="code-line">    <span class="keyword">return</span> <span class="string">"Failed: "</span> + err.message</div>
-                <div class="code-line">}</div>
+              <div data-hf-id="hf-bveg" class="code-container" id="code-c-bottom">
+                <div data-hf-id="hf-muho" class="code-line"><span data-hf-id="hf-59d7" class="keyword orange-kw">retry</span> <span data-hf-id="hf-3wmb" class="number">3</span> <span data-hf-id="hf-vuje" class="keyword cyan-kw">with</span> backoff exponential {</div>
+                <div data-hf-id="hf-gw86" class="code-line">    <span data-hf-id="hf-ptbx" class="keyword">let</span> raw = web.search(<span data-hf-id="hf-u16z" class="string">"AI research"</span>)</div>
+                <div data-hf-id="hf-rih6" class="code-line">    <span data-hf-id="hf-60m8" class="keyword orange-kw">guard</span> raw.status == <span data-hf-id="hf-f8z4" class="number">200</span></div>
+                <div data-hf-id="hf-95wh" class="code-line">} <span data-hf-id="hf-ejr2" class="keyword orange-kw">catch</span> err {</div>
+                <div data-hf-id="hf-pu2t" class="code-line">    <span data-hf-id="hf-nq6x" class="keyword">return</span> <span data-hf-id="hf-epv7" class="string">"Failed: "</span> + err.message</div>
+                <div data-hf-id="hf-umt5" class="code-line">}</div>
               </div>
               <!-- Backoff graph indicator -->
-              <div class="backoff-attempt-container" id="backoff-indicators">
-                <div class="backoff-title">EXPONENTIAL RETRIES</div>
-                <div class="attempt-bar-wrapper">
-                  <span>Try 1</span>
-                  <div class="attempt-bar"><div class="attempt-fill" id="try-1" style="background-color: #EF4444;"></div></div>
+              <div data-hf-id="hf-4qhr" class="backoff-attempt-container" id="backoff-indicators">
+                <div data-hf-id="hf-i4oa" class="backoff-title">EXPONENTIAL RETRIES</div>
+                <div data-hf-id="hf-bfs5" class="attempt-bar-wrapper">
+                  <span data-hf-id="hf-2byl">Try 1</span>
+                  <div data-hf-id="hf-cpb7" class="attempt-bar"><div data-hf-id="hf-yvhj" class="attempt-fill" id="try-1" style="background-color: #EF4444;"></div></div>
                 </div>
-                <div class="attempt-bar-wrapper">
-                  <span>Try 2</span>
-                  <div class="attempt-bar"><div class="attempt-fill" id="try-2" style="background-color: #EF4444;"></div></div>
+                <div data-hf-id="hf-v4zd" class="attempt-bar-wrapper">
+                  <span data-hf-id="hf-3ivo">Try 2</span>
+                  <div data-hf-id="hf-ffab" class="attempt-bar"><div data-hf-id="hf-fg1i" class="attempt-fill" id="try-2" style="background-color: #EF4444;"></div></div>
                 </div>
-                <div class="attempt-bar-wrapper">
-                  <span>Try 3</span>
-                  <div class="attempt-bar"><div class="attempt-fill" id="try-3"></div></div>
+                <div data-hf-id="hf-wbwg" class="attempt-bar-wrapper">
+                  <span data-hf-id="hf-34kn">Try 3</span>
+                  <div data-hf-id="hf-f0za" class="attempt-bar"><div data-hf-id="hf-xew0" class="attempt-fill" id="try-3"></div></div>
                 </div>
               </div>
             </div>
@@ -531,7 +531,7 @@
     </div>
 
     <!-- Typewriter Cursor Template -->
-    <span class="cursor" id="editor-cursor" style="display:none;"></span>
+    <span data-hf-id="hf-c2d8" class="cursor" id="editor-cursor" style="display:none;"></span>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <script>

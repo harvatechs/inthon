@@ -1,8 +1,8 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
     <title>Inthon Product Demo Video</title>
     <!-- Built-in fonts will be embedded by the compiler -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
@@ -520,108 +520,101 @@
   </head>
   <body>
     <!-- Root composition element -->
-    <div
-      id="stage"
-      data-composition-id="inthon-demo"
-      data-start="0"
-      data-duration="90"
-      data-width="1920"
-      data-height="1080"
-    >
+    <div data-hf-id="hf-2uti" id="stage" data-composition-id="inthon-demo" data-start="0" data-duration="90" data-width="1920" data-height="1080">
       
       <!-- BACKGROUND MUSIC (Direct child of root) -->
-      <audio id="bg-music" src="assets/music.wav" data-start="0" data-duration="90" data-volume="0.18"></audio>
+      <audio data-hf-id="hf-pyhp" id="bg-music" src="assets/music.wav" data-start="0" data-duration="90" data-volume="0.18"></audio>
 
       <!-- SOUND EFFECTS (Direct children of root with unique IDs) -->
       <!-- Transition Whooshes -->
-      <audio id="sfx-whoosh-1" src="assets/sfx/whoosh.wav" data-start="14.0" data-duration="0.3" data-track-index="10" data-volume="0.3"></audio>
-      <audio id="sfx-whoosh-2" src="assets/sfx/whoosh.wav" data-start="22.0" data-duration="0.3" data-track-index="11" data-volume="0.3"></audio>
-      <audio id="sfx-whoosh-3" src="assets/sfx/whoosh.wav" data-start="34.0" data-duration="0.3" data-track-index="12" data-volume="0.3"></audio>
-      <audio id="sfx-whoosh-4" src="assets/sfx/whoosh.wav" data-start="62.0" data-duration="0.3" data-track-index="13" data-volume="0.3"></audio>
-      <audio id="sfx-whoosh-5" src="assets/sfx/whoosh.wav" data-start="78.0" data-duration="0.3" data-track-index="14" data-volume="0.3"></audio>
-      <audio id="sfx-whoosh-6" src="assets/sfx/whoosh.wav" data-start="86.0" data-duration="0.3" data-track-index="15" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-dxgn" id="sfx-whoosh-1" src="assets/sfx/whoosh.wav" data-start="14.0" data-duration="0.3" data-track-index="10" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-s5q2" id="sfx-whoosh-2" src="assets/sfx/whoosh.wav" data-start="22.0" data-duration="0.3" data-track-index="11" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-fnup" id="sfx-whoosh-3" src="assets/sfx/whoosh.wav" data-start="34.0" data-duration="0.3" data-track-index="12" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-ffga" id="sfx-whoosh-4" src="assets/sfx/whoosh.wav" data-start="62.0" data-duration="0.3" data-track-index="13" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-bxld" id="sfx-whoosh-5" src="assets/sfx/whoosh.wav" data-start="78.0" data-duration="0.3" data-track-index="14" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-mdr0" id="sfx-whoosh-6" src="assets/sfx/whoosh.wav" data-start="86.0" data-duration="0.3" data-track-index="15" data-volume="0.3"></audio>
 
       <!-- Benchmark ticks -->
-      <audio id="sfx-tick-1" src="assets/sfx/tick.wav" data-start="62.2" data-duration="0.03" data-track-index="20" data-volume="0.25"></audio>
-      <audio id="sfx-tick-2" src="assets/sfx/tick.wav" data-start="62.45" data-duration="0.03" data-track-index="21" data-volume="0.25"></audio>
-      <audio id="sfx-tick-3" src="assets/sfx/tick.wav" data-start="62.7" data-duration="0.03" data-track-index="22" data-volume="0.25"></audio>
-      <audio id="sfx-tick-4" src="assets/sfx/tick.wav" data-start="63.5" data-duration="0.03" data-track-index="23" data-volume="0.15"></audio>
-      <audio id="sfx-tick-5" src="assets/sfx/tick.wav" data-start="64.5" data-duration="0.03" data-track-index="24" data-volume="0.15"></audio>
+      <audio data-hf-id="hf-h2zd" id="sfx-tick-1" src="assets/sfx/tick.wav" data-start="62.2" data-duration="0.03" data-track-index="20" data-volume="0.25"></audio>
+      <audio data-hf-id="hf-1z3e" id="sfx-tick-2" src="assets/sfx/tick.wav" data-start="62.45" data-duration="0.03" data-track-index="21" data-volume="0.25"></audio>
+      <audio data-hf-id="hf-ywam" id="sfx-tick-3" src="assets/sfx/tick.wav" data-start="62.7" data-duration="0.03" data-track-index="22" data-volume="0.25"></audio>
+      <audio data-hf-id="hf-vrem" id="sfx-tick-4" src="assets/sfx/tick.wav" data-start="63.5" data-duration="0.03" data-track-index="23" data-volume="0.15"></audio>
+      <audio data-hf-id="hf-r7hj" id="sfx-tick-5" src="assets/sfx/tick.wav" data-start="64.5" data-duration="0.03" data-track-index="24" data-volume="0.15"></audio>
 
       <!-- Key clicks for code demo -->
-      <audio id="sfx-click-1" src="assets/sfx/click.wav" data-start="34.5" data-duration="0.05" data-track-index="30" data-volume="0.2"></audio>
-      <audio id="sfx-click-2" src="assets/sfx/click.wav" data-start="35.5" data-duration="0.05" data-track-index="31" data-volume="0.2"></audio>
-      <audio id="sfx-click-3" src="assets/sfx/click.wav" data-start="37.0" data-duration="0.05" data-track-index="32" data-volume="0.2"></audio>
-      <audio id="sfx-click-4" src="assets/sfx/click.wav" data-start="43.5" data-duration="0.05" data-track-index="33" data-volume="0.2"></audio>
-      <audio id="sfx-click-5" src="assets/sfx/click.wav" data-start="45.0" data-duration="0.05" data-track-index="34" data-volume="0.2"></audio>
-      <audio id="sfx-click-6" src="assets/sfx/click.wav" data-start="51.5" data-duration="0.05" data-track-index="35" data-volume="0.2"></audio>
-      <audio id="sfx-click-7" src="assets/sfx/click.wav" data-start="53.0" data-duration="0.05" data-track-index="36" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-13i7" id="sfx-click-1" src="assets/sfx/click.wav" data-start="34.5" data-duration="0.05" data-track-index="30" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-e3jm" id="sfx-click-2" src="assets/sfx/click.wav" data-start="35.5" data-duration="0.05" data-track-index="31" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-6x11" id="sfx-click-3" src="assets/sfx/click.wav" data-start="37.0" data-duration="0.05" data-track-index="32" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-tkql" id="sfx-click-4" src="assets/sfx/click.wav" data-start="43.5" data-duration="0.05" data-track-index="33" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-1uma" id="sfx-click-5" src="assets/sfx/click.wav" data-start="45.0" data-duration="0.05" data-track-index="34" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-k2fw" id="sfx-click-6" src="assets/sfx/click.wav" data-start="51.5" data-duration="0.05" data-track-index="35" data-volume="0.2"></audio>
+      <audio data-hf-id="hf-2w3r" id="sfx-click-7" src="assets/sfx/click.wav" data-start="53.0" data-duration="0.05" data-track-index="36" data-volume="0.2"></audio>
 
       <!-- Chime for final CTA -->
-      <audio id="sfx-ding" src="assets/sfx/ding.wav" data-start="86.4" data-duration="1.5" data-track-index="40" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-3g0a" id="sfx-ding" src="assets/sfx/ding.wav" data-start="86.4" data-duration="1.5" data-track-index="40" data-volume="0.5"></audio>
 
       <!-- Thuds for alerts / blocks -->
-      <audio id="sfx-thud-1" src="assets/sfx/thud.wav" data-start="54.5" data-duration="0.4" data-track-index="50" data-volume="0.35"></audio>
-      <audio id="sfx-thud-2" src="assets/sfx/thud.wav" data-start="80.5" data-duration="0.4" data-track-index="51" data-volume="0.35"></audio>
+      <audio data-hf-id="hf-4dgk" id="sfx-thud-1" src="assets/sfx/thud.wav" data-start="54.5" data-duration="0.4" data-track-index="50" data-volume="0.35"></audio>
+      <audio data-hf-id="hf-pkud" id="sfx-thud-2" src="assets/sfx/thud.wav" data-start="80.5" data-duration="0.4" data-track-index="51" data-volume="0.35"></audio>
 
       <!-- Particle Grid background -->
-      <div class="particle-bg" id="particle-background">
-        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="gridPattern" width="60" height="60" patternUnits="userSpaceOnUse">
-              <circle cx="30" cy="30" r="1.5" fill="#00D4FF" opacity="0.08" />
+      <div data-hf-id="hf-0y9j" class="particle-bg" id="particle-background">
+        <svg data-hf-id="hf-n26j" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs data-hf-id="hf-mh0t">
+            <pattern data-hf-id="hf-5vje" id="gridPattern" width="60" height="60" patternUnits="userSpaceOnUse">
+              <circle data-hf-id="hf-x831" cx="30" cy="30" r="1.5" fill="#00D4FF" opacity="0.08" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#gridPattern)" />
+          <rect data-hf-id="hf-atec" width="100%" height="100%" fill="url(#gridPattern)" />
         </svg>
       </div>
 
       <!-- Wipe bar -->
-      <div class="wipe-bar" id="wipe-bar"></div>
+      <div data-hf-id="hf-4tta" class="wipe-bar" id="wipe-bar"></div>
 
       <!-- VOICE OVER CAPTION BAR (Shared overlay) -->
-      <div class="caption-bar">
-        <p class="caption-text" id="master-caption" data-layout-allow-overlap>AI agents are powerful. But they're running on the wrong substrate.</p>
+      <div data-hf-id="hf-wtmm" class="caption-bar">
+        <p data-hf-id="hf-vefs" class="caption-text" id="master-caption" data-layout-allow-overlap="">AI agents are powerful. But they're running on the wrong substrate.</p>
       </div>
 
       <!-- ================= SCENE 1: THE PROBLEM (0s - 14s) ================= -->
-      <div class="scene" id="scene-1">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>01 / The Pain points</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-lio4" class="scene" id="scene-1">
+        <div data-hf-id="hf-xb8i" class="scene-header">
+          <span data-hf-id="hf-vtxx" class="scene-indicator" data-layout-allow-overlap="">01 / The Pain points</span>
+          <div data-hf-id="hf-jhao" class="scene-brand">
+            <span data-hf-id="hf-buaq" class="brand-name">INTHON</span>
           </div>
         </div>
-        <div class="scene-1-content">
-          <h1 class="scene-1-title" id="s1-title">The Challenge of Modern Agent Architectures</h1>
-          <div class="cards-row">
+        <div data-hf-id="hf-zneu" class="scene-1-content">
+          <h1 data-hf-id="hf-7v29" class="scene-1-title" id="s1-title">The Challenge of Modern Agent Architectures</h1>
+          <div data-hf-id="hf-62wu" class="cards-row">
             <!-- Card 1 -->
-            <div class="problem-card" id="pcard-1">
-              <div class="card-icon-title">
-                <span class="card-icon">💬</span>
-                <span class="card-title">Token Bloat</span>
+            <div data-hf-id="hf-lefa" class="problem-card" id="pcard-1">
+              <div data-hf-id="hf-ight" class="card-icon-title">
+                <span data-hf-id="hf-nz92" class="card-icon">💬</span>
+                <span data-hf-id="hf-bl5x" class="card-title">Token Bloat</span>
               </div>
-              <p class="card-body">
+              <p data-hf-id="hf-nagt" class="card-body">
                 XML and JSON schemas waste 60-76% of your context window on boilerplate, not reasoning.
               </p>
             </div>
             <!-- Card 2 -->
-            <div class="problem-card" id="pcard-2">
-              <div class="card-icon-title">
-                <span class="card-icon">⚠️</span>
-                <span class="card-title">Host Safety Risk</span>
+            <div data-hf-id="hf-hgb9" class="problem-card" id="pcard-2">
+              <div data-hf-id="hf-2905" class="card-icon-title">
+                <span data-hf-id="hf-2vhq" class="card-icon">⚠️</span>
+                <span data-hf-id="hf-c281" class="card-title">Host Safety Risk</span>
               </div>
-              <p class="card-body">
+              <p data-hf-id="hf-nnlj" class="card-body">
                 Raw LLM-generated Python can access host filesystems, network ports, and the OS shell unchecked.
               </p>
             </div>
             <!-- Card 3 -->
-            <div class="problem-card" id="pcard-3">
-              <div class="card-icon-title">
-                <span class="card-icon">🔍</span>
-                <span class="card-title">Zero Auditability</span>
+            <div data-hf-id="hf-eh1o" class="problem-card" id="pcard-3">
+              <div data-hf-id="hf-3fx8" class="card-icon-title">
+                <span data-hf-id="hf-cycp" class="card-icon">🔍</span>
+                <span data-hf-id="hf-lzhb" class="card-title">Zero Auditability</span>
               </div>
-              <p class="card-body">
+              <p data-hf-id="hf-43i1" class="card-body">
                 Multi-turn agent loops are non-deterministic. No replayability, no traces, and no policy control.
               </p>
             </div>
@@ -630,219 +623,195 @@
       </div>
 
       <!-- ================= SCENE 2: LOGO REVEAL (14s - 22s) ================= -->
-      <div class="scene" id="scene-2">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>02 / The Genesis</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-we5r" class="scene" id="scene-2">
+        <div data-hf-id="hf-ov0m" class="scene-header">
+          <span data-hf-id="hf-qjth" class="scene-indicator" data-layout-allow-overlap="">02 / The Genesis</span>
+          <div data-hf-id="hf-2q08" class="scene-brand">
+            <span data-hf-id="hf-kgzq" class="brand-name">INTHON</span>
           </div>
         </div>
-        <div class="scene-2-content" id="s2-area">
+        <div data-hf-id="hf-phim" class="scene-2-content" id="s2-area">
           <!-- Logo container (inline SVG for styling) -->
-          <div class="logo-container" id="s2-logo-container">
-            <object type="image/svg+xml" data="assets/logo.svg" style="width:100%; height:100%; pointer-events:none;"></object>
+          <div data-hf-id="hf-5xxw" class="logo-container" id="s2-logo-container">
+            <object data-hf-id="hf-fevr" type="image/svg+xml" data="assets/logo.svg" style="width:100%; height:100%; pointer-events:none;"></object>
           </div>
-          <div class="logo-subtitle" id="s2-subtitle">Intelligent + Python</div>
-          <div class="logo-tagline" id="s2-tagline">The Programming Language Built for AI Agents</div>
+          <div data-hf-id="hf-bvtu" class="logo-subtitle" id="s2-subtitle">Intelligent + Python</div>
+          <div data-hf-id="hf-gihr" class="logo-tagline" id="s2-tagline">The Programming Language Built for AI Agents</div>
           
           <!-- Convergence particles -->
-          <div class="reveal-particle" style="left:10%; top:20%;"></div>
-          <div class="reveal-particle" style="right:15%; top:25%;"></div>
-          <div class="reveal-particle" style="left:8%; bottom:15%;"></div>
-          <div class="reveal-particle" style="right:12%; bottom:20%;"></div>
-          <div class="reveal-particle" style="left:50%; top:5%;"></div>
-          <div class="reveal-particle" style="left:50%; bottom:5%;"></div>
-          <div class="reveal-particle" style="left:25%; top:45%;"></div>
-          <div class="reveal-particle" style="right:25%; top:45%;"></div>
+          <div data-hf-id="hf-07gp" class="reveal-particle" style="left:10%; top:20%;"></div>
+          <div data-hf-id="hf-rxpq" class="reveal-particle" style="right:15%; top:25%;"></div>
+          <div data-hf-id="hf-zvos" class="reveal-particle" style="left:8%; bottom:15%;"></div>
+          <div data-hf-id="hf-zcwo" class="reveal-particle" style="right:12%; bottom:20%;"></div>
+          <div data-hf-id="hf-xrro" class="reveal-particle" style="left:50%; top:5%;"></div>
+          <div data-hf-id="hf-atps" class="reveal-particle" style="left:50%; bottom:5%;"></div>
+          <div data-hf-id="hf-8exm" class="reveal-particle" style="left:25%; top:45%;"></div>
+          <div data-hf-id="hf-2jsb" class="reveal-particle" style="right:25%; top:45%;"></div>
         </div>
       </div>
 
       <!-- ================= SCENE 3: WHAT IS INTHON (22s - 34s) ================= -->
-      <div class="scene" id="scene-3">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>03 / Architecture Spec</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-q8fy" class="scene" id="scene-3">
+        <div data-hf-id="hf-p9bn" class="scene-header">
+          <span data-hf-id="hf-rfql" class="scene-indicator" data-layout-allow-overlap="">03 / Architecture Spec</span>
+          <div data-hf-id="hf-1j35" class="scene-brand">
+            <span data-hf-id="hf-kvar" class="brand-name">INTHON</span>
           </div>
         </div>
-        <div class="scene-3-content">
+        <div data-hf-id="hf-yjb0" class="scene-3-content">
           <!-- Left: Spec Table -->
-          <div class="spec-panel">
-            <h2 class="spec-title">Language Specifications</h2>
-            <div class="spec-table">
-              <div class="spec-row" id="spec-row-1">
-                <span class="spec-label">Paradigm</span>
-                <span class="spec-val">agent-oriented, multi-agent</span>
+          <div data-hf-id="hf-xfbc" class="spec-panel">
+            <h2 data-hf-id="hf-l0y5" class="spec-title">Language Specifications</h2>
+            <div data-hf-id="hf-nl8i" class="spec-table">
+              <div data-hf-id="hf-lpwg" class="spec-row" id="spec-row-1">
+                <span data-hf-id="hf-cwc4" class="spec-label">Paradigm</span>
+                <span data-hf-id="hf-pgsb" class="spec-val">agent-oriented, multi-agent</span>
               </div>
-              <div class="spec-row" id="spec-row-2">
-                <span class="spec-label">VM</span>
-                <span class="spec-val">Stack-based Bytecode</span>
+              <div data-hf-id="hf-wle3" class="spec-row" id="spec-row-2">
+                <span data-hf-id="hf-ef24" class="spec-label">VM</span>
+                <span data-hf-id="hf-2w9n" class="spec-val">Stack-based Bytecode</span>
               </div>
-              <div class="spec-row" id="spec-row-3">
-                <span class="spec-label">Parser</span>
-                <span class="spec-val">Lark LALR / EBNF</span>
+              <div data-hf-id="hf-sna2" class="spec-row" id="spec-row-3">
+                <span data-hf-id="hf-j79m" class="spec-label">Parser</span>
+                <span data-hf-id="hf-jyhp" class="spec-val">Lark LALR / EBNF</span>
               </div>
-              <div class="spec-row" id="spec-row-4">
-                <span class="spec-label">Memory</span>
-                <span class="spec-val">SQLite cosine-sim store</span>
+              <div data-hf-id="hf-9vkd" class="spec-row" id="spec-row-4">
+                <span data-hf-id="hf-e0qm" class="spec-label">Memory</span>
+                <span data-hf-id="hf-3rx2" class="spec-val">SQLite cosine-sim store</span>
               </div>
-              <div class="spec-row" id="spec-row-5">
-                <span class="spec-label">Security</span>
-                <span class="spec-val">sys.meta_path sandbox</span>
+              <div data-hf-id="hf-93wk" class="spec-row" id="spec-row-5">
+                <span data-hf-id="hf-o97v" class="spec-label">Security</span>
+                <span data-hf-id="hf-0mkr" class="spec-val">sys.meta_path sandbox</span>
               </div>
-              <div class="spec-row" id="spec-row-6">
-                <span class="spec-label">Extension</span>
-                <span class="spec-val">.inth</span>
+              <div data-hf-id="hf-hrsf" class="spec-row" id="spec-row-6">
+                <span data-hf-id="hf-nalm" class="spec-label">Extension</span>
+                <span data-hf-id="hf-nyfb" class="spec-val">.inth</span>
               </div>
-              <div class="spec-row" id="spec-row-7">
-                <span class="spec-label">License</span>
-                <span class="spec-val">Apache 2.0</span>
+              <div data-hf-id="hf-dtoe" class="spec-row" id="spec-row-7">
+                <span data-hf-id="hf-qrdg" class="spec-label">License</span>
+                <span data-hf-id="hf-yc20" class="spec-val">Apache 2.0</span>
               </div>
             </div>
           </div>
           <!-- Right: Diagram Host (sub-composition) -->
-          <div class="diag-panel">
-            <div
-              id="pipeline-diagram"
-              data-composition-id="pipeline-diagram"
-              data-composition-src="components/pipeline-diagram.html"
-              data-start="22"
-              data-duration="12"
-              data-track-index="1"
-              style="width: 100%; height: 100%;"
-            ></div>
+          <div data-hf-id="hf-ozks" class="diag-panel">
+            <div data-hf-id="hf-hs6d" id="pipeline-diagram" data-composition-id="pipeline-diagram" data-composition-src="components/pipeline-diagram.html" data-start="22" data-duration="12" data-track-index="1" style="width: 100%; height: 100%;"></div>
           </div>
         </div>
       </div>
 
       <!-- ================= SCENE 4: CODE DEMO (34s - 62s) ================= -->
-      <div class="scene" id="scene-4">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>04 / Declarative Syntax</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-13xl" class="scene" id="scene-4">
+        <div data-hf-id="hf-pnmo" class="scene-header">
+          <span data-hf-id="hf-mgst" class="scene-indicator" data-layout-allow-overlap="">04 / Declarative Syntax</span>
+          <div data-hf-id="hf-1xe6" class="scene-brand">
+            <span data-hf-id="hf-l9ls" class="brand-name">INTHON</span>
           </div>
         </div>
         <!-- Embeds the code-editor component -->
-        <div
-          id="code-editor"
-          data-composition-id="code-editor"
-          data-composition-src="components/code-editor.html"
-          data-start="34"
-          data-duration="28"
-          data-track-index="2"
-          style="position: absolute; inset: 0;"
-        ></div>
+        <div data-hf-id="hf-84sd" id="code-editor" data-composition-id="code-editor" data-composition-src="components/code-editor.html" data-start="34" data-duration="28" data-track-index="2" style="position: absolute; inset: 0;"></div>
       </div>
 
       <!-- ================= SCENE 5: BENCHMARKS (62s - 78s) ================= -->
-      <div class="scene" id="scene-5">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>05 / Performance Metrics</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-0c9s" class="scene" id="scene-5">
+        <div data-hf-id="hf-mvhh" class="scene-header">
+          <span data-hf-id="hf-386i" class="scene-indicator" data-layout-allow-overlap="">05 / Performance Metrics</span>
+          <div data-hf-id="hf-0qh3" class="scene-brand">
+            <span data-hf-id="hf-ihgl" class="brand-name">INTHON</span>
           </div>
         </div>
         <!-- Embeds the benchmark-chart component -->
-        <div
-          id="benchmark-chart"
-          data-composition-id="benchmark-chart"
-          data-composition-src="components/benchmark-chart.html"
-          data-start="62"
-          data-duration="16"
-          data-track-index="3"
-          style="position: absolute; inset: 0;"
-        ></div>
+        <div data-hf-id="hf-aibt" id="benchmark-chart" data-composition-id="benchmark-chart" data-composition-src="components/benchmark-chart.html" data-start="62" data-duration="16" data-track-index="3" style="position: absolute; inset: 0;"></div>
       </div>
 
       <!-- ================= SCENE 6: PyBridge SANDBOX (78s - 86s) ================= -->
-      <div class="scene" id="scene-6">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>06 / PyBridge Isolation</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-905n" class="scene" id="scene-6">
+        <div data-hf-id="hf-n9si" class="scene-header">
+          <span data-hf-id="hf-n18u" class="scene-indicator" data-layout-allow-overlap="">06 / PyBridge Isolation</span>
+          <div data-hf-id="hf-14s4" class="scene-brand">
+            <span data-hf-id="hf-ivrm" class="brand-name">INTHON</span>
           </div>
         </div>
-        <div class="scene-6-content">
+        <div data-hf-id="hf-nxq1" class="scene-6-content">
           <!-- Allow / Block Table -->
-          <div class="sandbox-table-container" id="s6-table">
+          <div data-hf-id="hf-rwym" class="sandbox-table-container" id="s6-table">
             
             <!-- Allow Column -->
-            <div class="sandbox-col sandbox-col-left">
-              <div class="col-header allow">
-                <span>&#9989;</span> Allowed Packages
+            <div data-hf-id="hf-agg2" class="sandbox-col sandbox-col-left">
+              <div data-hf-id="hf-sdlm" class="col-header allow">
+                <span data-hf-id="hf-rcfg">✅</span> Allowed Packages
               </div>
-              <div class="imports-grid">
-                <div class="import-item allow-item">numpy</div>
-                <div class="import-item allow-item">pandas</div>
-                <div class="import-item allow-item">math</div>
-                <div class="import-item allow-item">json</div>
-                <div class="import-item allow-item">datetime</div>
-                <div class="import-item allow-item">collections</div>
+              <div data-hf-id="hf-067n" class="imports-grid">
+                <div data-hf-id="hf-vtg5" class="import-item allow-item">numpy</div>
+                <div data-hf-id="hf-2ffv" class="import-item allow-item">pandas</div>
+                <div data-hf-id="hf-2cns" class="import-item allow-item">math</div>
+                <div data-hf-id="hf-jhi4" class="import-item allow-item">json</div>
+                <div data-hf-id="hf-o2jj" class="import-item allow-item">datetime</div>
+                <div data-hf-id="hf-y2gj" class="import-item allow-item">collections</div>
               </div>
             </div>
 
             <!-- Block Column -->
-            <div class="sandbox-col">
-              <div class="col-header block">
-                <span>&#10060;</span> Blocked Packages
+            <div data-hf-id="hf-65gs" class="sandbox-col">
+              <div data-hf-id="hf-xp8q" class="col-header block">
+                <span data-hf-id="hf-yc2f">❌</span> Blocked Packages
               </div>
-              <div class="imports-grid">
-                <div class="import-item block-item">os</div>
-                <div class="import-item block-item">sys</div>
-                <div class="import-item block-item">subprocess</div>
-                <div class="import-item block-item">socket</div>
-                <div class="import-item block-item">ctypes</div>
-                <div class="import-item block-item">eval / exec</div>
+              <div data-hf-id="hf-pw43" class="imports-grid">
+                <div data-hf-id="hf-jl18" class="import-item block-item">os</div>
+                <div data-hf-id="hf-klef" class="import-item block-item">sys</div>
+                <div data-hf-id="hf-383x" class="import-item block-item">subprocess</div>
+                <div data-hf-id="hf-9c3f" class="import-item block-item">socket</div>
+                <div data-hf-id="hf-qpp4" class="import-item block-item">ctypes</div>
+                <div data-hf-id="hf-anye" class="import-item block-item">eval / exec</div>
               </div>
             </div>
 
             <!-- Floating Center Shield -->
-            <div class="shield-container" id="s6-shield">
-              <span class="shield-icon">&#128737;</span>
+            <div data-hf-id="hf-tngq" class="shield-container" id="s6-shield">
+              <span data-hf-id="hf-vrhi" class="shield-icon">🛡</span>
             </div>
 
           </div>
 
           <!-- Code Snippet -->
-          <div class="sandbox-code" id="s6-code">
-            <div><span class="keyword">use</span> py.pandas <span class="keyword">as</span> pd     <span class="comment code-cmt">// <span class="code-allow">✅ Allowed</span></span></div>
-            <div><span class="keyword">use</span> py.os <span class="keyword">as</span> os         <span class="comment code-cmt">// <span class="code-err">❌ PyBridgeError: Access denied to system module</span></span></div>
+          <div data-hf-id="hf-3uci" class="sandbox-code" id="s6-code">
+            <div data-hf-id="hf-cmxq"><span data-hf-id="hf-9uvd" class="keyword">use</span> py.pandas <span data-hf-id="hf-fex6" class="keyword">as</span> pd     <span data-hf-id="hf-lnge" class="comment code-cmt">// <span data-hf-id="hf-9cbt" class="code-allow">✅ Allowed</span></span></div>
+            <div data-hf-id="hf-ny57"><span data-hf-id="hf-qohp" class="keyword">use</span> py.os <span data-hf-id="hf-naxa" class="keyword">as</span> os         <span data-hf-id="hf-1hwi" class="comment code-cmt">// <span data-hf-id="hf-0vaz" class="code-err">❌ PyBridgeError: Access denied to system module</span></span></div>
           </div>
         </div>
       </div>
 
       <!-- ================= SCENE 7: INSTALL & CTA (86s - 90s) ================= -->
-      <div class="scene" id="scene-7">
-        <div class="scene-header">
-          <span class="scene-indicator" data-layout-allow-overlap>07 / CTA</span>
-          <div class="scene-brand">
-            <span class="brand-name">INTHON</span>
+      <div data-hf-id="hf-521m" class="scene" id="scene-7">
+        <div data-hf-id="hf-no3j" class="scene-header">
+          <span data-hf-id="hf-n9ht" class="scene-indicator" data-layout-allow-overlap="">07 / CTA</span>
+          <div data-hf-id="hf-zxv1" class="scene-brand">
+            <span data-hf-id="hf-ja2n" class="brand-name">INTHON</span>
           </div>
         </div>
-        <div class="scene-7-content">
-          <div class="final-tagline" id="s7-tagline">Write less. Run safer. Think bigger.</div>
+        <div data-hf-id="hf-mcbk" class="scene-7-content">
+          <div data-hf-id="hf-jkhi" class="final-tagline" id="s7-tagline">Write less. Run safer. Think bigger.</div>
           
-          <div class="terminal-block" id="s7-terminal">
-            <div class="terminal-text">
-              <span style="color: var(--accent-purple);">&#10095;</span>
-              <span>pip install inthon</span>
+          <div data-hf-id="hf-tsqt" class="terminal-block" id="s7-terminal">
+            <div data-hf-id="hf-voyg" class="terminal-text">
+              <span data-hf-id="hf-7v8y" style="color: var(--accent-purple);">❯</span>
+              <span data-hf-id="hf-lwtt">pip install inthon</span>
             </div>
           </div>
 
           <!-- Links -->
-          <div class="links-container" id="s7-links">
-            <a href="https://pypi.org/project/inthon" class="cta-link">
-              <span class="cta-icon">📦</span>
-              <span>PyPI</span>
+          <div data-hf-id="hf-6o49" class="links-container" id="s7-links">
+            <a data-hf-id="hf-ypwz" href="https://pypi.org/project/inthon" class="cta-link">
+              <span data-hf-id="hf-e542" class="cta-icon">📦</span>
+              <span data-hf-id="hf-ch0p">PyPI</span>
             </a>
-            <a href="https://harvatechs.github.io/inthon" class="cta-link">
-              <span class="cta-icon">📖</span>
-              <span>Docs</span>
+            <a data-hf-id="hf-p553" href="https://harvatechs.github.io/inthon" class="cta-link">
+              <span data-hf-id="hf-7s7m" class="cta-icon">📖</span>
+              <span data-hf-id="hf-mg1a">Docs</span>
             </a>
-            <a href="https://github.com/harvatechs/inthon" class="cta-link">
-              <span class="cta-icon">⭐</span>
-              <span>GitHub</span>
+            <a data-hf-id="hf-x58v" href="https://github.com/harvatechs/inthon" class="cta-link">
+              <span data-hf-id="hf-i3if" class="cta-icon">⭐</span>
+              <span data-hf-id="hf-x6wm">GitHub</span>
             </a>
           </div>
         </div>
@@ -886,11 +855,11 @@
           
           // Set next scene state
           tl.set(toScene, { opacity: 1, clipPath: "inset(0 100% 0 0)" }, transitionTime);
-          tl.set(wipeBar, { opacity: 1, left: "0px" }, transitionTime);
+          tl.set(wipeBar, { opacity: 1, x: 0 }, transitionTime);
           
           // Animate next scene showing and wipe-bar sweeping
           tl.to(toScene, { clipPath: "inset(0 0% 0 0)", duration: 0.3, ease: "power2.inOut" }, transitionTime);
-          tl.to(wipeBar, { left: "1920px", duration: 0.3, ease: "power2.inOut" }, transitionTime);
+          tl.to(wipeBar, { x: 1920, duration: 0.3, ease: "power2.inOut" }, transitionTime);
           
           // Clean up old scene and reset next scene's clipPath
           tl.set(fromScene, { opacity: 0 }, transitionTime + 0.3);

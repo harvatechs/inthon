@@ -20,7 +20,9 @@ import sys
 import wave
 from pathlib import Path
 
-DEFAULT_PROMPT = "Uplifting corporate tech, bright and modern, gentle piano with synth pads"
+DEFAULT_PROMPT = (
+    "Uplifting corporate tech, bright and modern, gentle piano with synth pads"
+)
 SAMPLE_RATE = 48000
 CHANNELS = 2
 SAMPLE_WIDTH = 2  # 16-bit
@@ -29,12 +31,22 @@ SAMPLE_WIDTH = 2  # 16-bit
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Generate BGM via Google Lyria RealTime.")
     p.add_argument("--output", required=True, help="Output WAV path.")
-    p.add_argument("--duration", type=float, required=True, help="Target duration in seconds.")
-    p.add_argument("--prompt", default=DEFAULT_PROMPT, help="Mood / instrumentation prompt.")
-    p.add_argument("--negative-prompt", default=None, help="Styles to exclude (optional).")
+    p.add_argument(
+        "--duration", type=float, required=True, help="Target duration in seconds."
+    )
+    p.add_argument(
+        "--prompt", default=DEFAULT_PROMPT, help="Mood / instrumentation prompt."
+    )
+    p.add_argument(
+        "--negative-prompt", default=None, help="Styles to exclude (optional)."
+    )
     p.add_argument("--bpm", type=int, default=110)
-    p.add_argument("--brightness", type=float, default=0.8, help="0-1, higher = brighter mood.")
-    p.add_argument("--density", type=float, default=0.5, help="0-1, higher = fuller mix.")
+    p.add_argument(
+        "--brightness", type=float, default=0.8, help="0-1, higher = brighter mood."
+    )
+    p.add_argument(
+        "--density", type=float, default=0.5, help="0-1, higher = fuller mix."
+    )
     p.add_argument(
         "--scale",
         default="MAJOR",
@@ -101,7 +113,10 @@ async def generate_bgm(args: argparse.Namespace) -> dict:
         try:
             await asyncio.wait_for(collect(), timeout=timeout)
         except TimeoutError:
-            print(f"Timeout after {timeout:.0f}s, collected {len(buf)} bytes", file=sys.stderr)
+            print(
+                f"Timeout after {timeout:.0f}s, collected {len(buf)} bytes",
+                file=sys.stderr,
+            )
 
     audio = bytes(buf[:target_bytes])
     with wave.open(str(out_path), "wb") as wf:

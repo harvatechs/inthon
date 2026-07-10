@@ -1,8 +1,8 @@
-<!-- hyperframes-registry-item: flash-through-white -->
-<!doctype html>
+<!DOCTYPE html><!-- hyperframes-registry-item: flash-through-white -->
+
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Lato:wght@400;700&display=block");
@@ -20,14 +20,7 @@
     </style>
   </head>
   <body>
-    <div
-      id="root"
-      data-composition-id="main"
-      data-start="0"
-      data-duration="4"
-      data-width="1920"
-      data-height="1080"
-    >
+    <div data-hf-id="hf-x3dq" id="root" data-composition-id="main" data-start="0" data-duration="4" data-width="1920" data-height="1080">
       <style>
         [data-composition-id="main"] {
           width: 1920px;
@@ -148,24 +141,20 @@
         }
       </style>
 
-      <div class="bp-grid"></div>
-      <div class="bp-divider"></div>
-      <div class="bp-number">12 / 14</div>
+      <div data-hf-id="hf-18hn" class="bp-grid"></div>
+      <div data-hf-id="hf-c7ca" class="bp-divider"></div>
+      <div data-hf-id="hf-m3q3" class="bp-number">12 / 14</div>
 
       <!-- GL demo scenes (captured as textures, then hidden) -->
-      <div id="s1" class="scene" style="background: #03071e">
-        <div class="scene-label" style="color: #ffba08">SCENE A</div>
+      <div data-hf-id="hf-9p6x" id="s1" class="scene" style="background: #03071e">
+        <div data-hf-id="hf-8jdh" class="scene-label" style="color: #ffba08">SCENE A</div>
       </div>
-      <div id="s2" class="scene" style="background: #ffba08; opacity: 0">
-        <div class="scene-label" style="color: #03071e">SCENE B</div>
+      <div data-hf-id="hf-daft" id="s2" class="scene" style="background: #ffba08; opacity: 0">
+        <div data-hf-id="hf-7t0v" class="scene-label" style="color: #03071e">SCENE B</div>
       </div>
 
       <!-- GL canvas (left panel only) -->
-      <canvas
-        id="gl-canvas"
-        width="1200"
-        height="1080"
-        style="
+      <canvas data-hf-id="hf-vv93" id="gl-canvas" width="1200" height="1080" style="
           position: absolute;
           top: 0;
           left: 0;
@@ -174,29 +163,21 @@
           z-index: 10;
           pointer-events: none;
           display: none;
-        "
-      >
+        ">
       </canvas>
 
       <!-- Right panel metadata -->
-      <div class="bp-right">
-        <div class="bp-name">Flash Through White</div>
-        <div class="bp-plabel">Prompt</div>
-        <div class="bp-prompt">"use flash through white shader transition"</div>
-        <div class="bp-desc">
+      <div data-hf-id="hf-95jb" class="bp-right">
+        <div data-hf-id="hf-gy6s" class="bp-name">Flash Through White</div>
+        <div data-hf-id="hf-z20z" class="bp-plabel">Prompt</div>
+        <div data-hf-id="hf-rqwk" class="bp-prompt">"use flash through white shader transition"</div>
+        <div data-hf-id="hf-0kld" class="bp-desc">
           Both scenes brighten to a white midpoint. Works on dark backgrounds where
           color-dip-to-black is invisible.
         </div>
       </div>
 
-      <div
-        id="driver"
-        class="clip"
-        data-start="0"
-        data-duration="4"
-        data-track-index="0"
-        style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none"
-      ></div>
+      <div data-hf-id="hf-zlur" id="driver" class="clip" data-start="0" data-duration="4" data-track-index="0" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none"></div>
     </div>
 
     <script>

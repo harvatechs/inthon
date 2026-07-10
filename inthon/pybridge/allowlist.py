@@ -81,7 +81,6 @@ BLOCKED_ATTRIBUTES: dict[str, frozenset[str]] = {
 }
 
 
-
 @dataclass
 class AllowlistConfig:
     extra_allowed: set[str] = field(default_factory=set)
@@ -149,14 +148,26 @@ def is_safe_attribute_access(parent: object, attr_name: str, value: object) -> b
             return False
 
     # Check if value itself is a dangerous builtin function
-    blocked_builtins = {"exec", "eval", "compile", "__import__", "open", "breakpoint", "input"}
+    blocked_builtins = {
+        "exec",
+        "eval",
+        "compile",
+        "__import__",
+        "open",
+        "breakpoint",
+        "input",
+    }
     for b_name in blocked_builtins:
         if hasattr(builtins, b_name):
             if value is getattr(builtins, b_name):
                 return False
 
     # Check if value is a builtin function with a blocked name (like io.open)
-    if type(value).__name__ in ("builtin_function_or_method", "wrapper_descriptor", "method-wrapper"):
+    if type(value).__name__ in (
+        "builtin_function_or_method",
+        "wrapper_descriptor",
+        "method-wrapper",
+    ):
         val_name = getattr(value, "__name__", None)
         if val_name in blocked_builtins:
             return False
@@ -165,7 +176,11 @@ def is_safe_attribute_access(parent: object, attr_name: str, value: object) -> b
     val_mod = getattr(value, "__module__", None)
     if isinstance(val_mod, str):
         val_mod_root = val_mod.split(".")[0]
-        if val_mod_root in HARD_DENIED_MODULES or val_mod_root in ("nt", "posix", "_thread"):
+        if val_mod_root in HARD_DENIED_MODULES or val_mod_root in (
+            "nt",
+            "posix",
+            "_thread",
+        ):
             if val_mod_root == "builtins":
                 # For builtins module, check if the function name is in blocked_builtins
                 val_name = getattr(value, "__name__", None)
@@ -181,7 +196,15 @@ def is_safe_callable(obj: object) -> bool:
     """
     Validate that calling obj is safe.
     """
-    blocked_builtins = {"exec", "eval", "compile", "__import__", "open", "breakpoint", "input"}
+    blocked_builtins = {
+        "exec",
+        "eval",
+        "compile",
+        "__import__",
+        "open",
+        "breakpoint",
+        "input",
+    }
     if obj in blocked_builtins:
         return False
     for b_name in blocked_builtins:
@@ -190,7 +213,11 @@ def is_safe_callable(obj: object) -> bool:
                 return False
 
     # Check if obj is a builtin function with a blocked name
-    if type(obj).__name__ in ("builtin_function_or_method", "wrapper_descriptor", "method-wrapper"):
+    if type(obj).__name__ in (
+        "builtin_function_or_method",
+        "wrapper_descriptor",
+        "method-wrapper",
+    ):
         val_name = getattr(obj, "__name__", None)
         if val_name in blocked_builtins:
             return False
@@ -199,7 +226,11 @@ def is_safe_callable(obj: object) -> bool:
     val_mod = getattr(obj, "__module__", None)
     if isinstance(val_mod, str):
         val_mod_root = val_mod.split(".")[0]
-        if val_mod_root in HARD_DENIED_MODULES or val_mod_root in ("nt", "posix", "_thread"):
+        if val_mod_root in HARD_DENIED_MODULES or val_mod_root in (
+            "nt",
+            "posix",
+            "_thread",
+        ):
             if val_mod_root == "builtins":
                 # For builtins module, check if the function name is in blocked_builtins
                 val_name = getattr(obj, "__name__", None)
@@ -213,4 +244,3 @@ def is_safe_callable(obj: object) -> bool:
         return False
 
     return True
-
