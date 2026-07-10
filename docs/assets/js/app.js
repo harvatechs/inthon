@@ -157,8 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     try {
-      // 1. Load Pyodide WASM
-      pyodideInstance = await loadPyodide();
+      // 1. Load Pyodide WASM with interactive stdin handler for approval gates
+      pyodideInstance = await loadPyodide({
+        stdin: () => {
+          const res = window.prompt("[INTHON APPROVAL REQUIRED]\nEnter 'y' to approve, or 'n' to reject:");
+          return (res || 'n') + '\n';
+        }
+      });
       
       if (consoleOutput) {
         consoleOutput.innerHTML += `
