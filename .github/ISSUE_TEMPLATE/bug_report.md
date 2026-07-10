@@ -35,7 +35,7 @@ If applicable, add screenshots or paste the JSON execution trace outputs (e.g. f
 **Environment Details:**
  - OS: [e.g. Windows 11, Ubuntu 22.04]
  - Python Version: [e.g. 3.12.3]
- - INTHON Version: [e.g. 0.1.0]
+ - INTHON Version: [e.g. 0.2.0]
  - Lark Version: [e.g. 1.1.9]
 
 **Additional Context**

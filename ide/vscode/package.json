@@ -2,7 +2,7 @@
     "name": "inthon",
     "displayName": "INTHON Language Support",
     "description": "Syntax highlighting and file icon support for the INTHON programming language.",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "publisher": "harvadeeplabs",
     "engines": {
         "vscode": "^1.60.0"

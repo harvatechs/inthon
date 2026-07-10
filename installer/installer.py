@@ -21,7 +21,7 @@ COLOR_SUCCESS = "#10B981"
 COLOR_GRADIENT_START = "#7C3AED"
 COLOR_GRADIENT_END = "#312E81"
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 def get_resource_path(relative_path):
@@ -152,7 +152,7 @@ class InthonInstaller(tk.Tk):
         # Title
         title_lbl = tk.Label(
             self.content_frame,
-            text="Install INTHON v0.1.0",
+            text="Install INTHON v0.2.0",
             font=("Segoe UI Semibold", 18),
             fg=COLOR_TEXT,
             bg=COLOR_BG,
@@ -621,7 +621,7 @@ class InthonInstaller(tk.Tk):
 
         success_lbl = tk.Label(
             self.content_frame,
-            text="INTHON v0.1.0 has been successfully installed on your computer.",
+            text="INTHON v0.2.0 has been successfully installed on your computer.",
             font=("Segoe UI", 10, "bold"),
             fg=COLOR_TEXT,
             bg=COLOR_BG,

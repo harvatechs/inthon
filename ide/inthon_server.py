@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 PORT = 7474
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",

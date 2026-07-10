@@ -23,7 +23,7 @@ COLOR_GRADIENT_START = "#B91C1C"  # Dark red gradient
 COLOR_GRADIENT_END = "#450A0A"
 COLOR_INPUT_BG = "#26262B"
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 def get_resource_path(relative_path):
@@ -147,7 +147,7 @@ class InthonUninstaller(tk.Tk):
         # Title
         title_lbl = tk.Label(
             self.content_frame,
-            text="Uninstall INTHON v0.1.0",
+            text="Uninstall INTHON v0.2.0",
             font=("Segoe UI Semibold", 18),
             fg=COLOR_TEXT,
             bg=COLOR_BG,

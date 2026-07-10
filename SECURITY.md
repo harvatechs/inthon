@@ -10,7 +10,8 @@ Only the latest release version of INTHON receives security updates. If a securi
 
 | Version | Supported |
 | :--- | :--- |
-| **v0.1.x** | :white_check_mark: Supported (Current) |
+| **v0.2.x** | :white_check_mark: Supported (Current) |
+| **v0.1.x** | :white_check_mark: Supported |
 | **< v0.1.0** | :x: Unsupported |
 
 ---
