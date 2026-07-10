@@ -167,10 +167,10 @@ document.addEventListener('DOMContentLoaded', () => {
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
       }
       
-      // 2. Load micropip and install lark
+      // 2. Load micropip and install dependencies
       await pyodideInstance.loadPackage("micropip");
       const micropip = pyodideInstance.pyimport("micropip");
-      await micropip.install("lark");
+      await micropip.install(["lark", "pydantic", "jsonschema", "typer", "rich", "structlog"]);
       
       if (consoleOutput) {
         consoleOutput.innerHTML += `
