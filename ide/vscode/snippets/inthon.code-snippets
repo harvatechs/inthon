@@ -1,0 +1,97 @@
+{
+    "Inthon Agent": {
+        "prefix": "agent",
+        "body": [
+            "agent ${1:MyAgent} {",
+            "    goal \"${2:Describe the agent's objective}\"",
+            "    inputs {",
+            "        ${3:args}: ${4:list[str]}",
+            "    }",
+            "    outputs {",
+            "        ${5:result}: ${6:str}",
+            "    }",
+            "    policy {",
+            "        allow_network: ${7:true},",
+            "        max_tool_calls: ${8:10}",
+            "    }",
+            "    plan {",
+            "        ${0:// Implementation plan}",
+            "    }",
+            "}"
+        ],
+        "description": "Declare a capability-bounded agent"
+    },
+    "Inthon Function": {
+        "prefix": "fn",
+        "body": [
+            "fn ${1:function_name}(${2:arg}: ${3:str}) -> ${4:str} {",
+            "    ${0:return \"\"}",
+            "}"
+        ],
+        "description": "Declare an Inthon function"
+    },
+    "Use Tool": {
+        "prefix": "usetool",
+        "body": [
+            "use tool ${1:web.search}"
+        ],
+        "description": "Import a compiler tool dependency"
+    },
+    "Use Python Bridge": {
+        "prefix": "usepy",
+        "body": [
+            "use py.${1:module} as ${2:alias}"
+        ],
+        "description": "Import a Python module using the bridge"
+    },
+    "If Block": {
+        "prefix": "if",
+        "body": [
+            "if ${1:condition} {",
+            "    ${0}",
+            "}"
+        ],
+        "description": "If condition block"
+    },
+    "If Else Block": {
+        "prefix": "ifelse",
+        "body": [
+            "if ${1:condition} {",
+            "    ${2}",
+            "} else {",
+            "    ${0}",
+            "}"
+        ],
+        "description": "If-Else condition block"
+    },
+    "For Loop": {
+        "prefix": "for",
+        "body": [
+            "for ${1:item} in ${2:collection} {",
+            "    ${0}",
+            "}"
+        ],
+        "description": "For loop block"
+    },
+    "Remember Memory": {
+        "prefix": "remember",
+        "body": [
+            "remember ${1:value} in ${2:session}"
+        ],
+        "description": "Index value in persistent semantic memory"
+    },
+    "Recall Memory": {
+        "prefix": "recall",
+        "body": [
+            "recall \"${1:query}\" from ${2:session}"
+        ],
+        "description": "Retrieve information from persistent semantic memory"
+    },
+    "Approve Gate": {
+        "prefix": "approve",
+        "body": [
+            "approve ${1:action} before ${2:execute}"
+        ],
+        "description": "Declare an approval gate"
+    }
+}

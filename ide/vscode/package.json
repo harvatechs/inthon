@@ -4,8 +4,16 @@
     "description": "Syntax highlighting and file icon support for the INTHON programming language.",
     "version": "0.2.0",
     "publisher": "harvadeeplabs",
+    "main": "./extension.js",
+    "activationEvents": [
+        "onLanguage:inthon"
+    ],
     "engines": {
         "vscode": "^1.60.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/harvatechs/inthon"
     },
     "categories": [
         "Programming Languages"
@@ -35,6 +43,36 @@
                 "scopeName": "source.inth",
                 "path": "./syntaxes/inthon.tmLanguage.json"
             }
-        ]
+        ],
+        "snippets": [
+            {
+                "language": "inthon",
+                "path": "./snippets/inthon.code-snippets"
+            }
+        ],
+        "commands": [
+            {
+                "command": "inthon.run",
+                "title": "Run INTHON Script",
+                "category": "INTHON",
+                "icon": "$(play)"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "when": "resourceLangId == inthon",
+                    "command": "inthon.run",
+                    "group": "navigation"
+                }
+            ],
+            "editor/context": [
+                {
+                    "when": "resourceLangId == inthon",
+                    "command": "inthon.run",
+                    "group": "navigation"
+                }
+            ]
+        }
     }
 }

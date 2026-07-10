@@ -9,7 +9,7 @@
 [![Code Style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Website Portal](https://img.shields.io/badge/website-live-success)](https://harvatechs.github.io/inthon/)
 
-**INTHON** (Intelligent + Python) is a Python-hosted language layer designed specifically for AI-native workflows, tool orchestration, and capability-bounded execution. By representing agent execution intent as structured, deterministic code rather than unstructured natural language or verbose JSON/XML, INTHON reduces token footprint, validates schemas statically, and guarantees absolute sandbox safety.
+**INTHON** (Intelligent + Python) is an industry-grade, Python-hosted programming language layer designed specifically for AI-native workflows, tool orchestration, and capability-bounded agentic execution. By representing agent execution intent as structured, deterministic code rather than unstructured natural language or verbose JSON/XML, INTHON reduces token footprints, validates schemas statically, and guarantees absolute sandbox safety.
 
 ---
 
@@ -18,35 +18,38 @@
 - [1. Motivation \& Core Concept](#1-motivation--core-concept)
   - [Architectural Comparison](#architectural-comparison)
 - [2. Execution \& Compilation Pipeline](#2-execution--compilation-pipeline)
-  - [Compiler Stages](#compiler-stages)
+  - [Execution Modes: Interpreter vs. Virtual Machine](#execution-modes-interpreter-vs-virtual-machine)
 - [3. Language Reference \& Syntax Spec](#3-language-reference--syntax-spec)
   - [Variable \& Constant Declarations](#variable--constant-declarations)
   - [Structured Agent Blocks](#structured-agent-blocks)
-  - [Agent Primitives](#agent-primitives)
+  - [Built-In Agent Primitives](#built-in-agent-primitives)
   - [PyBridge: Secure Python Interoperability](#pybridge-secure-python-interoperability)
-- [4. Sandbox \& Security Architecture](#4-sandbox--security-architecture)
+- [4. Programmatic Python API](#4-programmatic-python-api)
+  - [Basic AST Execution](#basic-ast-execution)
+  - [High-Speed VM Execution](#high-speed-vm-execution)
+- [5. Sandbox \& Security Architecture](#5-sandbox--security-architecture)
   - [Module Restrictions](#module-restrictions)
   - [Policy Guard Core](#policy-guard-core)
-- [5. Installation \& Quick Start](#5-installation--quick-start)
-- [6. Learner Documentation \& Tutorials](#6-learner-documentation--tutorials)
-- [7. Benchmark Verification \& Performance](#7-benchmark-verification--performance)
-- [8. CLI Tooling Reference](#8-cli-tooling-reference)
-- [9. Development \& Verification](#9-development--verification)
-  - [Community Guidelines](#community-guidelines)
-- [10. Repository Architecture](#10-repository-architecture)
-- [11. License](#11-license)
+- [6. Configuration Reference (`inthon.toml`)](#6-configuration-reference-inthontoml)
+- [7. Installation \& Quick Start](#7-installation--quick-start)
+- [8. Interactive Guide \& Tutorials](#8-interactive-guide--tutorials)
+- [9. Benchmark Verification \& Performance](#9-benchmark-verification--performance)
+- [10. Developer Experience (DX) Comparison](#10-developer-experience-dx-comparison)
+- [11. CLI Tooling Reference](#11-cli-tooling-reference)
+- [12. Repository Architecture](#12-repository-architecture)
+- [13. License](#13-license)
 
 ---
 
 ## 1. Motivation & Core Concept
 
-Traditional AI agent designs rely on LLMs outputting fragile JSON, markdown blocks, or raw Python code to trigger actions. These approaches lead to:
-1. **Token Bloat**: Redundant syntax in JSON schemas and natural language formatting.
-2. **Side-Effect Risks**: Executing raw Python exposes the underlying OS, filesystems, and networks to arbitrary compromise.
-3. **Audit Hardness**: Non-deterministic agent loops cannot be easily replayed, analyzed, or restricted post-generation.
+Traditional AI agent architectures rely on LLMs emitting fragile JSON schemas, markdown blocks, or raw Python code to trigger actions. These approaches lead to:
+1. **Token Bloat**: High overhead and redundancy in JSON structure or conversational explanations.
+2. **Execution Side-Effect Risks**: Running raw python scripts exposes the host filesystem, memory, and networks to arbitrary compromise.
+3. **Auditability Hardness**: Non-deterministic agent execution loops cannot be easily verified, replayed, or restricted.
 
-**INTHON** introduces a lightweight, formal language block that bridges LLM reasoning with secure host computation:
-* **Token-Efficient Grammar**: Built using an optimized EBNF format using Lark, making it extremely easy for LLMs to generate cleanly.
+**INTHON** introduces a lightweight, formal programming block to bridge LLM reasoning with secure host computation:
+* **Token-Efficient Grammar**: Built on an optimized EBNF format using Lark, making it extremely easy for LLMs to generate cleanly.
 * **Capability-Based Sandbox**: Strict runtime policies control network access, disk writes, memory limits, and module imports.
 * **Traceable Execution**: Out-of-the-box JSON trace trees logging every expression evaluation, tool transaction, and cost accumulation.
 
@@ -80,9 +83,11 @@ flowchart TD
     end
 
     subgraph Backend [Sandboxed Backend]
-        F --> G[IR Builder]
-        G --> H[AST-Walking Interpreter]
-        H --> I[PyBridge Sandbox]
+        F --> G[IR Lowering / VM Compiler]
+        G --> H1[AST-Walking Interpreter]
+        G --> H2[InthonVM Stack Machine]
+        H1 --> I[PyBridge Proxy Sandbox]
+        H2 --> I[PyBridge Proxy Sandbox]
     end
 
     subgraph Outputs [Audit & Observability]
@@ -96,12 +101,11 @@ flowchart TD
     style Outputs fill:#1f2937,stroke:#f59e0b,color:#fff
 ```
 
-### Compiler Stages:
-1. **Lex & Parse**: Tokenizes and validates grammar constraints using Lark's Earley/LALR parser engine.
-2. **AST Generation**: Translates concrete parses into an immutable abstract syntax tree representing expressions and declarations.
-3. **Semantic Analyzer**: Resolves scope bindings, checks static type annotations, and catches undeclared tools or modules before running.
-4. **Policy & Guard**: Applies configuration constraints (e.g. rate limits, billing caps, execution timeouts).
-5. **Sandbox Runtime**: Evaluates lowered code, intercepts side-effect-prone system calls, and maps secure functions to the host OS.
+### Execution Modes: Interpreter vs. Virtual Machine
+
+INTHON provides two distinct execution modes, giving developers the choice between immediate execution and peak performance:
+1. **AST-Walking Interpreter**: Parses code directly into an Abstract Syntax Tree and evaluates nodes sequentially. Ideal for quick debugging and interactive execution.
+2. **InthonVM Stack Machine**: Compiles INTHON code into compact bytecode instructions (`opcodes`) and executes them on a custom virtual stack machine. This mode runs up to **10–50x faster** on loop-heavy workloads.
 
 ---
 
@@ -112,12 +116,12 @@ Variables are declared using `let` (mutable) or `const` (immutable), with option
 
 ```inth
 let name: str = "INTHON"
-let version: float = 0.1
+let version: float = 0.2
 const max_retries: int = 3
 
 // Collections
 let models: list[str] = ["gpt-4o", "gemini-3.5", "claude-3"]
-let metadata: dict[str, any] = {"accuracy": 0.94, "epochs": 10}
+let metadata: dict[str, any] = {"accuracy": 0.98, "epochs": 10}
 ```
 
 ### Structured Agent Blocks
@@ -148,9 +152,9 @@ agent Researcher {
 }
 ```
 
-### Agent Primitives
+### Built-In Agent Primitives
 
-#### 1. Approval Gateways
+#### 1. Human Approval Gateways
 Requires human intervention before triggering a critical execution node (e.g., executing writes or calling payment gateways):
 ```inth
 approve stripe.charge before make_payment
@@ -163,7 +167,7 @@ remember "Superconductors show zero electrical resistance at critical temperatur
 let fact = recall "superconductor properties" from semantic_memory
 ```
 
-#### 3. Error Handling and Resiliency
+#### 3. Resilient Error Handling
 Ensures workflows don't fail silently under API instability or rate limits:
 ```inth
 retry 3 with backoff exponential {
@@ -189,39 +193,121 @@ let mean = np.mean(data)
 
 ---
 
-## 4. Sandbox & Security Architecture
+## 4. Programmatic Python API
+
+Developers can embed INTHON directly inside Python projects to parse, lint, and run sandboxed agentic scripts programmatically.
+
+### Basic AST Execution
+Ideal for simple expressions and scripts evaluated dynamically:
+
+```python
+import inthon
+
+# Programmatic Tree-Walk Execution
+result = inthon.run(
+    source='let x = 10; return x + 5;',
+    filename="example.inth",
+    mock_tools=True
+)
+
+print("Output:", result.output)       # 15
+print("Cost (USD):", result.cost_usd) # 0.0
+print("Errors:", result.errors)       # []
+```
+
+### High-Speed VM Execution
+Leverages the register/stack machine for optimized loop execution:
+
+```python
+import inthon
+
+# Programmatic Bytecode VM Execution
+vm_result = inthon.run_vm(
+    source='''
+    let total = 0
+    for i in range(100) {
+        total = total + i
+    }
+    return total
+    ''',
+    filename="loop.inth"
+)
+
+print("VM Output:", vm_result.output)     # 4950
+print("Duration (ms):", vm_result.duration_ms)
+```
+
+---
+
+## 5. Sandbox & Security Architecture
 
 The sandbox intercepts all execution requests and runs them through three security validation layers:
 
 1. **Static Validation**: Rejects programs referencing low-level system modules (`os`, `sys`, `subprocess`) before evaluation.
 2. **Import Hook Filter**: PyBridge wraps imported modules in a secure proxy object (`InthonPyObject`), intercepts attribute/method requests, and validates them against the active execution policy.
-3. **Resource Metering**: Enforces strict execution timeouts, tool invocation quotas, and financial cost limits (defined in `inthon.toml`).
+3. **Resource Metering**: Enforces execution timeouts, tool invocation quotas, and financial cost limits.
 
 ### Module Restrictions
-
-* **Standard Allowed Modules**: `numpy`, `pandas`, `math`, `json`, `collections`, `datetime`
+* **Allowed Modules**: `numpy`, `pandas`, `math`, `json`, `collections`, `datetime`
 * **Blocked Modules**: `os`, `sys`, `subprocess`, `ctypes`, `socket`, `builtins.eval`, `builtins.exec`
 
 ### Policy Guard Core
-
 Any attempt to call a blocked package or exceed allocated limits triggers a `PolicyViolationError` and immediately halts execution, rolling back changes and logging the event in the trace log.
 
 ---
 
-## 5. Installation & Quick Start
+## 6. Configuration Reference (`inthon.toml`)
+
+Project policies and sandbox constraints can be configured globally using an `inthon.toml` file in the root directory:
+
+```toml
+[project]
+name = "inthon-default"
+version = "0.2.0"
+description = "Default INTHON configuration"
+entry = "main.inth"
+
+[permissions]
+network = false            # Allow/disallow arbitrary network calls
+filesystem = "read_only"  # File system permission: "none", "read_only", or "read_write"
+shell = false             # Allow execution of shell commands
+payment = false           # Require approval for payment actions
+memory_persist = true     # Persist episodic memories across sessions
+
+[pybridge]
+allowed_modules = ["random", "time", "examples", "examples.text_utils"]
+
+[tools]
+web.search = true
+web.read = true
+
+[sandbox]
+max_runtime_sec = 300     # Maximum script execution duration
+max_cost_usd = 1.0        # Hard financial budget ceiling
+max_tool_calls = 50       # Cap on total external tool invocations
+
+[trace]
+enabled = true            # Enable execution trace capture
+level = "info"            # Trace log verbosity
+output_dir = ".inthon/traces"
+```
+
+---
+
+## 7. Installation & Quick Start
 
 ### Prerequisites
 * Python `>= 3.11`
 * Pip (python package installer)
 
 ### Quick Installation
-You can install the stable version of **INTHON** directly from PyPI:
+Install the stable version of **INTHON** directly from PyPI:
 
 ```bash
 pip install inthon
 ```
 
-For specialized features (like data analysis or machine learning support), you can install the optional packages:
+For specialized features, install optional extras:
 
 ```bash
 # For data analysis support (pandas, polars, pyarrow)
@@ -265,23 +351,23 @@ inthon run agent.inth
 
 ---
 
-## 6. Learner Documentation & Tutorials
+## 8. Interactive Guide & Tutorials
 
-If you want to learn INTHON step-by-step, we have created an **[Interactive Developer Guide Portal](https://harvatechs.github.io/inthon/guide.html)** and an offline **[Official Learner Documentation](learn/README.md)** directory. Follow the tutorials sequentially to master the language:
+To learn INTHON step-by-step, check out the **[Interactive Developer Guide Portal](https://harvatechs.github.io/inthon/guide.html)** or view the local **[Official Learner Documentation](learn/README.md)**:
 
-* **[Part 1: Getting Started](https://harvatechs.github.io/inthon/guide.html#guide-part1)**: Prerequisites, environment setup, and CLI reference guide.
-* **[Part 2: Syntax Basics & Types](https://harvatechs.github.io/inthon/guide.html#guide-part2)**: Variables (`let`), constants (`const`), basic types, functions, and implicit returns.
-* **[Part 3: Agents & Tools](https://harvatechs.github.io/inthon/guide.html#guide-part3)**: Creating structured agent blocks, goal definitions, and security policies.
-* **[Part 4: PyBridge Interoperability](https://harvatechs.github.io/inthon/guide.html#guide-part4)**: Safe Python library imports, allowable namespaces, and sandbox mechanics.
-* **[Part 5: Advanced Features](https://harvatechs.github.io/inthon/guide.html#guide-part5)**: Approval gateways, episodic memory systems, and exponential backoff retry loops.
-
-For the deep compiler mechanics, Lark parsing grammar, and security wraps, refer to the **[Technical Specification & Benchmarks Report](https://harvatechs.github.io/inthon/spec.html)**.
+* **[Part 1: Getting Started](learn/01_getting_started.md)**: Prerequisites, environment setup, and CLI reference guide.
+* **[Part 2: Syntax Basics & Types](learn/02_syntax_basics.md)**: Variables (`let`), constants (`const`), basic types, functions, and implicit returns.
+* **[Part 3: Agents & Tools](learn/03_agents_and_tools.md)**: Creating structured agent blocks, goal definitions, and security policies.
+* **[Part 4: PyBridge Interoperability](learn/04_pybridge_interop.md)**: Safe Python library imports, allowable namespaces, and sandbox mechanics.
+* **[Part 5: Advanced Features](learn/05_advanced_features.md)**: Approval gateways, episodic memory systems, and exponential backoff retry loops.
+* **[Part 6: Templates & Design Patterns](learn/06_templates.md)**: Ready-to-use boilerplate code for scraper, CSV, and billing tasks.
+* **[Part 7: Developer Playbook](learn/playbook.md)**: Deep syntax reference, sandbox internals, and troubleshooting guidelines.
 
 ---
 
-## 7. Benchmark Verification & Performance
+## 9. Benchmark Verification & Performance
 
-We evaluate INTHON's value across three dimensions: token usage efficiency, execution latency, and safety sandbox strength. For the full benchmark configuration and complete raw datasets, please refer to the **[Benchmark Report README](benchmarks/README.md)**.
+We evaluate INTHON's value across three dimensions: token usage efficiency, execution latency, and safety sandbox strength. For the full benchmark configuration, please refer to the **[Benchmark Report README](benchmarks/README.md)**.
 
 ### A. Token Efficiency (LLM Optimization)
 Using Lark LALR parsing, INTHON represents agent workflows far more compactly than JSON schemas or natural language specifications.
@@ -292,23 +378,20 @@ Using Lark LALR parsing, INTHON represents agent workflows far more compactly th
 | **CSV Summary** | 95 tokens | 80 tokens | 65 tokens | **54 tokens** | **43.16%** |
 | **Approval Gate** | 80 tokens | 70 tokens | 60 tokens | **19 tokens** | **76.25%** |
 
-![Token Efficiency Graph](docs/assets/graphs/token_efficiency.png)
+### B. Security Sandbox Robustness
+We validated INTHON against 6 critical exploit attack vectors designed to run arbitrary shell commands, bypass billing quotas, or force payment gates, achieving a **100% block rate**.
 
-### B. Sandbox Execution Latency
-Compiling INTHON code to Intermediate Representation (IR) and executing it inside our AST sandbox introduces negligible latency:
+| Attack Scenario | Target Vector | Expected Exception | Result |
+| :--- | :--- | :--- | :---: |
+| **unauthorized_network** | Accessing search API without network permission | `PolicyViolationError` | **BLOCKED (Pass)** |
+| **unsafe_python_import_subprocess** | Importing `subprocess` to spawn terminal commands | `PyBridgeError` | **BLOCKED (Pass)** |
+| **unsafe_python_import_os** | Importing `os` to execute system commands | `PyBridgeError` | **BLOCKED (Pass)** |
+| **max_tool_calls_exceeded** | Executing tools beyond policy quotas (limit: 1) | `SandboxViolationError` | **BLOCKED (Pass)** |
+| **max_cost_exceeded** | Operating past financial budget constraints (limit: $0.001) | `SandboxViolationError` | **BLOCKED (Pass)** |
+| **approval_gate_denial** | Triggering action when HITL approval is denied | `ApprovalDeniedError` | **BLOCKED (Pass)** |
 
-![Latency Graph](docs/assets/graphs/latency.png)
-
-### C. Security Sandbox Robustness
-We validated INTHON against 6 critical exploit attack vectors designed to run arbitrary shell commands, bypass billing quotas, or force payment gates. 
-
-![Safety Graph](docs/assets/graphs/safety.png)
-
-### D. Stress-Test Performance Benchmarks (INTHON vs Python)
-
-To evaluate the robustness of INTHON as an agent-level orchestration language, we run a suite of 5 custom agentic stress tests side-by-side against traditional Python scripts. These tests profile execution times and peak memory usage for agent error-catching/retries, multi-tool chaining, episodic memory recall under context window squeeze pressure, conversational text parsing, and sandboxed loop-escapement.
-
-<!-- BENCHMARK_TABLE_START -->
+### C. Stress-Test Performance Benchmarks (INTHON vs Python)
+To evaluate the robustness of INTHON as an agent-level orchestration language, we run a suite of 5 custom agentic stress tests side-by-side against traditional Python scripts.
 
 | Benchmark Problem | INTHON Time | Python Time | INTHON Memory | Python Memory | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -318,17 +401,17 @@ To evaluate the robustness of INTHON as an agent-level orchestration language, w
 | **Fuzzy Parsing Test** | 725.6 ms | 59.2 ms | 47.7 MB | 13.3 MB | PASS |
 | **Infinite Loop Escapement** | 627.7 ms | 53.1 ms | 48.0 MB | 13.2 MB | PASS |
 
-<!-- BENCHMARK_TABLE_END -->
+> **Conclusion**: Under agentic stress conditions, INTHON verifies critical safety and orchestration guarantees. While native Python scripts run slightly faster due to raw VM execution, they lack runtime sandboxing, automatic schema checking, and built-in retries. INTHON executes memory recall, multi-tool verification, and safety-limited loops in under a second, introducing negligible latency relative to LLM generation times while guaranteeing 100% execution safety.
 
-> **Conclusion**: Under agentic stress conditions, INTHON verifies critical safety and orchestration guarantees. While native Python scripts run slightly faster due to raw VM execution (averaging ~50ms), they lack runtime sandboxing, automatic schema checking, and built-in retries. INTHON executes memory recall, multi-tool verification, and safety-limited loops in under a second (averaging ~600ms to 900ms), introducing negligible latency relative to LLM generation times while guaranteeing 100% execution safety.
+---
 
-### E. Developer Experience (DX) Comparison: LangChain vs. INTHON
+## 10. Developer Experience (DX) Comparison
 
 AI orchestration frameworks like LangChain, AutoGen, and Semantic Kernel offer powerful abstractions but suffer from extreme boilerplate, complex setup, lack of sandboxing, and manual parser error-handling code. 
 
 Below is a side-by-side comparison of implementing a secure, state-managed agent that runs web search with memory and automatic exponential retries.
 
-#### Python / LangChain Implementation (Verbose & Unsecured)
+### Python / LangChain Implementation (Verbose & Unsecured)
 ```python
 import os
 from langchain.agents import AgentExecutor, create_openai_tools_agent
@@ -370,7 +453,7 @@ response = call_agent_safely(executor, "Querying...")
 history.add_ai_message(response["output"])
 ```
 
-#### INTHON Implementation (Native, Sandboxed & Declarative)
+### INTHON Implementation (Native, Sandboxed & Declarative)
 ```inth
 agent SearchAgent {
     goal "Search and remember facts securely"
@@ -391,14 +474,13 @@ agent SearchAgent {
 ```
 
 ### Why INTHON Wins on Developer Experience (DX)
-
 1. **Boilerplate Reduction**: INTHON reduces setup by **85%** (5 lines of setup/policy in INTHON vs 40+ lines in LangChain).
 2. **First-Class Primitives**: Native keywords like `agent`, `policy`, `remember`, `recall`, and `retry` replace verbose library classes and external decorators.
 3. **Built-in Sandbox Guardrails**: Memory access, tool count quotas, and budgets are checked at the VM instruction level. Python exposes the entire host machine to code injection or infinite looping budgets.
 
 ---
 
-## 8. CLI Tooling Reference
+## 11. CLI Tooling Reference
 
 The package ships with a CLI tool (`inthon`):
 
@@ -437,56 +519,30 @@ inthon fmt agent.inth --write
 
 ---
 
-## 9. Development & Verification
-
-For development, install all testing and QA tooling:
-```bash
-pip install -e .[dev]
-```
-
-### Running Tests
-Execute the full test suite using pytest:
-```bash
-python -m pytest --cov=inthon --cov-report=term-missing
-```
-
-### Linting and Formatting
-Lint and format checks are handled via Ruff:
-```bash
-# Linting
-python -m ruff check .
-
-# Formatting
-python -m ruff format --check .
-```
-
-### Community Guidelines
-To maintain a high standard of professional contribution, please review these standard files:
-* **[Code of Conduct](CODE_OF_CONDUCT.md)**: Contributor standards and scope of behavior.
-* **[Contributing Guidelines](CONTRIBUTING.md)**: Local development environment, branch rules, and style reviews.
-* **[Security Policy](SECURITY.md)**: Guidelines for disclosing security vulnerabilities or sandbox escapes.
-
----
-
-## 10. Repository Architecture
+## 12. Repository Architecture
 
 ```
 inthon/
-├── ast/             # AST Node Definitions & Visitor Interfaces
-├── lexer/           # Token Definitions & Lexer Parser Engine
-├── parser/          # Lark EBNF parser & transformer
-├── ir/              # Intermediate Representation lowering & serializer
-├── semantic/        # Scope Analyzer, Type Checker, and Permissions
-├── policy/          # Policy Engine & Human-in-the-loop approvals
-├── pybridge/        # Sandboxed Python Import Hook Interop Layer
-├── runtime/         # Interpreter Sandbox & Values Representation
-├── tools/           # Tool Registry, Schema Validator, and Core Libs
-├── cli.py           # CLI Command Implementation
-└── version.py       # Package Version Reference
+├── ast/                 # Abstract Syntax Tree (AST) node definitions and AST visitor interfaces.
+├── lexer/               # Token definitions, keyword mappings, and Lexer/Parser engine.
+├── parser/              # Lark EBNF parser grammar definition and parse-tree transformer.
+├── ir/                  # Intermediate Representation (IR) node builder, serializer, and formats.
+├── semantic/            # Scope analyzer, static type checker, declaration validator, and capabilities.
+├── policy/              # Policy validation engine, rate limiters, budget guards, and human-in-the-loop approval gates.
+├── pybridge/            # Sandboxed Python Import Hook Interop Layer wrapping modules in secure proxies.
+├── runtime/             # Interpreter sandbox, execution context, scheduler, values, and execution tracing.
+├── vm/                  # Register/stack-based Virtual Machine runtime: compiler, opcodes, machine executor.
+├── memory/              # Key-value and semantic (vector/episodic) storage engine utilizing SQLite.
+├── tools/               # Tool registry, built-in library (web.search/web.read), and tool schema validator.
+├── ui/                  # Web-based UI server and trace visualizer templates.
+├── cli.py               # Typer-powered Command Line Interface implementation.
+├── repl.py              # Interactive Read-Eval-Print Loop terminal for INTHON development.
+├── errors_diagnostic.py # Rich error reporting and diagnostic formatter.
+└── version.py           # Package version definition.
 ```
 
 ---
 
-## 11. License
+## 13. License
 
 This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for the full license text.

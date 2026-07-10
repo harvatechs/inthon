@@ -51,3 +51,4 @@ htmlcov/
 # IDEs
 .vscode/
 .idea/
+*.vsix
