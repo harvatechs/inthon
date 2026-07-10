@@ -1,0 +1,93 @@
+// examples/lead_researcher.inth
+// A production-ready Inthon application demonstrating Lead Research with interactive UI, Memory, and Approvals.
+
+use py.inthon.ui as ui
+use py.re as re
+use tool web.search
+
+// 1. Initialize UI with a custom dashboard title and port
+ui.init(title: "Inthon Market Lead Researcher", port: 8060)
+
+// 2. Setup Sidebar layout and options
+ui.sidebar_start()
+ui.header("System Configuration")
+ui.text("Agent: LeadProfiler v1.0")
+ui.text("Database: SQLite Persistent")
+
+// Define button callback
+fn reset_dashboard() {
+    ui.clear_chat()
+    ui.chat_history_add("system", "Dashboard and chat history reset successfully.")
+}
+
+// Add a button in the sidebar to reset the session
+ui.button("Reset Dashboard", reset_dashboard)
+ui.sidebar_end()
+
+// 3. Setup Main View greeting
+ui.title("Inthon Lead Profiler")
+ui.text("Enter a company or product name in the chat below. The agent will run a sandboxed web search, compile key insights, store them in semantic memory, and request approval if it flags any high-value data requests.")
+
+// 4. Define the callback function to handle lead inputs
+fn handle_lead_research(company_name: str) {
+    ui.chat_history_add("user", company_name)
+    
+    // Start a visual status loader on the UI
+    let status_id = ui.status_start("Spawning Lead Researcher Agent...")
+    
+    let summary = ""
+    
+    // Define and execute a structured, capability-bounded agent block
+    agent LeadResearcher {
+        goal "Perform real-time web research, persist findings, and enforce verification gates."
+        
+        policy {
+            allow_network: true
+            max_tool_calls: 5
+            max_cost_usd: 0.05
+        }
+        
+        plan {
+            // Trigger approval modal for high-cost lead reports
+            let is_openai = re.search("OpenAI", company_name)
+            let is_microsoft = re.search("Microsoft", company_name)
+            
+            if is_openai or is_microsoft {
+                ui.status_update(status_id, "Flagged: Premium report verification gate triggered.")
+                
+                // Prompt the user for approval via the web interface
+                approve stripe.charge before make_payment
+                
+                ui.status_update(status_id, "Verification successful! Accessing premium sources...")
+            }
+            
+            // Search the web using the native tool call
+            ui.status_update(status_id, "Searching web for company profile...")
+            let query = "Company profile, recent news, and key details for: " + company_name
+            let results = web.search(query: query, limit: 2)
+            
+            let top_result = results[0]
+            let snippet = top_result.snippet
+            
+            // Store the fact in episodic memory
+            ui.status_update(status_id, "Writing insights to lead database memory...")
+            let fact_content = "Company: " + company_name + " - Summary: " + snippet
+            remember fact_content in lead_database
+            
+            summary = snippet
+        }
+    }
+    
+    // Close the status loader successfully
+    ui.status_complete(status_id, label: "Lead profile generated!", success: true)
+    
+    // Output findings to chat history
+    let report = "Generated report for **" + company_name + "**:\n\n" + summary
+    ui.chat_history_add("assistant", report)
+}
+
+// Bind the callback to the chat form
+ui.on_message(handle_lead_research)
+
+// 5. Start the web application
+ui.launch(port: 8060)

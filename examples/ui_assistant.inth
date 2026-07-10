@@ -1,0 +1,68 @@
+use py.inthon.ui as ui
+use py.re as re
+use tool web.search
+
+// Initialize UI state
+ui.init(title: "Inthon Intelligent Assistant", port: 8080)
+
+// 1. Sidebar configuration & metrics
+ui.sidebar_start()
+ui.header("Agent Profile")
+ui.text("Model: Gemini 3.5 Flash")
+ui.text("Role: Autonomous Researcher")
+ui.sidebar_end()
+
+// 2. Main Dashboard welcome layout
+ui.title("Inthon Agent Control Center")
+ui.text("This dashboard demonstrates native agent primitives (memory, approvals, and tool traces) working side-by-side with an interactive web UI.")
+
+// 3. Define callback to handle user messages
+fn handle_message(query: str) {
+    ui.chat_history_add("user", query)
+    
+    // Check if the request contains keywords that require financial approval
+    let requires_payment = false
+    if re.search("buy", query) {
+        requires_payment = true
+    }
+    if re.search("pay", query) {
+        requires_payment = true
+    }
+
+    if requires_payment {
+        ui.chat_history_add("assistant", "Payment detected. Initiating payment gateway approval gate...")
+        
+        // Native Inthon human-in-the-loop gate (will display a modal in the UI)
+        approve stripe.charge before make_payment
+        
+        ui.chat_history_add("assistant", "Payment approved! Charging stripe.charge...")
+    }
+
+    // Step-by-step reasoning status
+    let status_id = ui.status_start("Searching research papers...")
+    
+    // Call web.search tool. The tool call execution trace is automatically
+    // sent to the UI trace log in real-time.
+    let results = web.search(query: query, limit: 3)
+    
+    ui.status_update(status_id, "Parsing search results...")
+    
+    let first_result = results[0]
+    let snippet = first_result.snippet
+    
+    // Native episodic memory: write the result into memory. 
+    // This updates the memory dashboard list in the sidebar automatically.
+    remember snippet in research_memory
+    
+    ui.status_complete(status_id, label: "Search complete!", success: true)
+    
+    // Add the final response to chat history
+    let reply = "Here is the top result: " + first_result.title + "\n\n" + snippet
+    ui.chat_history_add("assistant", reply)
+}
+
+// Bind the callback to the chat input
+ui.on_message(handle_message)
+
+// 4. Launch the dashboard (starts FastAPI server on port 8080 and opens the browser)
+ui.launch(port: 8080)

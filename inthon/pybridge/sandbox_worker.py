@@ -26,6 +26,14 @@ import sys
 import importlib
 import builtins
 import traceback
+from pathlib import Path
+
+# Add workspace root to sys.path if not present, so we can import allowlist before replacing __import__
+_workspace_root = str(Path(__file__).resolve().parents[2])
+if _workspace_root not in sys.path:
+    sys.path.append(_workspace_root)
+from inthon.pybridge.allowlist import is_safe_attribute_access, is_safe_callable
+
 
 # ── Allowlist (kept in sync with pybridge/allowlist.py) ───────────────────────
 _ALLOWED_MODULES_SET = {
@@ -242,7 +250,6 @@ def main() -> None:
             tb = traceback.format_exc(limit=5)
             _respond(req_id, None, f"{type(e).__name__}: {e}\n{tb}")
 
-
 def _dispatch(req: dict) -> object:
     module_path: str = req["module"]
     attr_chain: list[str] = req.get("attr_chain", [])
@@ -252,19 +259,31 @@ def _dispatch(req: dict) -> object:
     # Import module (safe_import hook will block non-allowlisted)
     mod = importlib.import_module(module_path)
 
+    # Validate the imported module
+    if not is_safe_attribute_access(None, module_path.split(".")[0], mod):
+        raise PermissionError(
+            f"INTHON_SANDBOX: Module '{module_path}' is not permitted."
+        )
+
     # Traverse attribute chain
     obj = mod
     for attr in attr_chain:
-        if attr.startswith("__"):
+        next_obj = getattr(obj, attr)
+        if not is_safe_attribute_access(obj, attr, next_obj):
             raise AttributeError(
-                f"INTHON_SANDBOX: Access to dunder attribute '{attr}' is denied."
+                f"INTHON_SANDBOX: Access to attribute '{attr}' is denied."
             )
-        obj = getattr(obj, attr)
+        obj = next_obj
 
     # Call if callable; otherwise return attribute value
     if callable(obj):
+        if not is_safe_callable(obj):
+            raise PermissionError(
+                f"INTHON_SANDBOX: Call to dangerous callable is denied."
+            )
         return obj(*args, **kwargs)
     return obj
+
 
 
 def _respond(req_id: int, result: object, error: str | None) -> None:

@@ -250,11 +250,14 @@ class InthonVM:
                 elif isinstance(obj, InthonDict):
                     val_opt = obj.pairs.get(arg)
                     val = to_python(val_opt) if val_opt is not None else None
-                elif isinstance(obj, InthonPyObject):
-                    val = getattr(obj.obj, arg)
                 elif isinstance(obj, InthonToolRef):
                     val = InthonToolRef(obj.tool_path + "." + arg)
                 else:
+                    from ..pybridge.allowlist import is_safe_attribute_access
+                    if not is_safe_attribute_access(obj, arg, getattr(obj, arg, None)):
+                        raise VMError(
+                            f"INTHON_SANDBOX: Access to attribute '{arg}' is denied."
+                        )
                     val = getattr(obj, arg, None)
                 frame.push(val)
 
@@ -264,9 +267,12 @@ class InthonVM:
                 obj = self._unwrap(obj)
                 if isinstance(obj, dict):
                     obj[arg] = value
-                elif isinstance(obj, InthonPyObject):
-                    setattr(obj.obj, arg, self._coerce(value))
                 else:
+                    from ..pybridge.allowlist import is_safe_attribute_access
+                    if arg.startswith("_") or not is_safe_attribute_access(obj, arg, getattr(obj, arg, None)):
+                        raise VMError(
+                            f"INTHON_SANDBOX: Modifying attribute '{arg}' is denied."
+                        )
                     setattr(obj, arg, value)
 
             elif op == OpCode.GET_ITEM:
@@ -559,6 +565,11 @@ class InthonVM:
 
         # Plain Python callables (from SafeModuleWrapper)
         if callable(callee):
+            from ..pybridge.allowlist import is_safe_callable
+            if not is_safe_callable(callee):
+                raise VMError(
+                    f"INTHON_SANDBOX: Call to dangerous callable is denied."
+                )
             py_args = [self._coerce(a) for a in args]
             py_kwargs = {k: self._coerce(v) for k, v in kwargs.items()}
             result = callee(*py_args, **py_kwargs)
@@ -680,6 +691,11 @@ class InthonVM:
                 "args": str(py_args)[:200],
             },
         )
+        from ..pybridge.allowlist import is_safe_callable
+        if not is_safe_callable(callee.obj):
+            raise VMError(
+                f"INTHON_SANDBOX: Call to dangerous callable is denied."
+            )
         result = callee.obj(*py_args, **py_kwargs)
         return result
 

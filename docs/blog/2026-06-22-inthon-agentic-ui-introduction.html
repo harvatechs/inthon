@@ -1,0 +1,108 @@
+---
+layout: default
+title: "Introducing Inthon Agentic UI: Native Real-time Dashboards for Sandboxed Workflows"
+description: "Discover how the new inthon.ui module lets you build and manage beautiful, production-ready agent interfaces with live tool tracing, memory sync, and interactive human-in-the-loop approvals."
+---
+
+<main class="post-layout">
+  <div class="container container-narrow">
+    <!-- Post Header -->
+    <header class="post-header">
+      <div class="post-meta">
+        <span class="post-meta-date">June 22, 2026</span>
+        <span class="post-meta-author">By Harsha Vardhan</span>
+        <span class="post-meta-read">4 min read</span>
+      </div>
+      <h1 class="post-title">Introducing Inthon Agentic UI: Native Real-time Dashboards for Sandboxed Workflows</h1>
+    </header>
+
+    <!-- Post Content -->
+    <article class="post-content">
+      <p>
+        Building user interfaces for AI agents is traditionally a multi-layered headache. Developers must configure complex websocket libraries, manage state synchronization, parse reasoning outputs manually to render tool logs, and build custom overlays for human intervention. 
+      </p>
+      <p>
+        Furthermore, executing raw LLM actions on a host machine lacks guardrails. If an agent executes a financial charge or critical shell command, there is no native, capability-based method to stop it and ask the user for approval via a web interface.
+      </p>
+      <p>
+        To solve this, we are excited to introduce <strong>Inthon Agentic UI</strong> (<code>inthon.ui</code>) in v0.2. This in-built module bridges the gap between Inthon's capability-bounded interpreter sandbox and modern, responsive web dashboards.
+      </p>
+
+      <h2>A Declarative, Streamlit-like Layout API</h2>
+      <p>
+        The <code>inthon.ui</code> library provides a clean, declarative wrapper for layout design. Developers can customize sidebars, insert text blocks, and declare button components directly in Inthon using PyBridge:
+      </p>
+      <pre><code>use py.inthon.ui as ui
+
+ui.init(title: "My AI Assistant", port: 8080)
+ui.title("Inthon Agent Center")
+
+ui.sidebar_start()
+ui.header("Settings")
+ui.text("Model: Gemini 3.5 Flash")
+ui.sidebar_end()</code></pre>
+
+      <h2>Deep VM & Capability Integration</h2>
+      <p>
+        Unlike standalone UI frameworks, <code>inthon.ui</code> is tightly coupled with Inthon's VM instruction loop, enabling three key agentic capabilities out of the box:
+      </p>
+
+      <h3>1. Real-time Tool Call Tracing (Chainlit-Style)</h3>
+      <p>
+        When an agent runs a tool (like <code>web.search</code>), the VM's active <code>TraceLogger</code> automatically intercept the event and broadcasts it over WebSockets. The dashboard renders it as a collapsible trace step, showing parameters, output JSON, and execution duration.
+      </p>
+
+      <h3>2. Human-in-the-Loop Gateway</h3>
+      <p>
+        Inthon's native <code>approve</code> keyword is now connected to the UI. When the interpreter executes an approval gate:
+      </p>
+      <pre><code>approve stripe.charge before make_payment</code></pre>
+      <p>
+        The backend thread pauses using a thread event and sends an <code>approval_required</code> socket packet. A pulsing modal appears in the browser, showing the action details. Clicking <strong>Approve</strong> or <strong>Reject</strong> instantly unblocks the interpreter thread, resuming or rolling back execution securely.
+      </p>
+
+      <h3>3. Episodic Memory Sync</h3>
+      <p>
+        Any facts persisted via Inthon's <code>remember</code> statement are automatically synced with the sidebar. The UI queries the active <code>MemoryStore</code> (whether volatile or SQLite-backed) to give users a transparent view of the agent's long-term semantic context.
+      </p>
+
+      <h2>Example: Interactive Research Assistant</h2>
+      <p>
+        Here is a complete, executable Inthon script demonstrating the new UI capabilities:
+      </p>
+      <pre><code>use py.inthon.ui as ui
+use py.re as re
+use tool web.search
+
+ui.init(title: "Inthon Intelligent Assistant", port: 8080)
+
+fn handle_message(query: str) {
+    ui.chat_history_add("user", query)
+    
+    // Check if the query requires financial approval
+    if re.search("buy", query) {
+        ui.chat_history_add("assistant", "Payment detected. Initiating verification gate...")
+        approve stripe.charge before make_payment
+        ui.chat_history_add("assistant", "Payment approved!")
+    }
+
+    let status_id = ui.status_start("Searching research papers...")
+    let results = web.search(query: query, limit: 3)
+    
+    let snippet = results[0].snippet
+    remember snippet in research_memory
+    
+    ui.status_complete(status_id, label: "Search complete!", success: true)
+    ui.chat_history_add("assistant", "Here is what I found: " + snippet)
+}
+
+ui.on_message(handle_message)
+ui.launch(port: 8080)</code></pre>
+
+      <h2>Summary</h2>
+      <p>
+        Inthon Agentic UI transforms how developers compile, run, and monitor autonomous agents. By binding layout widgets, memory logs, and human approval verification gates directly into the language interpreter, Inthon delivers a unified, production-ready DX for AI-native software engineering.
+      </p>
+    </article>
+  </div>
+</main>

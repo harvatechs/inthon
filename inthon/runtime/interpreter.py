@@ -113,6 +113,11 @@ class Interpreter(ASTVisitor):
         for i, (kind, key) in enumerate(parts[:-1]):
             if kind == "attr":
                 if isinstance(obj, InthonPyObject):
+                    from ..pybridge.allowlist import is_safe_attribute_access
+                    if not is_safe_attribute_access(obj.obj, key, getattr(obj.obj, key, None)):
+                        raise IntHonRuntimeError(
+                            f"INTHON_SANDBOX: Access to attribute '{key}' is denied."
+                        )
                     obj = from_python(getattr(obj.obj, key))
                 elif isinstance(obj, InthonDict) and key in obj.pairs:
                     obj = obj.pairs[key]
@@ -135,6 +140,11 @@ class Interpreter(ASTVisitor):
         last_kind, last_key = parts[-1]
         if last_kind == "attr":
             if isinstance(obj, InthonPyObject):
+                from ..pybridge.allowlist import is_safe_attribute_access
+                if last_key.startswith("_") or not is_safe_attribute_access(obj.obj, last_key, getattr(obj.obj, last_key, None)):
+                    raise IntHonRuntimeError(
+                        f"INTHON_SANDBOX: Modifying attribute '{last_key}' is denied."
+                    )
                 setattr(obj.obj, last_key, to_python(val))
             elif isinstance(obj, InthonDict):
                 obj.pairs[last_key] = val
@@ -484,6 +494,11 @@ class Interpreter(ASTVisitor):
         if isinstance(obj, InthonToolRef):
             return InthonToolRef(obj.tool_path + "." + node.attr)
         if isinstance(obj, InthonPyObject):
+            from ..pybridge.allowlist import is_safe_attribute_access
+            if not is_safe_attribute_access(obj.obj, node.attr, getattr(obj.obj, node.attr, None)):
+                raise IntHonRuntimeError(
+                    f"INTHON_SANDBOX: Access to attribute '{node.attr}' is denied."
+                )
             attr = getattr(obj.obj, node.attr)
             return from_python(attr, obj.source_module)
         if isinstance(obj, InthonDict) and node.attr in obj.pairs:
@@ -616,6 +631,11 @@ class Interpreter(ASTVisitor):
         # SafeModuleWrapper wrapped functions are callable and expect unpacked args,
         # but our _wrap_callable already unpacks them. If callee.obj is the wrapper,
         # we call it directly.
+        from ..pybridge.allowlist import is_safe_callable
+        if not is_safe_callable(callee.obj):
+            raise IntHonRuntimeError(
+                f"INTHON_SANDBOX: Call to dangerous callable is denied."
+            )
         res = callee.obj(*args, **kwargs)
         return from_python(res)
 

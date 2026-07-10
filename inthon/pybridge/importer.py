@@ -66,6 +66,9 @@ class SafeModuleImporter:
             return self._cache[module_path]
         try:
             mod = importlib.import_module(module_path)
+            if module_path == "inthon.ui" or module_path.startswith("inthon.ui."):
+                if hasattr(mod, "set_context"):
+                    mod.set_context(self._ctx)
         except ImportError as exc:
             raise PyBridgeError(
                 f"INTHON_PYBRIDGE_002: Module '{module_path}' could not be imported. "
@@ -98,6 +101,11 @@ class SafeModuleWrapper:
                 f"INTHON_PYBRIDGE_004: Attribute '{self._path}.{name}' is blocked."
             )
         attr = getattr(self._module, name)
+        from .allowlist import is_safe_attribute_access
+        if not is_safe_attribute_access(self._module, name, attr):
+            raise PyBridgeError(
+                f"INTHON_PYBRIDGE_004: Attribute '{self._path}.{name}' is blocked by sandbox policy."
+            )
         if callable(attr):
             return _wrap_callable(attr, self._path)
         from ..runtime.values import from_python
