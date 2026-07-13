@@ -33,50 +33,50 @@ ui.text("Enter a public URL (e.g. https://example.com) in the chat below. The ag
 // 4. Define the callback function to handle lead inputs
 fn handle_summarize(user_input: str) {
     ui.chat_history_add("user", user_input)
-    
+
     // Check if the input is a valid URL
     let is_valid_url = re.search("^https?://", user_input)
     if not is_valid_url {
         ui.chat_history_add("assistant", "Error: Please enter a valid URL starting with http:// or https://")
         return
     }
-    
+
     // Start a visual status loader on the UI
     let status_id = ui.status_start("Spawning Web Summarizer Agent...")
-    
+
     let summary_result = ""
-    
+
     // Define and execute a structured, capability-bounded agent block
     agent WebSummarizer {
         goal "Fetch webpage content, strip HTML tags, and index findings in semantic memory."
-        
+
         policy {
             allow_network: true
             max_tool_calls: 3
             max_cost_usd: 0.05
         }
-        
+
         plan {
             ui.status_update(status_id, "Fetching real webpage content from URL...")
-            
+
             // Execute the real web.read tool to fetch webpage HTML
             let html_content = web.read(url: user_input)
-            
+
             ui.status_update(status_id, "Processing raw HTML and cleaning tags...")
             // Call our custom Python text_utils module to clean the content
             let trimmed = utils.clean_html(html_content)
-            
+
             ui.status_update(status_id, "Writing summary to persistent semantic memory...")
             let memory_entry = "URL: " + user_input + " - Summary: " + trimmed
             remember memory_entry in web_cache
-            
+
             summary_result = trimmed
         }
     }
-    
+
     // Close the status loader successfully
     ui.status_complete(status_id, label: "Webpage parsed successfully!", success: true)
-    
+
     // Output findings to chat history
     let report = "### Scraped Summary from URL:\n\n" + summary_result
     ui.chat_history_add("assistant", report)

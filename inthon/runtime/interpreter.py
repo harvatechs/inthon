@@ -563,7 +563,9 @@ class Interpreter(ASTVisitor):
         result: InthonValue = InthonNone()
         try:
             for stmt in fn.body:
-                self.visit(stmt)
+                val = self.visit(stmt)
+                if val is not None:
+                    result = val
         except ReturnSignal as ret:
             result = ret.value
         finally:

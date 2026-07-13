@@ -66,9 +66,6 @@ class SafeModuleImporter:
             return self._cache[module_path]
         try:
             mod = importlib.import_module(module_path)
-            if module_path == "inthon.ui" or module_path.startswith("inthon.ui."):
-                if hasattr(mod, "set_context"):
-                    mod.set_context(self._ctx)
         except ImportError as exc:
             raise PyBridgeError(
                 f"INTHON_PYBRIDGE_002: Module '{module_path}' could not be imported. "

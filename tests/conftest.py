@@ -9,3 +9,8 @@ def parser_fixture():
     from inthon.parser.parser import parse
 
     return parse
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"

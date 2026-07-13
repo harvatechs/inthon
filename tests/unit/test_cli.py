@@ -108,3 +108,19 @@ def test_cli_trace_view(temp_inth_file, tmp_path):
     html_content = html_file.read_text(encoding="utf-8")
     assert "INTHON Flight Recorder" in html_content
     assert "traceEvents" in html_content
+
+
+def test_cli_run_transpile(temp_inth_file):
+    result = runner.invoke(app, ["run", str(temp_inth_file), "--transpile"])
+    assert result.exit_code == 0
+    assert "10" in result.stdout
+
+
+def test_cli_run_docker(temp_inth_file, monkeypatch):
+    # Mock shutil.which to return None so that Docker is considered missing, triggering expected clean exit.
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda cmd: None)
+    result = runner.invoke(app, ["run", str(temp_inth_file), "--docker"])
+    assert result.exit_code == 1
+    assert "INTHON_CONTAINER_001" in result.stdout

@@ -3,9 +3,11 @@ from ..ast import nodes as N
 from .scope import ScopeChain
 
 
-def _type_expr_to_str(type_ann: N.TypeExpr | None) -> str:
+def _type_expr_to_str(type_ann: N.TypeExpr | str | None) -> str:
     if type_ann is None:
         return "any"
+    if isinstance(type_ann, str):
+        return type_ann
     if isinstance(type_ann, N.PrimitiveType):
         return type_ann.name
     if isinstance(type_ann, N.ListType):

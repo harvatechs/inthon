@@ -62,14 +62,217 @@ def _web_read_mock(url: str) -> str:
 
 
 def _web_search_real(query: str, limit: int = 5) -> list[dict]:
-    raise NotImplementedError("Real web.search requires API key configuration")
+    import os
+    import json
+    import urllib.request
+    import urllib.parse
+
+    # 1. Tavily API
+    tavily_key = os.environ.get("TAVILY_API_KEY")
+    if tavily_key:
+        try:
+            url = "https://api.tavily.com/search"
+            req_data = json.dumps({"query": query, "max_results": limit}).encode(
+                "utf-8"
+            )
+            req = urllib.request.Request(
+                url,
+                data=req_data,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {tavily_key}",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                results = []
+                for r in data.get("results", []):
+                    results.append(
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("url", ""),
+                            "snippet": r.get("content", ""),
+                        }
+                    )
+                if results:
+                    return results[:limit]
+        except Exception:
+            pass
+
+    # 2. SerpAPI
+    serpapi_key = os.environ.get("SERPAPI_API_KEY")
+    if serpapi_key:
+        try:
+            params = urllib.parse.urlencode(
+                {"q": query, "api_key": serpapi_key, "engine": "google"}
+            )
+            url = f"https://serpapi.com/search.json?{params}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                results = []
+                for r in data.get("organic_results", []):
+                    results.append(
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("link", ""),
+                            "snippet": r.get("snippet", ""),
+                        }
+                    )
+                if results:
+                    return results[:limit]
+        except Exception:
+            pass
+
+    # 3. Google Custom Search Engine
+    google_key = os.environ.get("GOOGLE_API_KEY")
+    google_cx = os.environ.get("GOOGLE_CSE_ID")
+    if google_key and google_cx:
+        try:
+            params = urllib.parse.urlencode(
+                {"q": query, "key": google_key, "cx": google_cx, "num": limit}
+            )
+            url = f"https://www.googleapis.com/customsearch/v1?{params}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                results = []
+                for r in data.get("items", []):
+                    results.append(
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("link", ""),
+                            "snippet": r.get("snippet", ""),
+                        }
+                    )
+                if results:
+                    return results[:limit]
+        except Exception:
+            pass
+
+    # 4. Fallback: DuckDuckGo + Wikipedia (Keyless APIs)
+    results = []
+
+    # 4a. DuckDuckGo Instant Answer API
+    try:
+        ddg_url = "https://api.duckduckgo.com/?" + urllib.parse.urlencode(
+            {"q": query, "format": "json"}
+        )
+        req = urllib.request.Request(ddg_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("AbstractText"):
+                results.append(
+                    {
+                        "title": data.get("Heading", query),
+                        "url": data.get("AbstractURL", ""),
+                        "snippet": data.get("AbstractText", ""),
+                    }
+                )
+            for topic in data.get("RelatedTopics", []):
+                if "FirstURL" in topic and "Text" in topic:
+                    results.append(
+                        {
+                            "title": topic.get("Text", "").split(" - ")[0],
+                            "url": topic.get("FirstURL", ""),
+                            "snippet": topic.get("Text", ""),
+                        }
+                    )
+    except Exception:
+        pass
+
+    # 4b. Wikipedia OpenSearch API
+    try:
+        wiki_url = "https://en.wikipedia.org/w/api.php?" + urllib.parse.urlencode(
+            {"action": "opensearch", "search": query, "limit": limit, "format": "json"}
+        )
+        req = urllib.request.Request(wiki_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            wiki_data = json.loads(resp.read().decode("utf-8"))
+            if len(wiki_data) >= 4:
+                titles = wiki_data[1]
+                snippets = wiki_data[2]
+                urls = wiki_data[3]
+                for i in range(len(titles)):
+                    url = urls[i]
+                    if not any(r["url"] == url for r in results):
+                        results.append(
+                            {
+                                "title": titles[i],
+                                "url": url,
+                                "snippet": snippets[i]
+                                or f"Wikipedia article about {titles[i]}.",
+                            }
+                        )
+    except Exception:
+        pass
+
+    # Fallback if empty
+    if not results:
+        results = [
+            {
+                "title": f"No online results for '{query}'",
+                "url": "https://en.wikipedia.org/wiki/Special:Search",
+                "snippet": f"Could not fetch real-time search results for query: {query}. Please check your internet connection.",
+            }
+        ]
+    return results[:limit]
 
 
 def _web_read_real(url: str) -> str:
     import urllib.request
+    import re
 
-    with urllib.request.urlopen(url, timeout=10) as resp:
-        return resp.read().decode("utf-8", errors="replace")[:50_000]
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        raw_bytes = resp.read()
+
+        # 1. Try to get charset from Content-Type header
+        content_type = resp.headers.get("Content-Type", "")
+        charset = None
+        if "charset=" in content_type.lower():
+            charset = content_type.lower().split("charset=")[-1].strip()
+            charset = charset.split(";")[0].strip()
+
+        # 2. Try to get charset from HTML meta tags in first 4096 bytes
+        if not charset:
+            try:
+                prefix = raw_bytes[:4096].decode("latin-1", errors="ignore")
+                # Look for <meta charset="xxxx">
+                match1 = re.search(
+                    r'<meta\s+charset=["\']?([a-zA-Z0-9_-]+)["\']?',
+                    prefix,
+                    re.IGNORECASE,
+                )
+                if match1:
+                    charset = match1.group(1)
+                else:
+                    # Look for <meta http-equiv="Content-Type" content="...charset=xxxx">
+                    match2 = re.search(
+                        r'content=["\']?[^"\'>]*charset=([a-zA-Z0-9_-]+)',
+                        prefix,
+                        re.IGNORECASE,
+                    )
+                    if match2:
+                        charset = match2.group(1)
+            except Exception:
+                pass
+
+        # 3. Fallback logic
+        if not charset:
+            charset = "utf-8"
+
+        try:
+            html = raw_bytes.decode(charset, errors="replace")
+        except Exception:
+            html = raw_bytes.decode("utf-8", errors="replace")
+
+        return html[:100_000]
 
 
 def register_skills(registry: ToolRegistry) -> None:

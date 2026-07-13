@@ -189,7 +189,7 @@ class IDERequestHandler(BaseHTTPRequestHandler):
             return
 
         source = payload.get("source", "")
-        mock_tools = payload.get("mock_tools", True)
+        mock_tools = payload.get("mock_tools", False)
         max_cost = float(payload.get("max_cost", 1.0))
 
         route_map = {

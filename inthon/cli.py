@@ -15,7 +15,7 @@ console = Console()
 @app.command("run")
 def run_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
-    mock_tools: bool = typer.Option(True, "--mock/--real-tools"),
+    mock_tools: bool = typer.Option(False, "--mock/--real-tools"),
     trace_out: Path | None = typer.Option(None, "--trace-out"),
     max_cost: float = typer.Option(1.0, "--max-cost"),
     verbose: bool = typer.Option(False, "-v"),
@@ -28,9 +28,33 @@ def run_cmd(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Run in dry-run simulation mode"
     ),
+    docker: bool = typer.Option(
+        False, "--docker", help="Run inside an isolated Docker container"
+    ),
+    transpile: bool = typer.Option(
+        False, "--transpile", help="Transpile to Python for native speed"
+    ),
 ) -> None:
     """Execute an INTHON program."""
-    if vm:
+    if docker:
+        from .runtime.container import run_in_container
+
+        def runner():
+            return run_in_container(
+                file,
+                mock_tools=mock_tools,
+                max_cost_usd=max_cost,
+            )
+    elif transpile:
+        from . import run_file_transpiled
+
+        def runner():
+            return run_file_transpiled(
+                file,
+                mock_tools=mock_tools,
+                max_cost_usd=max_cost,
+            )
+    elif vm:
         from . import run_file_vm
 
         def runner():
@@ -59,7 +83,12 @@ def run_cmd(
             console.print(f"[green]Trace written to {trace_out}[/green]")
         if verbose:
             console.print(Panel(result.trace_json, title="Execution Trace"))
-            backend = "VM (bytecode)" if vm else "Interpreter (tree-walk)"
+            if docker:
+                backend = "Docker Container Isolation"
+            elif transpile:
+                backend = "Transpiler (native Python)"
+            else:
+                backend = "VM (bytecode)" if vm else "Interpreter (tree-walk)"
             console.print(f"[cyan]Backend:[/cyan] {backend}")
             console.print(
                 f"[cyan]Duration:[/cyan] {result.duration_ms}ms | [cyan]Cost:[/cyan] ${result.cost_usd:.6f}"
@@ -73,7 +102,7 @@ def run_cmd(
 @app.command("async-run")
 def async_run_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
-    mock_tools: bool = typer.Option(True, "--mock/--real-tools"),
+    mock_tools: bool = typer.Option(False, "--mock/--real-tools"),
     max_cost: float = typer.Option(1.0, "--max-cost"),
     persist_memory: bool = typer.Option(False, "--persist-memory"),
     timeout: float = typer.Option(300.0, "--timeout"),
@@ -203,7 +232,7 @@ def fmt_cmd(
 
 @app.command("repl")
 def repl_cmd(
-    mock_tools: bool = typer.Option(True, "--mock/--real-tools"),
+    mock_tools: bool = typer.Option(False, "--mock/--real-tools"),
     vm: bool = typer.Option(
         False, "--vm", help="Use bytecode VM backend (faster for loops)"
     ),

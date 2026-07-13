@@ -57,12 +57,11 @@ class Compiler(ASTVisitor):
         top = CodeObject(name="<module>", filename=self._filename)
         self._code_stack.append(top)
 
-        for stmt in program.body:
-            self.visit(stmt)
+        returned = self._compile_statement_sequence(program.body, implicit_return=True)
 
-        # Ensure the module always returns None
-        self._emit(OpCode.LOAD_CONST, self._co.add_const(None))
-        self._emit(OpCode.RETURN_VALUE)
+        if not returned:
+            self._emit(OpCode.LOAD_CONST, self._co.add_const(None))
+            self._emit(OpCode.RETURN_VALUE)
 
         return self._code_stack.pop()
 
@@ -104,6 +103,26 @@ class Compiler(ASTVisitor):
 
     def _pop_code(self) -> CodeObject:
         return self._code_stack.pop()
+
+    def _compile_statement_sequence(
+        self, statements: tuple[N.Statement, ...], implicit_return: bool = False
+    ) -> bool:
+        """Compile a statement sequence.
+
+        Returns True when the sequence emits a guaranteed final RETURN_VALUE.
+        """
+        for index, stmt in enumerate(statements):
+            is_last = index == len(statements) - 1
+            if implicit_return and is_last and isinstance(stmt, N.ExprStmt):
+                self.visit(stmt.expr)
+                self._emit(OpCode.RETURN_VALUE, span=stmt.span)
+                return True
+
+            self.visit(stmt)
+            if is_last and isinstance(stmt, N.ReturnStmt):
+                return True
+
+        return False
 
     # ── Statement visitors ─────────────────────────────────────────────── #
 
@@ -236,13 +255,11 @@ class Compiler(ASTVisitor):
         for param in node.params:
             child_co.add_varname(param.name)
 
-        # Compile body inside child CodeObject
-        for stmt in node.body:
-            self.visit(stmt)
+        returned = self._compile_statement_sequence(node.body, implicit_return=True)
 
-        # Ensure function always has a return
-        self._emit(OpCode.LOAD_CONST, child_co.add_const(None))
-        self._emit(OpCode.RETURN_VALUE)
+        if not returned:
+            self._emit(OpCode.LOAD_CONST, child_co.add_const(None))
+            self._emit(OpCode.RETURN_VALUE)
 
         finished_child = self._pop_code()
         self._scope_stack.pop()

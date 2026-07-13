@@ -88,7 +88,7 @@ function activate(context) {
         outputChannel.appendLine(`[INTHON] Executing script ${editor.document.fileName}...`);
 
         try {
-            const result = await makeRequest('/compile', { source, mock_tools: true });
+            const result = await makeRequest('/compile', { source, mock_tools: false });
             outputChannel.appendLine(`[INTHON] Execution output:\n`);
             if (result.ok) {
                 outputChannel.appendLine(result.output || 'none');

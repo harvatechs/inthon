@@ -3,23 +3,24 @@
 program: statement*
 
 // ─── Statements ──────────────────────────────────────────────────────────────
-?statement: import_stmt
-          | let_stmt
-          | const_stmt
-          | fn_decl
-          | agent_decl
-          | return_stmt
-          | approve_stmt
-          | remember_stmt
-          | forget_stmt
-          | recall_stmt
-          | guard_stmt
-          | retry_stmt
-          | eval_stmt
-          | if_stmt
-          | for_stmt
-          | while_stmt
-          | expr_stmt
+?statement: statement_core ";"?
+?statement_core: import_stmt
+               | let_stmt
+               | const_stmt
+               | fn_decl
+               | agent_decl
+               | return_stmt
+               | approve_stmt
+               | remember_stmt
+               | forget_stmt
+               | recall_stmt
+               | guard_stmt
+               | retry_stmt
+               | eval_stmt
+               | if_stmt
+               | for_stmt
+               | while_stmt
+               | expr_stmt
 
 // ─── Import Statements ───────────────────────────────────────────────────────
 import_stmt: use_tool_stmt

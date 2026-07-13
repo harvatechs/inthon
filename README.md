@@ -3,8 +3,8 @@
 # INTHON: Agent-Level Programming Language Layer
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
-[![Tests Status](https://img.shields.io/badge/tests-109%20passed-success)](tests/)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![Tests](https://img.shields.io/badge/tests-pytest-blue)](tests/)
 [![Type Checking: Mypy](https://img.shields.io/badge/type--checking-mypy--clean-success)](pyproject.toml)
 [![Code Style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Website Portal](https://img.shields.io/badge/website-live-success)](https://harvatechs.github.io/inthon/)

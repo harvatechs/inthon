@@ -8,6 +8,7 @@ from ..policy.engine import PolicyEngine
 from ..memory.store import MemoryStore
 from .trace import TraceLogger
 from .sandbox import Sandbox
+from .builtins import builtin_values
 
 
 @dataclass
@@ -73,6 +74,9 @@ class ExecutionContext:
                 self.memory = MemoryStore.persistent(
                     db_path=str(db_dir / ".inthon" / "memory.db")
                 )
+
+        for name, value in builtin_values().items():
+            self.set_var(name, value)
 
     # ── Scope helpers ────────────────────────────────────────────────────── #
     def push_scope(self) -> None:
