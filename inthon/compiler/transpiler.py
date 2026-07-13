@@ -83,7 +83,9 @@ class Transpiler(ASTVisitor):
         return f"from_python([{elems}])"
 
     def visit_DictExpr(self, node: N.DictExpr) -> str:
-        pairs = ", ".join(f"{self.visit(k)}: {self.visit(v)}" for k, v in node.pairs)
+        pairs = ", ".join(
+            f"to_python({self.visit(k)}): {self.visit(v)}" for k, v in node.pairs
+        )
         return f"from_python({{{pairs}}})"
 
     def visit_BinaryOp(self, node: N.BinaryOp) -> str:
@@ -116,11 +118,11 @@ class Transpiler(ASTVisitor):
 
     def visit_LetStmt(self, node: N.LetStmt) -> str:
         val = self.visit(node.value)
-        return f"ctx.assign_var('{node.name}', {val})"
+        return f"ctx.set_var('{node.name}', {val})"
 
     def visit_ConstStmt(self, node: N.ConstStmt) -> str:
         val = self.visit(node.value)
-        return f"ctx.assign_const('{node.name}', {val})"
+        return f"ctx.set_var('{node.name}', {val})"
 
     def visit_AssignStmt(self, node: N.AssignStmt) -> str:
         val = self.visit(node.value)
@@ -310,9 +312,9 @@ def run_transpiled(
             try:
                 for i, p_name in enumerate(callee.params):
                     if i < len(args):
-                        ctx.assign_var(p_name, args[i])
+                        ctx.set_var(p_name, args[i])
                 for k, v in kwargs.items():
-                    ctx.assign_var(k, v)
+                    ctx.set_var(k, v)
                 return callee.body()
             except ReturnSignal as ret:
                 return ret.value
@@ -340,7 +342,7 @@ def run_transpiled(
     ctx.safe_getattr = safe_getattr
     ctx.safe_getitem = safe_getitem
     ctx.safe_call = safe_call
-    ctx.assign_const = ctx.assign_var
+    ctx.assign_const = ctx.set_var
     ctx.assign_target_expression = lambda target, val: None
 
     transpiler = Transpiler()

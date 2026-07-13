@@ -1,52 +1,19 @@
 // examples/web_summarizer.inth
-// A production-ready Inthon application demonstrating real-time Web Scraping & Summarization with memory and interactive UI.
+// A production-ready Inthon application demonstrating real-time Web Scraping & Summarization with memory.
 
-use py.inthon.ui as ui
 use py.re as re
 use py.examples.text_utils as utils
 use tool web.read
 
-// 1. Initialize UI on port 8060
-ui.init(title: "Inthon Web Summarizer & Scraper", port: 8030)
-
-// 2. Setup Sidebar layout and options
-ui.sidebar_start()
-ui.header("System Settings")
-ui.text("Agent: Summarizer v1.2")
-ui.text("Network: Real-Time Active")
-ui.text("Database: SQLite Persistent")
-
-// Define button callback
-fn reset_dashboard() {
-    ui.clear_chat()
-    ui.chat_history_add("system", "Session and summaries cleared successfully.")
-}
-
-// Add a button in the sidebar to reset the session
-ui.button("Reset Dashboard", reset_dashboard)
-ui.sidebar_end()
-
-// 3. Setup Main View greeting
-ui.title("Inthon Web Summarizer & Parser")
-ui.text("Enter a public URL (e.g. https://example.com) in the chat below. The agent will fetch the real HTML content, strip tags, index key findings in semantic memory, and display the result.")
-
-// 4. Define the callback function to handle lead inputs
-fn handle_summarize(user_input: str) {
-    ui.chat_history_add("user", user_input)
-
-    // Check if the input is a valid URL
-    let is_valid_url = re.search("^https?://", user_input)
+fn handle_summarize(url: str) {
+    let is_valid_url = re.search("^https?://", url)
     if not is_valid_url {
-        ui.chat_history_add("assistant", "Error: Please enter a valid URL starting with http:// or https://")
-        return
+        print("Error: Please enter a valid URL starting with http:// or https://")
+        return None
     }
 
-    // Start a visual status loader on the UI
-    let status_id = ui.status_start("Spawning Web Summarizer Agent...")
+    print("Spawning Web Summarizer Agent...")
 
-    let summary_result = ""
-
-    // Define and execute a structured, capability-bounded agent block
     agent WebSummarizer {
         goal "Fetch webpage content, strip HTML tags, and index findings in semantic memory."
 
@@ -57,33 +24,24 @@ fn handle_summarize(user_input: str) {
         }
 
         plan {
-            ui.status_update(status_id, "Fetching real webpage content from URL...")
-
-            // Execute the real web.read tool to fetch webpage HTML
-            let html_content = web.read(url: user_input)
-
-            ui.status_update(status_id, "Processing raw HTML and cleaning tags...")
-            // Call our custom Python text_utils module to clean the content
-            let trimmed = utils.clean_html(html_content)
-
-            ui.status_update(status_id, "Writing summary to persistent semantic memory...")
-            let memory_entry = "URL: " + user_input + " - Summary: " + trimmed
-            remember memory_entry in web_cache
-
-            summary_result = trimmed
+            print("Fetching webpage content...")
+            let html = web.read(url)
+            
+            print("Cleaning HTML content...")
+            let cleaned = utils.clean_html(html)
+            
+            print("Generating abstract summary...")
+            let summary = utils.summarize_text(cleaned)
+            
+            print("Caching summary findings in semantic cache...")
+            remember summary in web_cache
+            
+            let recalled = recall "Inthon" from web_cache
+            return recalled
         }
     }
-
-    // Close the status loader successfully
-    ui.status_complete(status_id, label: "Webpage parsed successfully!", success: true)
-
-    // Output findings to chat history
-    let report = "### Scraped Summary from URL:\n\n" + summary_result
-    ui.chat_history_add("assistant", report)
 }
 
-// Bind the callback to the chat form
-ui.on_message(handle_summarize)
-
-// 5. Start the web application
-ui.launch(port: 8030)
+let result = handle_summarize("https://en.wikipedia.org/wiki/Inthon")
+print("Web Summarizer Execution Completed.")
+result

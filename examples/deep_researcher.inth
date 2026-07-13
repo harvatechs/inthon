@@ -1,47 +1,19 @@
 // examples/deep_researcher.inth
 // A production-grade Inthon application performing web search, deep crawling, and semantic memory caching.
 
-use py.inthon.ui as ui
 use py.re as re
 use py.examples.text_utils as utils
 use tool web.search
 use tool web.read
 
-// 1. Initialize UI on port 8070
-ui.init(title: "Inthon Deep Search & Researcher", port: 8070)
-
-// 2. Setup Sidebar layout
-ui.sidebar_start()
-ui.header("Control Panel")
-ui.text("Agent: DeepCrawler v2.0")
-ui.text("Memory: SQLite Enabled")
-
-fn reset_session() {
-    ui.clear_chat()
-    ui.chat_history_add("system", "Session cache and dashboard state reset.")
-}
-
-ui.button("Reset Agent Session", reset_session)
-ui.sidebar_end()
-
-// 3. Setup Main View
-ui.title("Inthon Deep Researcher Agent")
-ui.text("Enter a topic to research. The agent will check semantic memory, perform a web search, crawl and summarize relevant websites, and synthesize a master markdown report.")
-
-// 4. Define main researcher handler
 fn perform_research(query: str) {
-    ui.chat_history_add("user", query)
-
-    // Basic query validation
     let is_valid = len(query) > 2
     if not is_valid {
-        ui.chat_history_add("assistant", "Error: Research query is too short. Please enter a valid topic.")
-        return
+        print("Error: Research query is too short. Please enter a valid topic.")
+        return None
     }
 
-    let status_id = ui.status_start("Consulting agent memory...")
-
-    let report_result = ""
+    print("Spawning Deep Researcher Agent...")
 
     agent DeepResearcher {
         goal "Perform a multi-site web search, crawl pages, extract summaries, and cache findings."
@@ -54,70 +26,35 @@ fn perform_research(query: str) {
 
         plan {
             // Check semantic memory first
-            ui.status_update(status_id, "Searching semantic memory for cached report...")
-            cached_report = recall "ConsolidatedResearch" from deep_research_cache
+            print("Searching semantic memory for cached report...")
+            let cached_report = recall "ConsolidatedResearch" from deep_research_cache
 
-            let is_match = false
             if cached_report {
-                is_match = re.search(query, cached_report)
+                print("Cache Hit! Found existing report in semantic memory:")
+                return cached_report
             }
 
-            if is_match {
-                ui.status_update(status_id, "Found cached report in memory!")
-                report_result = cached_report
-            } else {
-                ui.status_update(status_id, "Cache miss. Running web search...")
-                let search_results = web.search(query: query, limit: 3)
+            print("Cache Miss. Initiating web search...")
+            let results = web.search(query, limit: 2)
 
-                let combined_content = "## Consolidated Research for: " + query + "\n\n"
-                let success_count = 0
-                let i = 0
-                let total_results = len(search_results)
-
-                while i < total_results {
-                    let result_item = search_results[i]
-                    let link = result_item.url
-                    let title = result_item.title
-                    let snippet = result_item.snippet
-
-                    ui.status_update(status_id, "Crawling page: " + title)
-
-                    // Execute resilient read with retry mechanism
-                    let page_html = ""
-                    retry 3 with backoff exponential {
-                        page_html = web.read(url: link)
-                    } catch err {
-                        // Fallback to snippet if web.read fails
-                        page_html = "<html><body>" + snippet + "</body></html>"
-                    }
-
-                    ui.status_update(status_id, "Extracting page content & summarizing...")
-                    let summary = utils.clean_html(page_html)
-
-                    if len(summary) > 20 {
-                        combined_content = combined_content + "### [" + title + "](" + link + ")\n" + summary + "\n\n"
-                        success_count = success_count + 1
-                    }
-
-                    i = i + 1
-                }
-
-                if success_count == 0 {
-                    report_result = "Could not crawl any of the search results for '" + query + "'."
-                } else {
-                    report_result = combined_content
-                    // Save to semantic memory for future cache hits
-                    ui.status_update(status_id, "Caching report in semantic memory...")
-                    remember report_result in deep_research_cache
-                }
+            print("Iterating over search results and scraping text...")
+            let crawled_text = ""
+            for result in results {
+                let url = result.url
+                print("Crawling: " + url)
+                let html = web.read(url)
+                let cleaned = utils.clean_html(html)
+                let summary = utils.summarize_text(cleaned)
+                crawled_text = crawled_text + "\nSource: " + url + "\nSummary: " + summary + "\n"
             }
+
+            print("Caching synthesized report to semantic memory...")
+            remember crawled_text in deep_research_cache
+            return crawled_text
         }
     }
-
-    ui.status_complete(status_id, label: "Research compiled successfully!", success: true)
-    ui.chat_history_add("assistant", report_result)
 }
 
-// Bind input callback and launch
-ui.on_message(perform_research)
-ui.launch(port: 8070)
+let report = perform_research("Inthon programming language")
+print("Research Report generated successfully.")
+report
