@@ -1,28 +1,8 @@
-"""
-inthon.vm — Bytecode compiler and stack-based virtual machine for INTHON.
+"""INTHON bytecode VM package."""
 
-The VM pipeline:
-  AST (from parser)
-    → Compiler (inthon.vm.compiler)
-    → CodeObject (inthon.vm.code_object)
-    → InthonVM (inthon.vm.machine)
+from .compiler import CodeObject, compile_program
+from .dis import disassemble
+from .opcodes import CMP_OPS, Op
+from .vm import InthonVM, VMFunction
 
-This backend replaces the tree-walk Interpreter for production use and provides
-significantly better performance on loops and repeated function calls by eliminating
-recursive AST traversal at execution time.
-"""
-
-from .opcodes import OpCode
-from .code_object import CodeObject, Instruction
-from .compiler import Compiler
-from .frame import Frame
-from .machine import InthonVM
-
-__all__ = [
-    "OpCode",
-    "CodeObject",
-    "Instruction",
-    "Compiler",
-    "Frame",
-    "InthonVM",
-]
+__all__ = ["CodeObject", "compile_program", "disassemble", "Op", "CMP_OPS", "InthonVM", "VMFunction"]

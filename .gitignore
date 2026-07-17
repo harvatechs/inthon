@@ -52,3 +52,9 @@ htmlcov/
 .vscode/
 .idea/
 *.vsix
+
+# Temporary extraction & tool files
+kimi.zip
+kimi_extracted/
+.opencode/
+

@@ -7,6 +7,9 @@ description: "A complete step-by-step developer guide and comprehensive language
 <div class="guide-layout">
   <!-- Sidebar -->
   <aside class="guide-sidebar">
+    <div class="sidebar-search-wrapper">
+      <input type="text" class="sidebar-search" id="sidebar-search" placeholder="Search documentation...">
+    </div>
     <ul class="sidebar-list">
       <li class="sidebar-item active" data-target="guide-intro">Overview & Scope</li>
       <li class="sidebar-item" data-target="guide-part1">1. Getting Started & Tooling</li>
@@ -30,6 +33,14 @@ description: "A complete step-by-step developer guide and comprehensive language
       <div class="doc-block">
         <p><strong>INTHON</strong> (Intelligent + Python) is a domain-specific language layer designed for AI-native workflows. By representing agent execution intent as structured, deterministic code rather than unstructured natural language or verbose JSON/XML, INTHON reduces token footprint, validates schemas statically, and guarantees absolute sandbox safety.</p>
         <p>This guide serves as both a step-by-step learning course and a technical manual, detailing language mechanics, compiler behavior, scoping rules, and safety boundaries.</p>
+      </div>
+
+      <div class="callout callout-note">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></svg>
+          Key Philosophy
+        </div>
+        <p>Instead of forcing Large Language Models (LLMs) to write raw python commands with infinite side-effects, or passing verbose nested JSON trees that bloat prompts, INTHON lets agents specify execution intent in a type-safe, sandboxed dialect. The resulting programs compile in milliseconds and produce cryptographic trace logs.</p>
       </div>
 
       <h2>The Learning Path</h2>
@@ -128,7 +139,7 @@ payment = false        # Blocks financial transactions by default
 memory_persist = true  # Enables episodic SQL memory persistence
 
 [pybridge]
-allowed_modules = ["numpy", "pandas"] # Whitelisted python modules for imports
+allowed_modules = ["numpy", "pandas", "math", "json"] # Whitelisted python modules for imports
 
 [sandbox]
 max_runtime_sec = 300  # Hard timeout duration
@@ -138,6 +149,14 @@ max_tool_calls = 50    # Call volume quota
 [trace]
 enabled = true
 output_dir = ".inthon/traces"</code></pre>
+
+      <div class="callout callout-tip">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          Pro-Tip: Whitelisting Packages
+        </div>
+        <p>If you're using custom scientific data pipelines, add <code>scipy</code> or <code>scikit-learn</code> to the <code>allowed_modules</code> list inside <code>inthon.toml</code> to grant the agent import capabilities.</p>
+      </div>
 
       <h2>4. Your First Program: <code>hello.inth</code></h2>
       <p>Create a file named <code>hello.inth</code> in your text editor:</p>
@@ -236,6 +255,15 @@ message</code></pre>
         <li><strong>Mutable Scope (<code>let</code>)</strong>: Can be declared with or without type annotations. Value bindings can be changed.</li>
         <li><strong>Immutable Scope (<code>const</code>)</strong>: Must be bound at declaration time. Value bindings are read-only; attempts to assign a new value to a constant trigger compile-time checking failures.</li>
       </ul>
+
+      <div class="callout callout-warning">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Constant Violation
+        </div>
+        <p>Assigning to a constant declared with <code>const</code> triggers a compile-time static error. Linter validation stops the interpreter from even beginning execution.</p>
+      </div>
+
       <pre><code class="language-inth">let x = 10
 const y: float = 3.14
 
@@ -248,6 +276,7 @@ if x > 5 {
 
       <h2>2. Complete Data Types Reference</h2>
       <p>INTHON features static type checking with structural support for primitive structures, functional objects, and generic containers.</p>
+      
       <table class="guide-table">
         <thead>
           <tr>
@@ -601,6 +630,15 @@ agent Researcher {
         <li><strong>Approved Advanced</strong>: <code>torch</code>, <code>transformers</code>, <code>sklearn</code>, <code>scipy</code>, <code>matplotlib</code>, <code>seaborn</code>, <code>plotly</code>.</li>
         <li><strong>Blocked System Modules</strong>: <code>os</code>, <code>sys</code>, <code>subprocess</code>, <code>ctypes</code>, <code>shutil</code>, <code>socket</code>, <code>multiprocessing</code>, <code>importlib</code>.</li>
       </ul>
+
+      <div class="callout callout-warning">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          System Level Access Blocked
+        </div>
+        <p>Importing modules like <code>subprocess</code> is dangerous because they allow arbitrary terminal commands. PyBridge throws a <code>PyBridgeError</code> on detection, keeping host environments isolated.</p>
+      </div>
+
       <p>If you need to permit a new library for custom data environments, append it to the configuration whitelists inside your local <code>inthon.toml</code> configuration file:</p>
       <pre><code class="language-toml">[pybridge]
 allowed_modules = ["scipy", "statsmodels"]</code></pre>
@@ -678,9 +716,10 @@ let val = recall "electrical resistance" from session</code></pre>
       
       <h3>Storage Architecture</h3>
       <p>Under the hood, memory spaces are backed by a local SQLite relational store. When <code>remember</code> is called, the statement text is written to the database along with its calculated text embeddings vector. When <code>recall</code> is invoked, the engine searches the database for statements that have the highest cosine similarity with the query:</p>
-      <div style="text-align: center; margin: 15px 0; font-size: 1.1rem; color: var(--color-accent);">
-        \(\text{Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}\)
-      </div>
+      
+      <p>The system calculates cosine similarity via the following formula:</p>
+      \[\text{Similarity}(\mathbf{A}, \mathbf{B}) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|} = \frac{\sum_{i=1}^{n} A_i B_i}{\sqrt{\sum_{i=1}^{n} A_i^2} \sqrt{\sum_{i=1}^{n} B_i^2}}\]
+
       <p>This allows the agent to dynamically recall relevant contextual statements without querying raw external indexes on every step.</p>
     
       <h2>3. Resilient Retries & Backoff Mathematics</h2>
@@ -694,10 +733,9 @@ let val = recall "electrical resistance" from session</code></pre>
 
       <h3>Exponential Backoff Formula</h3>
       <p>The time interval (in seconds) between retry attempts is computed by the interpreter using the following formula:</p>
-      <div style="text-align: center; margin: 20px 0; font-size: 1.15rem; font-family: var(--font-heading); color: var(--color-accent);">
-        \(t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\)
-      </div>
-      <p>Where <code>base</code> defaults to 1.0 second, <code>attempt</code> represents the zero-indexed retry number, and <code>jitter</code> is a random offset variable to prevent request synchronization bottlenecks on the host server.</p>
+      \[t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\]
+      
+      <p>Where <code>base</code> represents the initial delay scaling (defaults to 1.0 second), <code>attempt</code> represents the zero-indexed retry number, and <code>jitter</code> is a random offset variable to prevent request synchronization bottlenecks on the host server.</p>
     </section>
 
     <!-- PART 6 SECTION -->
@@ -714,7 +752,7 @@ use tool web.read
 agent ScraperAgent {
     goal "Locate and summarize the key findings about new energy technologies"
     inputs {
-        topic: str,
+        topic: str
         limit: int
     }
     outputs {
@@ -761,7 +799,7 @@ agent ScraperAgent {
 use py.pandas as pd
 use py.numpy as np
 
-fn process_metrics(data_points: list[dict]) -> dict {
+fn process_metrics(data_points: list[dict[str, any]]) -> dict[str, any] {
     // Convert input list of dictionaries to Pandas DataFrame safely
     let df = pd.DataFrame(data_points)
     
@@ -804,12 +842,12 @@ use tool stripe.charge
 agent BillingAgent {
     goal "Securely charge clients based on execution limits"
     inputs {
-        client_id: str,
-        compute_seconds: int,
+        client_id: str
+        compute_seconds: int
         tier: str
     }
     outputs {
-        charge_status: str,
+        charge_status: str
         transaction_id: str
     }
     policy {
@@ -851,7 +889,7 @@ agent MemoryAgent {
         user_query: str
     }
     outputs {
-        response_text: str,
+        response_text: str
         context_source: str
     }
     policy {
@@ -989,9 +1027,7 @@ const pi: float = 3.14159
 
       <h3>Episodic Memory cosine similarity match (<code>remember</code> / <code>recall</code>)</h3>
       <p>Episodic statements are written to a SQLite database and queried semantically. When you query memory, the VM calculates the cosine similarity between the query embedding and database vectors:</p>
-      <div style="text-align: center; margin: 15px 0; font-size: 1.1rem; color: var(--color-accent);">
-        \(\text{Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}\)
-      </div>
+      \[\text{Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}\]
       <pre><code class="language-inth">remember "User prefers a dark UI layout" in session
 let preference = recall "UI preference" from session // Returns the fact</code></pre>
 
@@ -1004,9 +1040,7 @@ let preference = recall "UI preference" from session // Returns the fact</code><
     return "API failed: " + err.message
 }</code></pre>
       <p>The time interval (in seconds) between retry attempts is computed as:</p>
-      <div style="text-align: center; margin: 20px 0; font-size: 1.15rem; font-family: var(--font-heading); color: var(--color-accent);">
-        \(t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\)
-      </div>
+      \[t_{\text{backoff}} = \text{base} \times 2^{\text{attempt}} \pm \text{jitter}\]
 
       <h2>6. Interactive Web Dashboards (<code>py.inthon.ui</code>)</h2>
       <p>Developers can build interactive web dashboards with INTHON. This allows you to handle user events, trigger agents, and update state reactively.</p>
@@ -1187,4 +1221,12 @@ agent MarketTracker {
     </section>
 
   </main>
+  
+  <!-- Right Table of Contents Sidebar -->
+  <aside class="guide-toc" id="guide-toc">
+    <div class="toc-title">On this page</div>
+    <ul class="toc-list" id="toc-list">
+      <!-- Dynamically generated via JS -->
+    </ul>
+  </aside>
 </div>

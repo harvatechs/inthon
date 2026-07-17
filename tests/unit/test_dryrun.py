@@ -4,10 +4,10 @@ tests/unit/test_dryrun.py — Unit tests for Declarative DryRun Mocking.
 
 from __future__ import annotations
 from inthon.runtime.context import ExecutionContext
-from inthon.parser.parser import parse
-from inthon.vm.compiler import compile_program
+from inthon.vm.old_parser import parse
+from inthon.vm.old_compiler import compile_program
 from inthon.vm.machine import InthonVM
-from inthon.runtime.interpreter import Interpreter
+from inthon.runtime.old_interpreter import Interpreter
 from inthon.tools.builtin_tools import register_builtins
 
 

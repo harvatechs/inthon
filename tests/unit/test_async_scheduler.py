@@ -5,8 +5,8 @@ tests/unit/test_async_scheduler.py — Unit tests for cooperative async schedule
 import pytest
 from inthon.runtime.context import ExecutionContext
 from inthon.runtime.scheduler import AgentScheduler
-from inthon.parser.parser import parse
-from inthon.vm.compiler import compile_program
+from inthon.vm.old_parser import parse
+from inthon.vm.old_compiler import compile_program
 
 
 @pytest.mark.anyio

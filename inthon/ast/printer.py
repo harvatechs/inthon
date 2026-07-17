@@ -1,61 +1,78 @@
+"""Human-readable AST printer (used by `inthon ast`)."""
+
 from __future__ import annotations
-import json
-from dataclasses import is_dataclass
+
+import dataclasses
 from typing import Any
-from .visitor import ASTVisitor
-from ..lexer.tokens import Span
+
+from . import nodes
 
 
-class ASTPrinter(ASTVisitor):
-    def __init__(self) -> None:
-        self.indent_level = 0
-
-    def print_node(self, node: Any) -> str:
-        if node is None:
-            return "None"
-        if isinstance(node, (int, float, str, bool)):
-            return repr(node)
-        if isinstance(node, tuple):
-            if not node:
-                return "()"
-            parts = []
-            for item in node:
-                parts.append(self.print_node(item))
-            return "(" + ", ".join(parts) + ")"
-
-        if is_dataclass(node):
-            name = type(node).__name__
-            fields = []
-            for f_name, f_val in vars(node).items():
-                if f_name == "span":
-                    continue
-                fields.append(f"{f_name}={self.print_node(f_val)}")
-            return f"{name}({', '.join(fields)})"
-
-        return str(node)
+def format_ast(node: nodes.Node, *, color: bool = False) -> str:
+    """Render an AST as an indented tree."""
+    lines: list[str] = []
+    _render(node, lines, prefix="", is_last=True, is_root=True)
+    return "\n".join(lines)
 
 
-def print_ast(node: Any) -> None:
-    printer = ASTPrinter()
-    print(printer.print_node(node))
+def _label(node: Any) -> str:
+    if not isinstance(node, nodes.Node):
+        return repr(node)
+    name = type(node).__name__
+    extras = []
+    for f in dataclasses.fields(node):
+        if f.name == "span":
+            continue
+        value = getattr(node, f.name)
+        if isinstance(value, nodes.Node):
+            continue
+        if isinstance(value, (list, tuple)) and any(
+            isinstance(x, nodes.Node) or (isinstance(x, tuple) and any(isinstance(s, nodes.Node) for s in x))
+            for x in value
+        ):
+            continue
+        if value is None or value == () or value == "":
+            continue
+        extras.append(f"{f.name}={value!r}")
+    suffix = (" " + " ".join(extras)) if extras else ""
+    span = f" [{node.span.line}:{node.span.col}]" if getattr(node, "span", None) else ""
+    return f"{name}{suffix}{span}"
 
 
-def ast_to_json(node: Any) -> str:
-    def _default(obj: Any) -> Any:
-        if isinstance(obj, Span):
-            return {
-                "file": obj.file,
-                "line": obj.line,
-                "col": obj.col,
-                "offset": obj.offset,
-                "length": obj.length,
-            }
-        if is_dataclass(obj):
-            d = {k: v for k, v in vars(obj).items() if k != "span"}
-            d["node_type"] = type(obj).__name__
-            return d
-        if isinstance(obj, set):
-            return list(obj)
-        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+def _children(node: nodes.Node) -> list:
+    out = []
+    for f in dataclasses.fields(node):
+        if f.name == "span":
+            continue
+        value = getattr(node, f.name)
+        if isinstance(value, nodes.Node):
+            out.append((f.name, value))
+        elif isinstance(value, (list, tuple)) and value:
+            items = []
+            for item in value:
+                if isinstance(item, nodes.Node):
+                    items.append(item)
+                elif isinstance(item, tuple):
+                    for sub in item:
+                        if isinstance(sub, nodes.Node):
+                            items.append(sub)
+            if items:
+                out.append((f.name, items))
+    return out
 
-    return json.dumps(node, default=_default, indent=2)
+
+def _render(node: Any, lines: list[str], prefix: str, is_last: bool, is_root: bool = False) -> None:
+    connector = "" if is_root else ("└── " if is_last else "├── ")
+    lines.append(prefix + connector + _label(node))
+    if isinstance(node, nodes.Node):
+        children = _children(node)
+        child_prefix = prefix + ("" if is_root else ("    " if is_last else "│   "))
+        flat: list[tuple[str, Any]] = []
+        for name, value in children:
+            if isinstance(value, list):
+                for item in value:
+                    flat.append((name, item))
+            else:
+                flat.append((name, value))
+        for i, (_, child) in enumerate(flat):
+            _render(child, lines, child_prefix, i == len(flat) - 1)

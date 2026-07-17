@@ -1,87 +1,64 @@
+"""Static scope tree for the semantic analyzer."""
+
 from __future__ import annotations
+
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Any
-from ..lexer.tokens import Span
+from typing import Optional
 
-
-class SymbolKind(Enum):
-    VARIABLE = auto()
-    CONSTANT = auto()
-    FUNCTION = auto()
-    AGENT = auto()
-    TOOL = auto()
-    PY_MODULE = auto()
-    PARAM = auto()
+from ..errors import Span, SemanticError
 
 
 @dataclass
 class Symbol:
     name: str
-    kind: SymbolKind
-    type_ann: Any | None = None  # TypeExpr | None
-    mutable: bool = True
-    source_span: Span | None = None
+    kind: str            # let | const | fn | agent | param | builtin | tool | py | loop | catch
+    span: Optional[Span] = None
+    type_annotation: object = None
 
 
-class SemanticError(Exception):
-    def __init__(self, message: str, span: Span | None = None) -> None:
-        super().__init__(message)
-        self.span = span
+class Scope:
+    __slots__ = ("parent", "kind", "symbols", "children", "label")
 
-    def __str__(self) -> str:
-        # Standard INTHON_SEM_* error code format
-        code = "INTHON_SEM_GENERIC"
-        for word in self.args[0].split():
-            if word.startswith("INTHON_SEM_"):
-                code = word.rstrip(":")
-                break
-        msg = self.args[0].replace(code + ": ", "")
+    def __init__(self, parent: Optional["Scope"] = None, kind: str = "block", label: str = ""):
+        self.parent = parent
+        self.kind = kind
+        self.label = label
+        self.symbols: dict[str, Symbol] = {}
+        self.children: list[Scope] = []
 
-        from ..errors_diagnostic import format_source_diagnostic
+    def declare(self, symbol: Symbol) -> Optional[Symbol]:
+        """Declare; returns the previous symbol if this is a duplicate."""
+        prev = self.symbols.get(symbol.name)
+        self.symbols[symbol.name] = symbol
+        return prev
 
-        if self.span:
-            return format_source_diagnostic(
-                self.span.file,
-                self.span.line,
-                self.span.col,
-                f"{code}: {msg}",
-            )
-
-        return f"\n{code}:\n{msg}"
-
-
-class ScopeChain:
-    """
-    Linked list of symbol tables.
-    Lookup climbs the chain; define always writes to the innermost scope.
-    """
-
-    def __init__(self, parent: ScopeChain | None = None) -> None:
-        self._table: dict[str, Symbol] = {}
-        self._parent = parent
-
-    def define(self, symbol: Symbol) -> None:
-        if symbol.name in self._table:
-            existing = self._table[symbol.name]
-            span_str = (
-                f" line {existing.source_span.line}"
-                if existing.source_span
-                else " unknown line"
-            )
-            raise SemanticError(
-                f"INTHON_SEM_001: '{symbol.name}' is already declared in this scope "
-                f"(first declared at{span_str})",
-                symbol.source_span,
-            )
-        self._table[symbol.name] = symbol
-
-    def lookup(self, name: str) -> Symbol | None:
-        if name in self._table:
-            return self._table[name]
-        if self._parent is not None:
-            return self._parent.lookup(name)
+    def lookup(self, name: str) -> Optional[Symbol]:
+        scope: Optional[Scope] = self
+        while scope is not None:
+            if name in scope.symbols:
+                return scope.symbols[name]
+            scope = scope.parent
         return None
 
-    def child(self) -> ScopeChain:
-        return ScopeChain(parent=self)
+    def lookup_here(self, name: str) -> Optional[Symbol]:
+        return self.symbols.get(name)
+
+    def all_names(self) -> list[str]:
+        out = []
+        scope: Optional[Scope] = self
+        while scope is not None:
+            out.extend(scope.symbols.keys())
+            scope = scope.parent
+        return out
+
+    def enclosing(self, kind: str) -> Optional["Scope"]:
+        scope: Optional[Scope] = self
+        while scope is not None:
+            if scope.kind == kind:
+                return scope
+            scope = scope.parent
+        return None
+
+
+ScopeChain = Scope
+

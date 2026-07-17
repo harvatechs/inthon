@@ -1,50 +1,112 @@
+"""Tool specification model (spec: tool-spec)."""
+
 from __future__ import annotations
-from typing import Any
-from enum import Enum
-from pydantic import BaseModel, Field
+
+from dataclasses import dataclass, field
+from typing import Any, Callable, Optional
 
 
-class ToolArgSchema(BaseModel):
+@dataclass(frozen=True)
+class ToolParam:
+    name: str
+    type: str = "any"           # str|int|float|bool|list|dict|any|str|list (union via '|')
+    required: bool = True
+    default: Any = None
+    description: str = ""
+
+
+@dataclass
+class ToolArgSchema:
     type: str  # e.g., "str", "int", "list[str]"
     description: str = ""
     required: bool = True
     default: Any = None
 
 
-class ToolCostModel(BaseModel):
+@dataclass
+class ToolCostModel:
     base_usd: float = 0.0
-    per_call_usd: float = 0.001
+    per_call_usd: float = 0.002
     per_token_usd: float = 0.0
 
 
-class ToolSideEffect(str, Enum):
-    NETWORK = "network"
-    FILESYSTEM = "filesystem"
-    SHELL = "shell"
-    EMAIL = "email"
-    PAYMENT = "payment"
-    DATABASE = "database"
-    CALENDAR = "calendar"
-    MEMORY = "memory"
-
-
-class ToolSpec(BaseModel):
-    name: str  # fully qualified: "web.search"
-    description: str
-    input_schema: dict[str, ToolArgSchema]
-    output_schema: dict[str, Any]
-    side_effects: list[str] = Field(default_factory=list)
-    required_permissions: list[str] = Field(default_factory=list)
-    cost_model: ToolCostModel = Field(default_factory=ToolCostModel)
-    version: str = "1.0.0"
-    tags: list[str] = Field(default_factory=list)
-
-
-class ToolResult(BaseModel):
+@dataclass
+class ToolResult:
     tool: str
     success: bool
     output: Any
     cost_usd: float = 0.0
     duration_ms: float = 0.0
     error: str | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ToolSpec:
+    """A registered tool: schema + handlers + cost model + side effects."""
+
+    path: str
+    description: str = ""
+    params: tuple = ()                    # tuple[ToolParam]
+    returns: str = "any"
+    side_effects: tuple = ()              # e.g. ("network",), ("email_send",)
+    permissions: tuple = ()               # capabilities required, e.g. ("network",)
+    cost_usd: float = 0.0                 # charged per call
+    latency_ms: float = 0.0               # simulated latency recorded in trace
+    handler: Optional[Callable] = None    # real implementation
+    mock: Optional[Callable] = None       # deterministic offline implementation
+    version: str = "1.0"
+    requires_approval: bool = False
+
+    @property
+    def name(self) -> str:
+        return self.path
+
+    @property
+    def input_schema(self) -> dict[str, ToolArgSchema]:
+        return {
+            p.name: ToolArgSchema(
+                type=p.type,
+                description=p.description,
+                required=p.required,
+                default=p.default
+            )
+            for p in self.params
+        }
+
+    @property
+    def pure(self) -> bool:
+        return not self.side_effects
+
+    @property
+    def output_schema(self) -> dict[str, str]:
+        if self.path == "web.search":
+            return {"results": "list[dict]"}
+        return {"result": self.returns}
+
+    def param_names(self) -> list[str]:
+        return [p.name for p in self.params]
+
+    def required_params(self) -> list[str]:
+        return [p.name for p in self.params if p.required]
+
+    def to_json(self) -> dict:
+        return {
+            "path": self.path,
+            "description": self.description,
+            "params": [
+                {
+                    "name": p.name,
+                    "type": p.type,
+                    "required": p.required,
+                    "default": p.default,
+                    "description": p.description,
+                }
+                for p in self.params
+            ],
+            "returns": self.returns,
+            "side_effects": list(self.side_effects),
+            "permissions": list(self.permissions),
+            "cost_usd": self.cost_usd,
+            "version": self.version,
+        }

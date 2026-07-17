@@ -1,665 +1,765 @@
+"""INTHON tree-walking interpreter (backend: "tree").
+
+Executes the AST directly against an ExecutionContext.  Shares all runtime
+services (tools, policy, memory, trace, sandbox, pybridge) with the
+bytecode VM, so both backends produce identical results and traces.
+"""
+
 from __future__ import annotations
-import uuid
-import re
-from typing import Any
-from ..ast import nodes as N
-from ..ast.visitor import ASTVisitor
-from .context import ExecutionContext
-from .values import (
-    InthonValue,
-    InthonInt,
-    InthonFloat,
-    InthonStr,
-    InthonBool,
-    InthonNone,
-    InthonList,
-    InthonDict,
-    InthonCallable,
-    InthonToolRef,
-    InthonPyObject,
-    from_python,
-    to_python,
+
+import time
+from typing import Any, Optional
+
+from ..ast import nodes
+from ..errors import (
+    GuardAssertionError,
+    InthonError,
+    InthonIndexError,
+    InthonSemanticError,
+    InthonTypeError_,
+    PolicyViolationError,
+    Span,
 )
-from .errors import IntHonRuntimeError, ToolCallError, ReturnSignal
-from ..policy.model import Capability
+from ..memory import ops as memory_ops
+from ..policy.model import Policy
+from ..pybridge.calls import py_call, py_index, py_iter
+from . import builtins as builtins_mod
+from .context import ExecutionContext
+from .environment import Environment
+from .typecheck import check_value_against_type
+from .values import (
+    NONE,
+    InthonAgent,
+    InthonBool,
+    InthonBoundMethod,
+    InthonBuiltin,
+    InthonCallable,
+    InthonDict,
+    InthonFloat,
+    InthonInt,
+    InthonList,
+    InthonPyObject,
+    InthonString,
+    InthonToolNamespace,
+    InthonToolRef,
+    InthonValue,
+    bool_value,
+    box,
+    display,
+    truthy,
+    values_equal,
+)
 
 
-class Interpreter(ASTVisitor):
-    def __init__(self, ctx: ExecutionContext) -> None:
-        self._ctx = ctx
+class ReturnSignal(Exception):
+    def __init__(self, value: InthonValue):
+        self.value = value
 
-    def run(self, program: N.Program) -> InthonValue:
-        result: InthonValue = InthonNone()
+
+class BreakSignal(Exception):
+    pass
+
+
+class ContinueSignal(Exception):
+    pass
+
+
+_RETRYABLE = (GuardAssertionError,)
+
+
+class Interpreter:
+    def __init__(self, ctx: ExecutionContext):
+        self.ctx = ctx
+        builtins_mod.install_builtins(ctx.env)
+        builtins_mod.set_active_interpreter(self)
+
+    # -----------------------------------------------------------------------
+    # entry point
+    # -----------------------------------------------------------------------
+    def run(self, program: nodes.Program) -> InthonValue:
         try:
-            for stmt in program.body:
-                val = self.visit(stmt)
-                if val is not None:
-                    result = val
+            result = self.exec_block(program.statements, self.ctx.env, capture=True)
         except ReturnSignal as ret:
             result = ret.value
         return result
 
-    # ─── Helper: Dynamic Target Assignment ─────────────────────────────────── #
-    def _assign_target(self, target_str: str, val: InthonValue) -> None:
-        # Scan root identifier
-        root_match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)", target_str)
-        if not root_match:
-            raise IntHonRuntimeError(
-                f"INTHON_RUNTIME_ASSIGN: Invalid assignment target root '{target_str}'"
-            )
-        root_name = root_match.group(1)
-        pos = root_match.end()
+    # -----------------------------------------------------------------------
+    # blocks & statements
+    # -----------------------------------------------------------------------
+    def exec_block(self, statements, env: Environment, capture: bool = False) -> InthonValue:
+        """Execute a statement list.  With capture=True the block's value is
+        its last statement's value (declarations/assignments yield none)."""
+        last: InthonValue = NONE
+        for stmt in statements:
+            value = self.exec_stmt(stmt, env)
+            if capture:
+                last = value
+        return last
 
-        parts = []
-        # Scan member or index operations
-        while pos < len(target_str):
-            if target_str[pos] == ".":
-                pos += 1
-                member_match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)", target_str[pos:])
-                if not member_match:
-                    raise IntHonRuntimeError(
-                        f"INTHON_RUNTIME_ASSIGN: Invalid member in target '{target_str}' at pos {pos}"
-                    )
-                parts.append(("attr", member_match.group(1)))
-                pos += member_match.end()
-            elif target_str[pos] == "[":
-                pos += 1
-                bracket_count = 1
-                start_idx = pos
-                while pos < len(target_str) and bracket_count > 0:
-                    if target_str[pos] == "[":
-                        bracket_count += 1
-                    elif target_str[pos] == "]":
-                        bracket_count -= 1
-                    pos += 1
-                if bracket_count > 0:
-                    raise IntHonRuntimeError(
-                        f"INTHON_RUNTIME_ASSIGN: Unmatched brackets in target '{target_str}'"
-                    )
-                inner = target_str[start_idx : pos - 1]
+    def exec_stmt(self, stmt: nodes.Statement, env: Environment) -> InthonValue:
+        handler = getattr(self, f"stmt_{type(stmt).__name__}", None)
+        if handler is None:  # pragma: no cover - defensive
+            raise InthonSemanticError(f"Unsupported statement {type(stmt).__name__}", span=stmt.span)
+        return handler(stmt, env)
 
-                idx_val: Any
-                # Resolve bracket index value
-                if inner.isdigit():
-                    idx_val = int(inner)
-                elif (inner.startswith("'") and inner.endswith("'")) or (
-                    inner.startswith('"') and inner.endswith('"')
-                ):
-                    idx_val = inner[1:-1]
-                elif inner == "true":
-                    idx_val = True
-                elif inner == "false":
-                    idx_val = False
-                elif inner == "none":
-                    idx_val = None
-                else:
-                    if self._ctx.has_var(inner):
-                        idx_val = to_python(self._ctx.get_var(inner))
-                    else:
-                        raise IntHonRuntimeError(
-                            f"INTHON_RUNTIME_ASSIGN: Undefined variable '{inner}' in bracket index"
-                        )
-                parts.append(("index", idx_val))
-            else:
-                raise IntHonRuntimeError(
-                    f"INTHON_RUNTIME_ASSIGN: Invalid character '{target_str[pos]}' in target '{target_str}'"
-                )
+    # -- imports ------------------------------------------------------------
+    def stmt_UseTool(self, stmt: nodes.UseTool, env: Environment):
+        path = stmt.path
+        self.ctx.tools.get(path, stmt.span)  # validates existence
+        root = path.split(".")[0]
+        if not env.is_defined_here(root):
+            env.define(root, InthonToolNamespace(root, self.ctx.tools), mutable=False, span=stmt.span)
+        return NONE
 
-        if not parts:
-            self._ctx.assign_var(root_name, val)
-            return
-
-        obj = self._ctx.get_var(root_name)
-        for i, (kind, key) in enumerate(parts[:-1]):
-            if kind == "attr":
-                if isinstance(obj, InthonPyObject):
-                    from ..pybridge.allowlist import is_safe_attribute_access
-
-                    if not is_safe_attribute_access(
-                        obj.obj, key, getattr(obj.obj, key, None)
-                    ):
-                        raise IntHonRuntimeError(
-                            f"INTHON_SANDBOX: Access to attribute '{key}' is denied."
-                        )
-                    obj = from_python(getattr(obj.obj, key))
-                elif isinstance(obj, InthonDict) and key in obj.pairs:
-                    obj = obj.pairs[key]
-                else:
-                    raise IntHonRuntimeError(
-                        f"INTHON_RUNTIME_ASSIGN: Attribute '{key}' not found on '{type(obj)}'"
-                    )
-            elif kind == "index":
-                if isinstance(obj, InthonList):
-                    obj = obj.items[int(key)]
-                elif isinstance(obj, InthonDict):
-                    obj = obj.pairs[str(key)]
-                elif isinstance(obj, InthonPyObject):
-                    obj = from_python(obj.obj[key])
-                else:
-                    raise IntHonRuntimeError(
-                        f"INTHON_RUNTIME_ASSIGN: Subscript lookup failed on '{type(obj)}'"
-                    )
-
-        last_kind, last_key = parts[-1]
-        if last_kind == "attr":
-            if isinstance(obj, InthonPyObject):
-                from ..pybridge.allowlist import is_safe_attribute_access
-
-                if last_key.startswith("_") or not is_safe_attribute_access(
-                    obj.obj, last_key, getattr(obj.obj, last_key, None)
-                ):
-                    raise IntHonRuntimeError(
-                        f"INTHON_SANDBOX: Modifying attribute '{last_key}' is denied."
-                    )
-                setattr(obj.obj, last_key, to_python(val))
-            elif isinstance(obj, InthonDict):
-                obj.pairs[last_key] = val
-            else:
-                raise IntHonRuntimeError(
-                    f"INTHON_RUNTIME_ASSIGN: Cannot set attribute on '{type(obj)}'"
-                )
-        elif last_kind == "index":
-            if isinstance(obj, InthonList):
-                obj.items[int(last_key)] = val
-            elif isinstance(obj, InthonDict):
-                obj.pairs[str(last_key)] = val
-            elif isinstance(obj, InthonPyObject):
-                obj.obj[last_key] = to_python(val)
-            else:
-                raise IntHonRuntimeError(
-                    f"INTHON_RUNTIME_ASSIGN: Cannot set subscript on '{type(obj)}'"
-                )
-
-    # ─── Statement Visitors ────────────────────────────────────────────────── #
-    def visit_LetStmt(self, node: N.LetStmt) -> None:
-        val = self.visit(node.value)
-        self._ctx.set_var(node.name, val)
-        self._ctx.tracer.emit("assign", {"name": node.name})
-
-    def visit_ConstStmt(self, node: N.ConstStmt) -> None:
-        val = self.visit(node.value)
-        self._ctx.set_var(node.name, val)
-        self._ctx.tracer.emit("assign", {"name": node.name})
-
-    def visit_AssignStmt(self, node: N.AssignStmt) -> None:
-        val = self.visit(node.value)
-        self._assign_target(node.target, val)
-        self._ctx.tracer.emit("assign", {"name": node.target})
-
-    def visit_ReturnStmt(self, node: N.ReturnStmt) -> None:
-        val = self.visit(node.value) if node.value else InthonNone()
-        raise ReturnSignal(val)
-
-    def visit_FnDecl(self, node: N.FnDecl) -> None:
-        fn = InthonCallable(
-            name=node.name,
-            params=[p.name for p in node.params],
-            defaults={
-                p.name: self.visit(p.default)
-                for p in node.params
-                if p.default is not None
-            },
-            body=node.body,
-            closure=self._ctx,
-        )
-        self._ctx.set_var(node.name, fn)
-
-    def visit_AgentDecl(self, node: N.AgentDecl) -> InthonValue:
-        if node.policy:
-            self._ctx.policy.apply(node.policy)
-            # Link policy engine settings to active sandbox
-            self._ctx.sandbox.max_tool_calls = self._ctx.policy.max_tool_calls
-            self._ctx.sandbox.max_runtime_sec = self._ctx.policy.max_runtime_sec
-            self._ctx.sandbox.max_cost_usd = self._ctx.policy.max_cost_usd
-
-        self._ctx.current_agent = node.name
-        self._ctx.agent_goal = node.goal
-        self._ctx.tracer.emit("agent_start", {"name": node.name, "goal": node.goal})
-
-        self._ctx.push_scope()
-        try:
-            # Execute imports in agent block
-            for imp in node.imports:
-                self.visit(imp)
-
-            result: InthonValue = InthonNone()
-            try:
-                for stmt in node.plan.body:
-                    val = self.visit(stmt)
-                    if val is not None:
-                        result = val
-            except ReturnSignal as ret:
-                result = ret.value
-            return result
-        finally:
-            self._ctx.pop_scope()
-            self._ctx.tracer.emit("agent_end", {"name": node.name})
-            self._ctx.current_agent = None
-
-    def visit_IfStmt(self, node: N.IfStmt) -> InthonValue:
-        cond = self.visit(node.condition)
-        self._ctx.push_scope()
-        try:
-            branch = (
-                node.then_branch if self._is_truthy(cond) else (node.else_branch or ())
-            )
-            result: InthonValue = InthonNone()
-            for stmt in branch:
-                val = self.visit(stmt)
-                if val is not None:
-                    result = val
-            return result
-        finally:
-            self._ctx.pop_scope()
-
-    def visit_ForStmt(self, node: N.ForStmt) -> InthonValue:
-        iterable_val = self.visit(node.iterable)
-
-        items = []
-        if isinstance(iterable_val, InthonList):
-            items = iterable_val.items
-        elif isinstance(iterable_val, InthonPyObject) and hasattr(
-            iterable_val.obj, "__iter__"
-        ):
-            items = [from_python(i) for i in iterable_val.obj]
-        elif isinstance(iterable_val, InthonDict):
-            items = [InthonStr(k) for k in iterable_val.pairs.keys()]
+    def stmt_UsePy(self, stmt: nodes.UsePy, env: Environment):
+        proxy = self.ctx.importer.import_module(stmt.module, stmt.span)
+        name = stmt.alias or stmt.module.split(".")[0]
+        if env.is_defined_here(name):
+            env.assign(name, proxy, stmt.span)
         else:
-            raise IntHonRuntimeError(
-                f"INTHON_RUNTIME_FOR: Object '{type(iterable_val)}' is not iterable"
-            )
+            env.define(name, proxy, mutable=False, span=stmt.span)
+        return NONE
 
-        result: InthonValue = InthonNone()
+    def stmt_UseMemory(self, stmt: nodes.UseMemory, env: Environment):
+        ns = stmt.namespace
+        if stmt.args:
+            suffix = ".".join(display(self.eval_expr(a, env)) for a in stmt.args)
+            ns = f"{ns}.{suffix}"
+        self.ctx.declare_memory(ns)
+        # also register the plain root so remember/recall resolve
+        self.ctx.declare_memory(stmt.namespace)
+        return NONE
+
+    # -- declarations ------------------------------------------------------------
+    def stmt_LetDecl(self, stmt: nodes.LetDecl, env: Environment):
+        value = self.eval_expr(stmt.value, env)
+        if stmt.type_annotation is not None:
+            check_value_against_type(value, stmt.type_annotation, stmt.span)
+        env.define(stmt.name, value, mutable=True, span=stmt.span)
+        self._trace_assign(stmt.name, value, stmt.span)
+        return NONE
+
+    def stmt_ConstDecl(self, stmt: nodes.ConstDecl, env: Environment):
+        value = self.eval_expr(stmt.value, env)
+        if stmt.type_annotation is not None:
+            check_value_against_type(value, stmt.type_annotation, stmt.span)
+        env.define(stmt.name, value, mutable=False, span=stmt.span)
+        self._trace_assign(stmt.name, value, stmt.span)
+        return NONE
+
+    def _trace_assign(self, name: str, value: InthonValue, span: Optional[Span]):
+        if self.ctx.tracer is not None:
+            self.ctx.tracer.emit("assign", span, name=name, type=value.type_name,
+                                 preview=display(value)[:120])
+
+    def stmt_FnDecl(self, stmt: nodes.FnDecl, env: Environment):
+        fn = InthonCallable(stmt, env)
+        env.define(stmt.name, fn, mutable=False, span=stmt.span)
+        return NONE
+
+    # -- control flow ------------------------------------------------------------------
+    def stmt_IfStmt(self, stmt: nodes.IfStmt, env: Environment):
+        if truthy(self.eval_expr(stmt.condition, env)):
+            return self.exec_block(stmt.then_block.statements, Environment(env), capture=True)
+        if stmt.else_block is not None:
+            if isinstance(stmt.else_block, nodes.IfStmt):
+                return self.stmt_IfStmt(stmt.else_block, env)
+            return self.exec_block(stmt.else_block.statements, Environment(env), capture=True)
+        return NONE
+
+    def stmt_ForStmt(self, stmt: nodes.ForStmt, env: Environment):
+        iterable = self.eval_expr(stmt.iterable, env)
+        items = self._iterate(iterable, stmt.span)
+        loop_env = Environment(env, kind="loop")
+        result = NONE
         for item in items:
-            self._ctx.push_scope()
+            self.ctx.sandbox.tick(stmt.span)
+            loop_env.set_local(stmt.var, item)
             try:
-                self._ctx.set_var(node.var, item)
-                for stmt in node.body:
-                    val = self.visit(stmt)
-                    if val is not None:
-                        result = val
-            finally:
-                self._ctx.pop_scope()
-        return result
-
-    def visit_WhileStmt(self, node: N.WhileStmt) -> InthonValue:
-        result: InthonValue = InthonNone()
-        while True:
-            cond = self.visit(node.condition)
-            if not self._is_truthy(cond):
+                value = self.exec_block(stmt.body.statements, loop_env, capture=True)
+                if value is not NONE:
+                    result = value
+            except ContinueSignal:
+                continue
+            except BreakSignal:
                 break
-            self._ctx.push_scope()
-            try:
-                for stmt in node.body:
-                    val = self.visit(stmt)
-                    if val is not None:
-                        result = val
-            finally:
-                self._ctx.pop_scope()
         return result
 
-    def visit_ExprStmt(self, node: N.ExprStmt) -> InthonValue:
-        return self.visit(node.expr)
+    def stmt_WhileStmt(self, stmt: nodes.WhileStmt, env: Environment):
+        result = NONE
+        while truthy(self.eval_expr(stmt.condition, env)):
+            self.ctx.sandbox.tick(stmt.span)
+            try:
+                value = self.exec_block(stmt.body.statements, Environment(env), capture=True)
+                if value is not NONE:
+                    result = value
+            except ContinueSignal:
+                continue
+            except BreakSignal:
+                break
+        return result
 
-    # ─── Agent Primitive Visitors ─────────────────────────────────────────── #
-    def visit_UseToolStmt(self, node: N.UseToolStmt) -> None:
-        root = node.tool_path.split(".")[0]
-        self._ctx.set_var(root, InthonToolRef(root))
+    def stmt_ReturnStmt(self, stmt: nodes.ReturnStmt, env: Environment):
+        value = self.eval_expr(stmt.value, env) if stmt.value is not None else NONE
+        raise ReturnSignal(value)
 
-    def visit_UsePyStmt(self, node: N.UsePyStmt) -> None:
-        from ..pybridge.importer import SafeModuleImporter
+    def stmt_BreakStmt(self, stmt: nodes.BreakStmt, env: Environment):
+        raise BreakSignal()
 
-        importer = SafeModuleImporter(ctx=self._ctx)
-        wrapper = importer.import_module(node.module_path, node.alias)
-        alias = node.alias or node.module_path.split(".")[-1]
-        self._ctx.set_var(alias, wrapper)
+    def stmt_ContinueStmt(self, stmt: nodes.ContinueStmt, env: Environment):
+        raise ContinueSignal()
 
-    def visit_UseMemoryStmt(self, node: N.UseMemoryStmt) -> None:
-        # Initialise / ensure memory store works
-        pass
+    # -- expressions as statements --------------------------------------------------------
+    def stmt_ExprStmt(self, stmt: nodes.ExprStmt, env: Environment) -> InthonValue:
+        return self.eval_expr(stmt.expr, env)
 
-    def visit_ApproveStmt(self, node: N.ApproveStmt) -> None:
-        self._ctx.policy.check_capability(
-            Capability.PAYMENT_EXECUTE if node.action == "pay" else Capability.NETWORK
-        )
-        self._ctx.policy.approval_gate.request(node.target, node.action, self._ctx)
-        self._ctx.tracer.emit("approve", {"target": node.target, "action": node.action})
-
-    def visit_RememberStmt(self, node: N.RememberStmt) -> None:
-        self._ctx.policy.check_capability(Capability.MEMORY_WRITE)
-        val = self.visit(node.value)
-        key = uuid.uuid4().hex[:8]
-        self._ctx.memory.write(key, to_python(val), node.namespace)
-        self._ctx.tracer.emit("remember", {"key": key, "namespace": node.namespace})
-
-    def visit_ForgetStmt(self, node: N.ForgetStmt) -> None:
-        key_val = to_python(self.visit(node.key))
-        success = self._ctx.memory.delete(str(key_val), node.namespace)
-        self._ctx.tracer.emit(
-            "forget",
-            {"key": str(key_val), "namespace": node.namespace, "success": success},
-        )
-
-    def visit_RecallStmt(self, node: N.RecallStmt) -> None:
-        entries = self._ctx.memory.search(node.query, node.namespace)
-        if entries:
-            entries.sort(key=lambda e: e.updated_at, reverse=True)
-            res_val = from_python(entries[0].value)
-        else:
-            res_val = InthonNone()
-        self._ctx.set_var(node.var, res_val)
-        self._ctx.tracer.emit("recall", {"query": node.query, "var": node.var})
-
-    def visit_GuardStmt(self, node: N.GuardStmt) -> None:
-        cond = self.visit(node.condition)
-        if not self._is_truthy(cond):
-            raise IntHonRuntimeError(
-                "INTHON_RUNTIME_GUARD: Guard condition failed", node.span
+    def stmt_AssignStmt(self, stmt: nodes.AssignStmt, env: Environment):
+        value = self.eval_expr(stmt.value, env)
+        target = stmt.target
+        if isinstance(target, nodes.Identifier):
+            env.assign(target.name, value, stmt.span)
+            self._trace_assign(target.name, value, stmt.span)
+            return NONE
+        if isinstance(target, nodes.IndexExpr):
+            container = self.eval_expr(target.object, env)
+            index = self.eval_expr(target.index, env)
+            self._set_index(container, index, value, stmt.span)
+            return NONE
+        if isinstance(target, nodes.MemberExpr):
+            obj = self.eval_expr(target.object, env)
+            if isinstance(obj, InthonDict):
+                obj.pairs[target.name] = value
+                return NONE
+            raise InthonTypeError_(
+                f"Cannot assign member '{target.name}' on {obj.type_name}",
+                span=stmt.span,
+                hint="Member assignment is supported on dicts only.",
             )
+        raise InthonSemanticError("Invalid assignment target", span=stmt.span)
 
-    def visit_RetryStmt(self, node: N.RetryStmt) -> InthonValue:
-        last_error: Exception | None = None
-        for attempt in range(node.count):
-            try:
-                self._ctx.push_scope()
-                try:
-                    for stmt in node.body:
-                        self.visit(stmt)
-                    return InthonNone()
-                finally:
-                    self._ctx.pop_scope()
-            except IntHonRuntimeError as e:
-                last_error = e
-                # Wait based on backoff
-                import time
-
-                wait = 2**attempt if node.backoff == "exponential" else 1
-                self._ctx.tracer.emit(
-                    "retry", {"attempt": attempt + 1, "wait_sec": wait, "error": str(e)}
-                )
-                time.sleep(wait)
-
-        if node.catch_block:
-            self._ctx.push_scope()
-            try:
-                self._ctx.set_var(node.catch_block.var, from_python(str(last_error)))
-                for stmt in node.catch_block.body:
-                    self.visit(stmt)
-            finally:
-                self._ctx.pop_scope()
-        else:
-            if last_error:
-                raise last_error
-        return InthonNone()
-
-    def visit_EvalStmt(self, node: N.EvalStmt) -> None:
-        for crit in node.criteria:
-            metric_val = self._ctx.get_var(crit.metric)
-            threshold_val = self.visit(crit.threshold)
-            lhs = to_python(metric_val)
-            rhs = to_python(threshold_val)
-            ops = {
-                "==": lambda a, b: a == b,
-                "!=": lambda a, b: a != b,
-                "<": lambda a, b: a < b,
-                "<=": lambda a, b: a <= b,
-                ">": lambda a, b: a > b,
-                ">=": lambda a, b: a >= b,
-            }
-            if crit.op not in ops:
-                raise IntHonRuntimeError(
-                    f"INTHON_RUNTIME_EVAL: Unknown operator '{crit.op}'"
-                )
-            if not ops[crit.op](lhs, rhs):
-                raise IntHonRuntimeError(
-                    f"INTHON_RUNTIME_EVAL: Criterion '{crit.metric}' failed: expected {crit.op} {rhs}, got {lhs}"
-                )
-        self._ctx.tracer.emit("eval", {"subject": node.subject, "rubric": node.rubric})
-
-    # ─── Expression Visitors ───────────────────────────────────────────────── #
-    def visit_IntLiteral(self, node: N.IntLiteral) -> InthonInt:
-        return InthonInt(node.value)
-
-    def visit_FloatLiteral(self, node: N.FloatLiteral) -> InthonFloat:
-        return InthonFloat(node.value)
-
-    def visit_StringLiteral(self, node: N.StringLiteral) -> InthonStr:
-        return InthonStr(node.value)
-
-    def visit_BoolLiteral(self, node: N.BoolLiteral) -> InthonBool:
-        return InthonBool(node.value)
-
-    def visit_NoneLiteral(self, node: N.NoneLiteral) -> InthonNone:
-        return InthonNone()
-
-    def visit_Identifier(self, node: N.Identifier) -> InthonValue:
-        return self._ctx.get_var(node.name)
-
-    def visit_ListExpr(self, node: N.ListExpr) -> InthonList:
-        return InthonList([self.visit(e) for e in node.elements])
-
-    def visit_DictExpr(self, node: N.DictExpr) -> InthonDict:
-        return InthonDict(
-            {to_python(self.visit(k)): self.visit(v) for k, v in node.pairs}
-        )
-
-    def visit_BinaryOp(self, node: N.BinaryOp) -> InthonValue:
-        lhs = to_python(self.visit(node.left))
-        rhs = to_python(self.visit(node.right))
-
-        ops = {
-            "+": lambda a, b: a + b,
-            "-": lambda a, b: a - b,
-            "*": lambda a, b: a * b,
-            "/": lambda a, b: a / b,
-            "%": lambda a, b: a % b,
-            "**": lambda a, b: a**b,
-            "==": lambda a, b: a == b,
-            "!=": lambda a, b: a != b,
-            "<": lambda a, b: a < b,
-            "<=": lambda a, b: a <= b,
-            ">": lambda a, b: a > b,
-            ">=": lambda a, b: a >= b,
-            "and": lambda a, b: a and b,
-            "or": lambda a, b: a or b,
+    # -- agent primitives --------------------------------------------------------------------
+    def stmt_ApproveStmt(self, stmt: nodes.ApproveStmt, env: Environment):
+        details = {
+            "agent": self.ctx.current_agent or "(top level)",
+            "run_id": self.ctx.tracer.run_id,
         }
-        if node.op not in ops:
-            raise IntHonRuntimeError(
-                f"INTHON_RUNTIME_002: Unknown operator '{node.op}'"
+        self.ctx.approvals.request(stmt.tool_path, stmt.action, details, stmt.span)
+        return NONE
+
+    def stmt_RememberStmt(self, stmt: nodes.RememberStmt, env: Environment):
+        self.ctx.policy.check("memory_persist", stmt.span, subject="remember")
+        self.ctx.check_memory_declared(stmt.namespace, stmt.span)
+        value = self.eval_expr(stmt.value, env)
+        memory_ops.memory_remember(self.ctx, stmt.namespace, value, stmt.span)
+        return NONE
+
+    def stmt_ForgetStmt(self, stmt: nodes.ForgetStmt, env: Environment):
+        self.ctx.policy.check("memory_persist", stmt.span, subject="forget")
+        self.ctx.check_memory_declared(stmt.namespace, stmt.span)
+        value = self.eval_expr(stmt.value, env)
+        memory_ops.memory_forget(self.ctx, stmt.namespace, value, stmt.span)
+        return NONE
+
+    def stmt_GuardStmt(self, stmt: nodes.GuardStmt, env: Environment):
+        value = self.eval_expr(stmt.condition, env)
+        if self.ctx.tracer is not None:
+            self.ctx.tracer.emit("guard", stmt.span, passed=bool(truthy(value)))
+        if not truthy(value):
+            raise GuardAssertionError(
+                "Guard condition failed", span=stmt.span,
+                hint="The guard expression evaluated to a falsy value; inside retry this triggers a retry.",
             )
-        return from_python(ops[node.op](lhs, rhs))
+        return NONE
 
-    def visit_UnaryOp(self, node: N.UnaryOp) -> InthonValue:
-        val = to_python(self.visit(node.operand))
-        if node.op == "-":
-            return from_python(-val)
-        if node.op == "+":
-            return from_python(+val)
-        if node.op == "not":
-            return from_python(not val)
-        raise IntHonRuntimeError(
-            f"INTHON_RUNTIME_002: Unknown unary operator '{node.op}'"
-        )
-
-    def visit_CallExpr(self, node: N.CallExpr) -> InthonValue:
-        callee = self.visit(node.callee)
-        args = [self.visit(a) for a in node.args]
-        kwargs = {k: self.visit(v) for k, v in node.kwargs}
-
-        if isinstance(callee, InthonCallable):
-            return self._call_function(callee, args, kwargs)
-        if isinstance(callee, InthonToolRef):
-            return self._call_tool(callee.tool_path, args, kwargs)
-        if isinstance(callee, InthonPyObject) and callable(callee.obj):
-            return self._call_python(callee, args, kwargs)
-
-        raise IntHonRuntimeError(f"INTHON_RUNTIME_003: '{node.callee}' is not callable")
-
-    def visit_MemberExpr(self, node: N.MemberExpr) -> InthonValue:
-        obj = self.visit(node.obj)
-        if isinstance(obj, InthonToolRef):
-            return InthonToolRef(obj.tool_path + "." + node.attr)
-        if isinstance(obj, InthonPyObject):
-            from ..pybridge.allowlist import is_safe_attribute_access
-
-            if not is_safe_attribute_access(
-                obj.obj, node.attr, getattr(obj.obj, node.attr, None)
-            ):
-                raise IntHonRuntimeError(
-                    f"INTHON_SANDBOX: Access to attribute '{node.attr}' is denied."
-                )
-            attr = getattr(obj.obj, node.attr)
-            return from_python(attr, obj.source_module)
-        if isinstance(obj, InthonDict) and node.attr in obj.pairs:
-            return obj.pairs[node.attr]
-
-        # Support python modules wrapper from import stmt
-        from ..pybridge.importer import SafeModuleWrapper
-
-        if isinstance(obj, SafeModuleWrapper):
-            attr = getattr(obj, node.attr)
-            # SafeModuleWrapper returns already wrapped or callable InthonPyObject
-            return from_python(attr)
-
-        raise IntHonRuntimeError(
-            f"INTHON_RUNTIME_MEMBER: Member '{node.attr}' not found on '{type(obj)}'"
-        )
-
-    def visit_IndexExpr(self, node: N.IndexExpr) -> InthonValue:
-        obj = self.visit(node.obj)
-        idx = to_python(self.visit(node.index))
-
-        if isinstance(obj, InthonList):
-            return obj.items[int(idx)]
-        if isinstance(obj, InthonDict):
-            return obj.pairs[str(idx)]
-        if isinstance(obj, InthonPyObject):
-            return from_python(obj.obj[idx], obj.source_module)
-
-        raise IntHonRuntimeError(
-            f"INTHON_RUNTIME_INDEX: Index lookup failed on '{type(obj)}'"
-        )
-
-    # ─── Private Call Methods ──────────────────────────────────────────────── #
-    def _call_function(
-        self,
-        fn: InthonCallable,
-        args: list[InthonValue],
-        kwargs: dict[str, InthonValue],
-    ) -> InthonValue:
-        self._ctx.push_scope()
-        for i, param in enumerate(fn.params):
-            if i < len(args):
-                self._ctx.set_var(param, args[i])
-            elif param in kwargs:
-                self._ctx.set_var(param, kwargs[param])
-            elif param in fn.defaults:
-                self._ctx.set_var(param, fn.defaults[param])
-            else:
-                raise IntHonRuntimeError(
-                    f"INTHON_RUNTIME_004: Missing argument '{param}' for function '{fn.name}'"
-                )
-
-        result: InthonValue = InthonNone()
-        try:
-            for stmt in fn.body:
-                val = self.visit(stmt)
-                if val is not None:
-                    result = val
-        except ReturnSignal as ret:
-            result = ret.value
-        finally:
-            self._ctx.pop_scope()
-        return result
-
-    def _call_tool(
-        self, tool_path: str, args: list[InthonValue], kwargs: dict[str, InthonValue]
-    ) -> InthonValue:
-        # Check dry run first
-        if self._ctx.dry_run:
-            from .dryrun import generate_mock_output
-
+    def stmt_RetryStmt(self, stmt: nodes.RetryStmt, env: Environment):
+        attempts = max(1, stmt.count)
+        last_error: Optional[BaseException] = None
+        for attempt in range(1, attempts + 1):
             try:
-                spec = self._ctx.tools.get_spec(tool_path)
-                mock_out = generate_mock_output(spec.output_schema)
-                return from_python(mock_out)
-            except Exception:
-                return from_python({})
-
-        # Check budget limits first
-        self._ctx.sandbox.check_budget()
-
-        # Verify tool registry check
-        self._ctx.policy.check_tool(tool_path)
-
-        # side_effects checks (web.search side effects etc.)
-        spec = self._ctx.tools.get_spec(tool_path)
-        for eff in spec.side_effects:
-            if eff == "network":
-                self._ctx.policy.check_capability(Capability.NETWORK)
-            elif eff == "filesystem":
-                self._ctx.policy.check_capability(Capability.FILESYSTEM_WRITE)
-
-        py_args = [to_python(a) for a in args]
-        py_kwargs = {k: to_python(v) for k, v in kwargs.items()}
-
-        result = self._ctx.tools.call(tool_path, py_args, py_kwargs)
-        if not result.success:
-            raise ToolCallError(
-                f"INTHON_TOOL_004: Tool execution failed: {result.error}"
-            )
-
-        self._ctx.tool_call_count += 1
-        self._ctx.cost_usd += result.cost_usd
-        self._ctx.sandbox.record_tool_call(result.cost_usd)
-
-        self._ctx.tracer.emit(
-            "tool_call",
-            {
-                "tool": tool_path,
-                "args": str(py_args)[:200],
-                "cost_usd": result.cost_usd,
-            },
-        )
-        return from_python(result.output)
-
-    def _call_python(
-        self,
-        callee: InthonPyObject,
-        args: list[InthonValue],
-        kwargs: dict[str, InthonValue],
-    ) -> InthonValue:
-        self._ctx.py_call_count += 1
-        self._ctx.tracer.emit(
-            "py_call",
-            {
-                "module": callee.source_module,
-                "func": callee.obj.__name__
-                if hasattr(callee.obj, "__name__")
-                else str(callee.obj),
-                "args": str([to_python(a) for a in args])[:200],
-            },
-        )
-        # SafeModuleWrapper wrapped functions are callable and expect unpacked args,
-        # but our _wrap_callable already unpacks them. If callee.obj is the wrapper,
-        # we call it directly.
-        from ..pybridge.allowlist import is_safe_callable
-
-        if not is_safe_callable(callee.obj):
-            raise IntHonRuntimeError(
-                "INTHON_SANDBOX: Call to dangerous callable is denied."
-            )
-        res = callee.obj(*args, **kwargs)
-        return from_python(res)
+                if self.ctx.tracer is not None:
+                    self.ctx.tracer.emit("retry", stmt.span, attempt=attempt,
+                                         max_attempts=attempts, backoff=stmt.backoff)
+                return self.exec_block(stmt.body.statements, Environment(env), capture=True)
+            except (BreakSignal, ContinueSignal, ReturnSignal):
+                raise
+            except InthonError as exc:
+                last_error = exc
+                if self.ctx.tracer is not None:
+                    self.ctx.tracer.emit("retry_failed", stmt.span, attempt=attempt,
+                                         error=exc.code, message=exc.message)
+                if attempt < attempts:
+                    time.sleep(self._backoff_delay(stmt.backoff, attempt))
+        if stmt.catch_body is not None:
+            catch_env = Environment(env, kind="catch")
+            err_value = InthonDict({
+                "message": InthonString(getattr(last_error, "message", str(last_error))),
+                "code": InthonString(getattr(last_error, "code", "INTHON_000")),
+            })
+            catch_env.define(stmt.catch_name or "err", err_value, mutable=True, span=stmt.span)
+            return self.exec_block(stmt.catch_body.statements, catch_env, capture=True)
+        assert last_error is not None
+        raise last_error
 
     @staticmethod
-    def _is_truthy(val: InthonValue) -> bool:
-        if isinstance(val, InthonBool):
-            return val.v
-        if isinstance(val, InthonNone):
+    def _backoff_delay(strategy: str, attempt: int) -> float:
+        base = 0.05
+        if strategy == "exponential":
+            return min(0.5, base * (2 ** (attempt - 1)))
+        if strategy == "linear":
+            return min(0.5, base * attempt)
+        return base  # fixed (and any unknown strategy)
+
+    def stmt_EvalStmt(self, stmt: nodes.EvalStmt, env: Environment):
+        criteria = stmt.criteria
+        if not criteria:
+            table = self.ctx.criteria_tables.get(stmt.rubric)
+            if table is None:
+                if stmt.subject == "self":
+                    # self-eval preview: no rubric registered → record and pass
+                    if self.ctx.tracer is not None:
+                        self.ctx.tracer.emit("eval", stmt.span, rubric=stmt.rubric,
+                                             subject="self", passed=True, note="self-eval preview")
+                    return NONE
+                raise InthonSemanticError(
+                    f"Unknown rubric '{stmt.rubric}'",
+                    span=stmt.span,
+                    hint="Declare it inside the agent: criteria " + stmt.rubric + " { ... }, "
+                         "or pass criteria inline: eval x against " + stmt.rubric + " { ... }.",
+                )
+            criteria = table
+        if stmt.subject == "self":
+            subject_value = NONE
+        else:
+            subject_value = env.lookup(stmt.subject, stmt.span)
+        report = self._evaluate_criteria(subject_value, criteria, stmt, env)
+        if self.ctx.tracer is not None:
+            self.ctx.tracer.emit(
+                "eval", stmt.span, rubric=stmt.rubric, subject=stmt.subject,
+                passed=report.pairs["passed"].value,
+                score=report.pairs["score"].to_python(),
+            )
+        if not report.pairs["passed"].value:
+            failed_msg = "Rubric evaluation failed"
+            for detail in report.pairs["details"].items:
+                if not detail.pairs["passed"].value:
+                    name = detail.pairs["name"].value
+                    op = detail.pairs["op"].value
+                    expected = detail.pairs["expected"].to_python()
+                    actual = detail.pairs["actual"].to_python()
+                    failed_msg = f"INTHON_RUNTIME_EVAL: Criterion '{name}' failed: expected {op} {expected}, got {actual}"
+                    break
+            raise InthonTypeError_(failed_msg, span=stmt.span)
+        return report
+
+    def _evaluate_criteria(self, subject: InthonValue, criteria, stmt, env: Environment) -> InthonDict:
+        details = []
+        passed_count = 0
+        subject_map = subject.pairs if isinstance(subject, InthonDict) else {}
+        for criterion in criteria:
+            expected = self.eval_expr(criterion.value, env)
+            actual = subject_map.get(criterion.name, NONE)
+            if actual is NONE and env.is_defined(criterion.name):
+                actual = env.lookup(criterion.name, stmt.span)
+            ok = self._criterion_passes(actual, criterion.op, expected)
+            passed_count += 1 if ok else 0
+            details.append(InthonDict({
+                "name": InthonString(criterion.name),
+                "op": InthonString(criterion.op),
+                "expected": expected,
+                "actual": actual,
+                "passed": bool_value(ok),
+            }))
+        total = len(criteria)
+        return InthonDict({
+            "passed": bool_value(passed_count == total),
+            "score": InthonFloat(passed_count / total if total else 1.0),
+            "total": InthonInt(total),
+            "details": InthonList(details),
+        })
+
+    @staticmethod
+    def _criterion_passes(actual: InthonValue, op: str, expected: InthonValue) -> bool:
+        if op == ":":
+            op = "=="
+        try:
+            if op == "==":
+                return values_equal(actual, expected)
+            if op == "!=":
+                return not values_equal(actual, expected)
+            a, b = actual.to_python(), expected.to_python()
+            if op == "<":
+                return a < b
+            if op == "<=":
+                return a <= b
+            if op == ">":
+                return a > b
+            if op == ">=":
+                return a >= b
+        except TypeError:
             return False
-        if isinstance(val, InthonInt):
-            return val.v != 0
-        if isinstance(val, InthonStr):
-            return bool(val.v)
-        return True
+        return False
+
+    def stmt_PolicyStmt(self, stmt: nodes.PolicyStmt, env: Environment):
+        policy = Policy.from_entries(stmt.entries, span=stmt.span)
+        self.ctx.policy.apply(policy, stmt.span, label="top-level")
+        return NONE
+
+    # -- agents ---------------------------------------------------------------------------------
+    def stmt_AgentDecl(self, stmt: nodes.AgentDecl, env: Environment):
+        # imports inside the agent body are capabilities: process them first
+        agent_env = Environment(env, kind="agent", label=stmt.name)
+        for imp in stmt.imports:
+            self.exec_stmt(imp, agent_env)
+
+        # typed inputs/outputs metadata; criteria & rewriters registered for eval
+        for criteria_decl in stmt.criteria:
+            self.ctx.criteria_tables[criteria_decl.name] = criteria_decl.criteria
+
+        agent_value = InthonAgent(stmt, agent_env)
+        env.define(stmt.name, agent_value, mutable=False, span=stmt.span)
+
+        # Semantics: a bare declaration with no required inputs executes the
+        # plan immediately; otherwise it waits to be invoked like a function.
+        if not stmt.inputs and stmt.plan is not None:
+            return self._invoke_agent(agent_value, {}, stmt.span)
+        return NONE
+
+    def _invoke_agent(self, agent: InthonAgent, kwargs: dict, span: Optional[Span]) -> InthonValue:
+        from .agents import invoke_agent
+
+        def run_plan(decl, bound_inputs):
+            call_env = Environment(agent.closure_env, kind="agent-call", label=decl.name)
+            for name, value in bound_inputs.items():
+                call_env.define(name, value, mutable=True, span=span)
+            try:
+                return self.exec_block(decl.plan.statements, call_env, capture=True)
+            except ReturnSignal as ret:
+                return ret.value
+
+        return invoke_agent(self.ctx, agent, kwargs, span, run_plan)
+
+    # ---------------------------------------------------------------------------
+    # expressions
+    # ---------------------------------------------------------------------------
+    def eval_expr(self, expr: Optional[nodes.Expression], env: Environment) -> InthonValue:
+        if expr is None:
+            return NONE
+        handler = getattr(self, f"expr_{type(expr).__name__}", None)
+        if handler is None:  # pragma: no cover - defensive
+            raise InthonSemanticError(f"Unsupported expression {type(expr).__name__}", span=expr.span)
+        return handler(expr, env)
+
+    # -- literals --------------------------------------------------------------
+    def expr_IntLiteral(self, expr: nodes.IntLiteral, env) -> InthonValue:
+        return InthonInt(expr.value)
+
+    def expr_FloatLiteral(self, expr: nodes.FloatLiteral, env) -> InthonValue:
+        return InthonFloat(expr.value)
+
+    def expr_StringLiteral(self, expr: nodes.StringLiteral, env) -> InthonValue:
+        return InthonString(expr.value)
+
+    def expr_BoolLiteral(self, expr: nodes.BoolLiteral, env) -> InthonValue:
+        return bool_value(expr.value)
+
+    def expr_NoneLiteral(self, expr: nodes.NoneLiteral, env) -> InthonValue:
+        return NONE
+
+    def expr_InterpString(self, expr: nodes.InterpString, env) -> InthonValue:
+        out = []
+        for part in expr.parts:
+            if isinstance(part, str):
+                out.append(part)
+            else:
+                out.append(display(self.eval_expr(part, env)))
+        return InthonString("".join(out))
+
+    def expr_ListExpr(self, expr: nodes.ListExpr, env) -> InthonValue:
+        return InthonList([self.eval_expr(e, env) for e in expr.elements])
+
+    def expr_DictExpr(self, expr: nodes.DictExpr, env) -> InthonValue:
+        pairs = {}
+        for key_expr, value_expr in expr.pairs:
+            key = self.eval_expr(key_expr, env)
+            value = self.eval_expr(value_expr, env)
+            if isinstance(key, (InthonList, InthonDict, InthonPyObject)):
+                raise InthonTypeError_(
+                    f"Unhashable dict key type '{key.type_name}'", span=key_expr.span
+                )
+            pairs[key.to_python()] = value
+        return InthonDict(pairs)
+
+    def expr_Identifier(self, expr: nodes.Identifier, env) -> InthonValue:
+        return env.lookup(expr.name, expr.span)
+
+    def expr_RecallExpr(self, expr: nodes.RecallExpr, env) -> InthonValue:
+        self.ctx.policy.check("memory_persist", expr.span, subject="recall")
+        self.ctx.check_memory_declared(expr.namespace, expr.span)
+        return memory_ops.memory_recall(self.ctx, expr.namespace, expr.query, expr.span)
+
+    # -- operators ------------------------------------------------------------------
+    def expr_UnaryOp(self, expr: nodes.UnaryOp, env) -> InthonValue:
+        operand = self.eval_expr(expr.operand, env)
+        if expr.op == "not":
+            return bool_value(not truthy(operand))
+        if expr.op == "-":
+            if isinstance(operand, InthonInt):
+                return InthonInt(-operand.value)
+            if isinstance(operand, InthonFloat):
+                return InthonFloat(-operand.value)
+            raise InthonTypeError_(f"Cannot negate {operand.type_name}", span=expr.span)
+        if expr.op == "+":
+            if isinstance(operand, (InthonInt, InthonFloat)):
+                return operand
+            raise InthonTypeError_(f"Unary + not supported for {operand.type_name}", span=expr.span)
+        raise InthonSemanticError(f"Unknown unary operator '{expr.op}'", span=expr.span)
+
+    def expr_BinaryOp(self, expr: nodes.BinaryOp, env) -> InthonValue:
+        op = expr.op
+        if op == "and":
+            left = self.eval_expr(expr.left, env)
+            if not truthy(left):
+                return left
+            return self.eval_expr(expr.right, env)
+        if op == "or":
+            left = self.eval_expr(expr.left, env)
+            if truthy(left):
+                return left
+            return self.eval_expr(expr.right, env)
+
+        left = self.eval_expr(expr.left, env)
+        right = self.eval_expr(expr.right, env)
+
+        if op == "==":
+            return bool_value(values_equal(left, right))
+        if op == "!=":
+            return bool_value(not values_equal(left, right))
+
+        if op in ("+", "-", "*", "/", "%", "**"):
+            return self._arith(left, op, right, expr.span)
+        if op in ("<", "<=", ">", ">="):
+            return self._compare(left, op, right, expr.span)
+        raise InthonSemanticError(f"Unknown operator '{op}'", span=expr.span)
+
+    def _arith(self, left: InthonValue, op: str, right: InthonValue, span) -> InthonValue:
+        # strings
+        if isinstance(left, InthonString) and isinstance(right, InthonString) and op == "+":
+            return InthonString(left.value + right.value)
+        if isinstance(left, InthonString) and isinstance(right, InthonInt) and op == "*":
+            return InthonString(left.value * right.value)
+        if isinstance(left, InthonList) and isinstance(right, InthonList) and op == "+":
+            return InthonList(left.items + right.items)
+        if isinstance(left, InthonList) and isinstance(right, InthonInt) and op == "*":
+            return InthonList(left.items * right.value)
+        # numbers
+        if isinstance(left, (InthonInt, InthonFloat, InthonBool)) and isinstance(
+            right, (InthonInt, InthonFloat, InthonBool)
+        ):
+            a, b = left.to_python(), right.to_python()
+            both_int = isinstance(left, InthonInt) and isinstance(right, InthonInt)
+            if op == "+":
+                return _num_box(a + b, both_int)
+            if op == "-":
+                return _num_box(a - b, both_int)
+            if op == "*":
+                return _num_box(a * b, both_int)
+            if op == "/":
+                if b == 0:
+                    raise InthonTypeError_("Division by zero", span=span,
+                                           hint="Guard the divisor: guard b != 0")
+                return InthonFloat(a / b)
+            if op == "%":
+                if b == 0:
+                    raise InthonTypeError_("Modulo by zero", span=span)
+                return _num_box(a % b, both_int)
+            if op == "**":
+                return _num_box(a ** b, both_int)
+        raise InthonTypeError_(
+            f"Operator '{op}' not supported for {left.type_name} and {right.type_name}",
+            span=span,
+            hint=f"Got {left.display()!r} {op} {right.display()!r}. Convert with str(), int() or float().",
+        )
+
+    def _compare(self, left: InthonValue, op: str, right: InthonValue, span) -> InthonValue:
+        if isinstance(left, (InthonInt, InthonFloat, InthonBool)) and isinstance(
+            right, (InthonInt, InthonFloat, InthonBool)
+        ):
+            a, b = left.to_python(), right.to_python()
+        elif isinstance(left, InthonString) and isinstance(right, InthonString):
+            a, b = left.value, right.value
+        else:
+            raise InthonTypeError_(
+                f"Cannot compare {left.type_name} with {right.type_name} using '{op}'",
+                span=span,
+                hint="Ordering comparisons work on numbers and strings; use ==/!= for deep equality.",
+            )
+        return bool_value({"<": a < b, "<=": a <= b, ">": a > b, ">=": a >= b}[op])
+
+    # -- postfix ----------------------------------------------------------------------
+    def expr_MemberExpr(self, expr: nodes.MemberExpr, env) -> InthonValue:
+        obj = self.eval_expr(expr.object, env)
+        return self._get_member(obj, expr.name, expr.span)
+
+    def _get_member(self, obj: InthonValue, name: str, span) -> InthonValue:
+        if isinstance(obj, InthonToolNamespace):
+            path = f"{obj.root}.{name}"
+            if self.ctx.tools.has(path):
+                return InthonToolRef(path)
+            # allow deeper namespaces: web.sub.tool
+            prefix = path + "."
+            if any(p.startswith(prefix) for p in self.ctx.tools.paths()):
+                return InthonToolNamespace(path, self.ctx.tools)
+            from ..errors import ToolNotFoundError
+
+            raise ToolNotFoundError(
+                f"Unknown tool '{path}'", span=span,
+                hint=f"Did you declare it? Add 'use tool {path}'. Registered: {', '.join(self.ctx.tools.paths())}",
+            )
+        if isinstance(obj, InthonPyObject):
+            importer = getattr(obj, "_importer", None) or self.ctx.importer
+            return importer.getattr(obj, name, span)
+        if isinstance(obj, InthonDict):
+            if name in obj.pairs:
+                return obj.pairs[name]
+        return builtins_mod.get_method(obj, name, span)
+
+    def expr_IndexExpr(self, expr: nodes.IndexExpr, env) -> InthonValue:
+        obj = self.eval_expr(expr.object, env)
+        index = self.eval_expr(expr.index, env)
+        if isinstance(obj, InthonList):
+            if not isinstance(index, InthonInt):
+                raise InthonTypeError_(
+                    f"List index must be an int, got {index.type_name}", span=expr.span
+                )
+            i = index.value
+            try:
+                return obj.items[i]
+            except IndexError:
+                raise InthonIndexError(
+                    f"List index {i} out of range (length {len(obj.items)})", span=expr.span
+                ) from None
+        if isinstance(obj, InthonString):
+            if not isinstance(index, InthonInt):
+                raise InthonTypeError_("String index must be an int", span=expr.span)
+            i = index.value
+            try:
+                return InthonString(obj.value[i])
+            except IndexError:
+                raise InthonIndexError(
+                    f"String index {i} out of range (length {len(obj.value)})", span=expr.span
+                ) from None
+        if isinstance(obj, InthonDict):
+            key = index.to_python()
+            if key in obj.pairs:
+                return obj.pairs[key]
+            available = ", ".join(map(str, list(obj.pairs.keys())[:5]))
+            raise InthonIndexError(
+                f"Key {key!r} not found in dict", span=expr.span,
+                hint=f"Available keys: {available}{'…' if len(obj.pairs) > 5 else ''}. "
+                     f"Use .get(key, default) to avoid the error.",
+            )
+        if isinstance(obj, InthonPyObject):
+            return py_index(self.ctx, obj, index, expr.span)
+        raise InthonTypeError_(f"Indexing not supported for {obj.type_name}", span=expr.span)
+
+    def _set_index(self, container: InthonValue, index: InthonValue, value: InthonValue, span):
+        if isinstance(container, InthonList):
+            if not isinstance(index, InthonInt):
+                raise InthonTypeError_("List index must be an int", span=span)
+            i = index.value
+            if not -len(container.items) <= i < len(container.items):
+                raise InthonIndexError(
+                    f"List index {i} out of range (length {len(container.items)})", span=span
+                )
+            container.items[i] = value
+            return
+        if isinstance(container, InthonDict):
+            container.pairs[index.to_python()] = value
+            return
+        if isinstance(container, InthonPyObject):
+            raise InthonTypeError_(
+                "Item assignment on Python objects is blocked by the sandbox", span=span
+            )
+        raise InthonTypeError_(f"Indexed assignment not supported for {container.type_name}", span=span)
+
+    def expr_CallExpr(self, expr: nodes.CallExpr, env) -> InthonValue:
+        callee = self.eval_expr(expr.callee, env)
+        args = [self.eval_expr(a, env) for a in expr.args]
+        kwargs = {name: self.eval_expr(v, env) for name, v in expr.kwargs}
+        return self.call_value(callee, args, kwargs, expr.span)
+
+    # ---------------------------------------------------------------------------
+    # call dispatch (shared with method map/filter)
+    # ---------------------------------------------------------------------------
+    def call_value(self, callee: InthonValue, args: list, kwargs: dict, span) -> InthonValue:
+        if isinstance(callee, InthonBuiltin):
+            return callee.fn(self.ctx, args, kwargs, span)
+        if isinstance(callee, InthonBoundMethod):
+            return callee.fn(callee.receiver, args, kwargs, span)
+        if isinstance(callee, InthonToolRef):
+            return self.ctx.tools.invoke(self.ctx, callee.path, args, kwargs, span)
+        if isinstance(callee, InthonCallable):
+            return self._call_function(callee, args, kwargs, span)
+        if isinstance(callee, InthonAgent):
+            return self._invoke_agent(callee, kwargs, span)
+        if isinstance(callee, InthonPyObject):
+            return py_call(self.ctx, callee, args, kwargs, span)
+        raise InthonTypeError_(
+            f"Value of type {callee.type_name} is not callable", span=span,
+            hint="Only functions, agents, tools, builtins and Python callables can be called.",
+        )
+
+    def _call_function(self, fn: InthonCallable, args: list, kwargs: dict, span) -> InthonValue:
+        from .calls import bind_params
+
+        decl = fn.decl
+        params = list(decl.params)
+        bound = bind_params(
+            decl, args, kwargs,
+            eval_default=lambda default: self.eval_expr(default, fn.closure_env),
+            span=span,
+        )
+
+        self.ctx.sandbox.enter_call(decl.name, span)
+        call_env = Environment(fn.closure_env, kind="fn", label=decl.name)
+        for param in params:
+            value = bound[param.name]
+            if param.type_annotation is not None:
+                check_value_against_type(value, param.type_annotation, span)
+            call_env.define(param.name, value, mutable=True, span=span)
+        try:
+            result = self.exec_block(decl.body.statements, call_env, capture=True)
+        except ReturnSignal as ret:
+            result = ret.value
+        finally:
+            self.ctx.sandbox.exit_call()
+        if decl.return_type is not None:
+            check_value_against_type(result, decl.return_type, span)
+        return result
+
+    # ---------------------------------------------------------------------------
+    # iteration
+    # ---------------------------------------------------------------------------
+    def _iterate(self, iterable: InthonValue, span):
+        if isinstance(iterable, InthonList):
+            return list(iterable.items)
+        if isinstance(iterable, InthonString):
+            return [InthonString(ch) for ch in iterable.value]
+        if isinstance(iterable, InthonDict):
+            return [box(k) for k in iterable.pairs.keys()]
+        if isinstance(iterable, InthonPyObject):
+            return list(py_iter(iterable, span))
+        raise InthonTypeError_(
+            f"Cannot iterate over {iterable.type_name}", span=span,
+            hint="Iterate a list, string, dict (keys), range(...), or a Python iterable.",
+        )
+
+
+def _num_box(value, both_int: bool) -> InthonValue:
+    if both_int:
+        return InthonInt(int(value))
+    return InthonFloat(float(value))
+
+
+def run_program(program: nodes.Program, ctx: ExecutionContext) -> InthonValue:
+    return Interpreter(ctx).run(program)

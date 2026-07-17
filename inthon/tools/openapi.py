@@ -3,7 +3,7 @@ import json
 import urllib.request
 import urllib.parse
 from typing import Any, Callable
-from .schema import ToolSpec, ToolArgSchema, ToolCostModel
+from .schema import ToolSpec, ToolParam, ToolArgSchema, ToolCostModel
 from .registry import ToolRegistry
 
 
@@ -196,19 +196,25 @@ def register_openapi_tools(
 
                 return mock_impl
 
-            spec = ToolSpec(
-                name=tool_name,
-                description=description,
-                input_schema=input_schema,
-                output_schema={"output": "any"},
-                side_effects=["network"],
-                required_permissions=["allow_network"],
-                cost_model=ToolCostModel(base_usd=0.0, per_call_usd=0.002),
-            )
+            params_list = []
+            for name, arg_schema in input_schema.items():
+                params_list.append(ToolParam(
+                    name=name,
+                    type=arg_schema.type,
+                    required=arg_schema.required,
+                    default=arg_schema.default,
+                    description=arg_schema.description
+                ))
 
-            registry.register(
-                spec=spec,
-                impl=make_impl(
+            spec = ToolSpec(
+                path=tool_name,
+                description=description,
+                params=tuple(params_list),
+                returns="any",
+                side_effects=("network",),
+                permissions=("allow_network",),
+                cost_usd=0.002,
+                handler=make_impl(
                     method,
                     path,
                     path_params,
@@ -217,5 +223,7 @@ def register_openapi_tools(
                     body_properties,
                     base_url,
                 ),
-                mock_impl=make_mock(tool_name, method, path),
+                mock=make_mock(tool_name, method, path),
             )
+
+            registry.register(spec)

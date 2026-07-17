@@ -8,7 +8,7 @@ from .runtime.values import to_python, InthonNone, InthonValue
 from .runtime.errors import IntHonRuntimeError
 from .tools.builtin_tools import register_builtins
 from .vm.compiler import compile_program
-from .vm.machine import InthonVM
+from .vm.vm import InthonVM
 
 try:
     import readline  # noqa: F401
@@ -31,7 +31,7 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
     ctx = ExecutionContext(filename="<stdin>")
     register_builtins(ctx.tools, mock=mock_tools)
 
-    analyzer = SemanticAnalyzer()
+    analyzer = SemanticAnalyzer(ctx)
     interp = Interpreter(ctx)
     vm = InthonVM(ctx) if use_vm else None
 
@@ -148,7 +148,7 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
                 if use_vm:
                     assert vm is not None
                     code = compile_program(program, filename="<stdin>")
-                    result_val = vm.execute(code)
+                    result_val = vm.run_code(code, ctx.env)
                     if result_val is not None:
                         # Output values cleanly
                         py_val = (

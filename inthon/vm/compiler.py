@@ -1,491 +1,648 @@
-"""
-inthon.vm.compiler — AST → Bytecode compiler for INTHON.
+"""INTHON bytecode compiler: AST → CodeObject (spec §InthonVM).
 
-The Compiler walks the frozen AST nodes produced by the parser and emits
-Instruction objects into a CodeObject. It uses the same ASTVisitor pattern as
-the tree-walk Interpreter so both backends stay structurally symmetric.
-
-Key responsibilities:
-1. Scope tracking: module-level vs function-level vs agent-level.
-2. Constant pooling: identical literals share one pool entry.
-3. Forward-jump patching: `if` / `while` / `for` emit placeholder jumps that
-   are backpatched once the target index is known.
-4. Agent-primitive compilation: agent/goal/plan/policy blocks are lowered to
-   the agent-native opcodes (AGENT_ENTER, APPLY_POLICY, AGENT_REMEMBER …).
+Two constant pools per code object:
+  * literals — pre-boxed immutable InthonValues (scalars only; list/dict
+    literals are built fresh at runtime by BUILD_LIST/BUILD_DICT)
+  * meta — raw compile-time artifacts (CodeObjects, TypeExprs, tuples)
 """
 
 from __future__ import annotations
-from typing import Any
-from ..ast.visitor import ASTVisitor
-from ..ast import nodes as N
-from .opcodes import OpCode
-from .code_object import CodeObject
+
+from dataclasses import dataclass, field
+from typing import Any, Optional
+
+from ..ast import nodes
+from ..errors import InthonSemanticError
+from ..runtime.values import FALSE, NONE, TRUE, InthonFloat, InthonInt, InthonString
+from .opcodes import CMP_OPS, Op
 
 
-class CompilerError(Exception):
-    pass
+@dataclass
+class Instr:
+    op: int
+    arg: int = 0
+    line: int = 0
+    col: int = 0
 
 
-class _Scope:
-    """Tracks whether we are at module, function, or agent scope."""
-
-    MODULE = "module"
-    FUNCTION = "function"
-    AGENT = "agent"
-
-
-class Compiler(ASTVisitor):
-    """
-    Compiles an INTHON AST into a top-level CodeObject.
-
-    Usage::
-
-        compiler = Compiler(filename="example.inth")
-        code = compiler.compile(program_ast)
-    """
-
-    def __init__(self, filename: str = "<stdin>") -> None:
-        self._filename = filename
-        # Stack of CodeObjects being built. The current one is always last.
-        self._code_stack: list[CodeObject] = []
-        self._scope_stack: list[str] = [_Scope.MODULE]
-
-    # ── Public entry point ─────────────────────────────────────────────── #
-
-    def compile(self, program: N.Program) -> CodeObject:
-        """Compile a parsed Program node into a top-level CodeObject."""
-        top = CodeObject(name="<module>", filename=self._filename)
-        self._code_stack.append(top)
-
-        returned = self._compile_statement_sequence(program.body, implicit_return=True)
-
-        if not returned:
-            self._emit(OpCode.LOAD_CONST, self._co.add_const(None))
-            self._emit(OpCode.RETURN_VALUE)
-
-        return self._code_stack.pop()
-
-    # ── Internal helpers ───────────────────────────────────────────────── #
+@dataclass
+class CodeObject:
+    name: str
+    instructions: list = field(default_factory=list)
+    literals: list = field(default_factory=list)   # InthonValue scalars
+    meta: list = field(default_factory=list)       # raw artifacts
+    names: list = field(default_factory=list)      # identifier pool
+    stacksize: int = 0
 
     @property
-    def _co(self) -> CodeObject:
-        """Current CodeObject being compiled."""
-        return self._code_stack[-1]
+    def constants(self) -> list:
+        return self.literals
 
-    def _emit(self, op: OpCode, arg: Any = None, span: Any = None) -> int:
-        lineno = span.line if span else 0
-        colno = span.col if span else 0
-        return self._co.emit(op, arg, lineno=lineno, colno=colno)
+    @constants.setter
+    def constants(self, val: list):
+        self.literals = val
 
-    def _emit_load(self, name: str, span: Any = None) -> None:
-        """Emit LOAD_FAST or LOAD_GLOBAL depending on current scope."""
-        if (
-            self._co.has_var_in_locals(name)
-            if hasattr(self._co, "has_var_in_locals")
-            else (name in self._co.varnames)
-        ):
-            self._emit(OpCode.LOAD_FAST, name, span)
-        else:
-            self._emit(OpCode.LOAD_GLOBAL, name, span)
+    def disassemble(self) -> str:
+        from .dis import disassemble
 
-    def _emit_store(self, name: str, span: Any = None) -> None:
-        """Emit STORE_FAST or STORE_GLOBAL depending on scope."""
-        if self._scope_stack[-1] in (_Scope.FUNCTION, _Scope.AGENT):
-            self._co.add_varname(name)
-            self._emit(OpCode.STORE_FAST, name, span)
-        else:
-            self._emit(OpCode.STORE_GLOBAL, name, span)
+        return disassemble(self)
 
-    def _push_code(self, name: str) -> CodeObject:
-        child = CodeObject(name=name, filename=self._filename)
-        self._code_stack.append(child)
-        return child
 
-    def _pop_code(self) -> CodeObject:
-        return self._code_stack.pop()
+class _LoopCtx:
+    def __init__(self):
+        self.break_patches: list[int] = []
+        self.continue_target: int = 0
 
-    def _compile_statement_sequence(
-        self, statements: tuple[N.Statement, ...], implicit_return: bool = False
-    ) -> bool:
-        """Compile a statement sequence.
 
-        Returns True when the sequence emits a guaranteed final RETURN_VALUE.
-        """
-        for index, stmt in enumerate(statements):
-            is_last = index == len(statements) - 1
-            if implicit_return and is_last and isinstance(stmt, N.ExprStmt):
-                self.visit(stmt.expr)
-                self._emit(OpCode.RETURN_VALUE, span=stmt.span)
-                return True
+class Compiler:
+    def __init__(self, filename: str = "<stdin>"):
+        self.filename = filename
+        self.declared_tools: set[str] = set()
+        self._depth = 0
+        self._max_depth = 0
+        self._loops: list[_LoopCtx] = []
 
-            self.visit(stmt)
-            if is_last and isinstance(stmt, N.ReturnStmt):
-                return True
+    # -- entry ------------------------------------------------------------------
+    def compile(self, program: nodes.Program) -> CodeObject:
+        code = CodeObject(name="<module>")
+        self.code = code
+        self._compile_statements(program.statements, capture=True)
+        self._emit(Op.RETURN_VALUE, 0, 0, 0)
+        code.stacksize = self._max_depth
+        return code
 
-        return False
+    # -- emit helpers ---------------------------------------------------------------
+    def _emit(self, op: int, arg: int = 0, line: int = 0, col: int = 0) -> int:
+        self.code.instructions.append(Instr(int(op), arg, line, col))
+        return len(self.code.instructions) - 1
 
-    # ── Statement visitors ─────────────────────────────────────────────── #
+    def _push(self, n: int = 1):
+        self._depth += n
+        self._max_depth = max(self._max_depth, self._depth)
 
-    def visit_LetStmt(self, node: N.LetStmt) -> None:
-        self.visit(node.value)
-        self._emit_store(node.name, node.span)
+    def _pop(self, n: int = 1):
+        self._depth -= n
 
-    def visit_ConstStmt(self, node: N.ConstStmt) -> None:
-        self.visit(node.value)
-        self._emit_store(node.name, node.span)
+    def _lit(self, value) -> int:
+        self.code.literals.append(value)
+        return len(self.code.literals) - 1
 
-    def visit_AssignStmt(self, node: N.AssignStmt) -> None:
-        self.visit(node.value)
-        # Parse compound assignment targets (a.b, a[i])
-        target = node.target
-        if "." in target or "[" in target:
-            # Split at first separator to handle obj.attr or obj[key]
-            self._compile_complex_store(target, node.span)
-        else:
-            self._emit_store(target, node.span)
+    def _meta(self, value: Any) -> int:
+        self.code.meta.append(value)
+        return len(self.code.meta) - 1
 
-    def _compile_complex_store(self, target: str, span: Any) -> None:
-        """Compile assignment to a member or subscript target."""
-        # Determine if this is attr or index assignment
-        dot_pos = target.find(".")
-        bracket_pos = target.find("[")
+    def _name(self, name: str) -> int:
+        if name in self.code.names:
+            return self.code.names.index(name)
+        self.code.names.append(name)
+        return len(self.code.names) - 1
 
-        if dot_pos > 0 and (bracket_pos < 0 or dot_pos < bracket_pos):
-            obj_name = target[:dot_pos]
-            attr = target[dot_pos + 1 :]
-            # Stack: [value] → we need [obj, value]
-            # ROT_TWO to get: push obj under value
-            # Actually: value is TOS; load obj, then rot, then SET_ATTR
-            # We need: LOAD obj, ROT_TWO (so obj is TOS1, value is TOS), SET_ATTR
-            self._emit(OpCode.LOAD_GLOBAL, obj_name, span)
-            self._emit(OpCode.ROT_TWO)
-            self._emit(OpCode.SET_ATTR, attr, span)
-        elif bracket_pos > 0:
-            obj_name = target[:bracket_pos]
-            key_str = target[bracket_pos + 1 : target.rfind("]")]
-            # value is TOS; load obj, push idx, rotate, SET_ITEM
-            self._emit(OpCode.LOAD_GLOBAL, obj_name, span)
-            # Compile the key expression (literal or variable)
-            if key_str.isdigit():
-                self._emit(OpCode.LOAD_CONST, self._co.add_const(int(key_str)), span)
-            elif key_str.startswith(("'", '"')):
-                self._emit(OpCode.LOAD_CONST, self._co.add_const(key_str[1:-1]), span)
-            else:
-                self._emit(OpCode.LOAD_GLOBAL, key_str, span)
-            # Stack is now: [value, obj, key] — ROT_THREE to get [obj, key, value]
-            self._emit(OpCode.SET_ITEM)
-        else:
-            self._emit_store(target, span)
+    def _line(self, node) -> tuple:
+        if getattr(node, "span", None) is not None:
+            return node.span.line, node.span.col
+        return 0, 0
 
-    def visit_ReturnStmt(self, node: N.ReturnStmt) -> None:
-        if node.value:
-            self.visit(node.value)
-        else:
-            self._emit(OpCode.LOAD_CONST, self._co.add_const(None))
-        self._emit(OpCode.RETURN_VALUE, span=node.span)
+    def _patch(self, idx: int, target: int):
+        self.code.instructions[idx].arg = target
 
-    def visit_ExprStmt(self, node: N.ExprStmt) -> None:
-        self.visit(node.expr)
-        self._emit(OpCode.POP_TOP)
+    # -- statements ---------------------------------------------------------------------
+    def _compile_statements(self, statements, capture: bool):
+        stmts = list(statements)
+        for i, stmt in enumerate(stmts):
+            last = i == len(stmts) - 1
+            self._compile_statement(stmt, capture=capture and last)
+        if capture and not stmts:
+            self._emit_load_none()
 
-    # ── Control flow ───────────────────────────────────────────────────── #
+    def _emit_load_none(self):
+        idx = self._lit(NONE)
+        self._emit(Op.LOAD_CONST, idx)
+        self._push()
 
-    def visit_IfStmt(self, node: N.IfStmt) -> None:
-        # Compile condition
-        self.visit(node.condition)
-        # Emit conditional jump (placeholder target)
-        jump_if_false = self._emit(OpCode.POP_JUMP_IF_FALSE, 0, node.span)
-
-        # Then branch
-        for stmt in node.then_branch:
-            self.visit(stmt)
-
-        if node.else_branch:
-            # Jump over else
-            jump_over_else = self._emit(OpCode.JUMP_ABSOLUTE, 0)
-            # Patch the conditional jump to here (start of else)
-            self._co.patch_jump(jump_if_false, self._co.next_index())
-            # Else branch
-            for stmt in node.else_branch:
-                self.visit(stmt)
-            # Patch the jump-over-else to after the else block
-            self._co.patch_jump(jump_over_else, self._co.next_index())
-        else:
-            # Patch conditional jump to after then block
-            self._co.patch_jump(jump_if_false, self._co.next_index())
-
-    def visit_WhileStmt(self, node: N.WhileStmt) -> None:
-        loop_start = self._co.next_index()
-        # Condition
-        self.visit(node.condition)
-        jump_out = self._emit(OpCode.POP_JUMP_IF_FALSE, 0, node.span)
-        # Body
-        for stmt in node.body:
-            self.visit(stmt)
-        # Loop back
-        self._emit(OpCode.JUMP_ABSOLUTE, loop_start)
-        # Patch exit jump
-        self._co.patch_jump(jump_out, self._co.next_index())
-
-    def visit_ForStmt(self, node: N.ForStmt) -> None:
-        # Push the iterable and convert to iterator
-        self.visit(node.iterable)
-        self._emit(OpCode.GET_ITER)
-        loop_start = self._co.next_index()
-        # FOR_ITER: advance iterator; jump to end when exhausted
-        for_iter_idx = self._emit(OpCode.FOR_ITER, 0, node.span)
-        # Loop variable is TOS after a successful FOR_ITER
-        self._emit_store(node.var, node.span)
-        # Body
-        for stmt in node.body:
-            self.visit(stmt)
-        # Jump back to the FOR_ITER
-        self._emit(OpCode.JUMP_ABSOLUTE, loop_start)
-        # Patch FOR_ITER target to instruction after the loop
-        self._co.patch_jump(for_iter_idx, self._co.next_index())
-
-    # ── Functions ──────────────────────────────────────────────────────── #
-
-    def visit_FnDecl(self, node: N.FnDecl) -> None:
-        # Build child CodeObject for the function body
-        self._scope_stack.append(_Scope.FUNCTION)
-        child_co = self._push_code(node.name)
-
-        # Register params as locals and set up default handling
-        for param in node.params:
-            child_co.add_varname(param.name)
-
-        returned = self._compile_statement_sequence(node.body, implicit_return=True)
-
-        if not returned:
-            self._emit(OpCode.LOAD_CONST, child_co.add_const(None))
-            self._emit(OpCode.RETURN_VALUE)
-
-        finished_child = self._pop_code()
-        self._scope_stack.pop()
-
-        # Compile default expressions in the parent scope and stash them
-        # in the CodeObject's constant pool as a dict
-        default_dict: dict[str, Any] = {}
-        # Build defaults by compiling each default expression separately
-        # and evaluating it at compile time if it's a literal
-        for param in node.params:
-            if param.default is not None:
-                lit = self._extract_literal(param.default)
-                if lit is not None:
-                    default_dict[param.name] = lit
-
-        # Stash defaults and param names in the CodeObject
-        finished_child.param_names = [p.name for p in node.params]
-        finished_child.defaults = default_dict
-
-        # In parent: push CodeObject constant, then MAKE_FUNCTION
-        idx = self._co.add_const(finished_child)
-        self._emit(OpCode.LOAD_CONST, idx, node.span)
-        self._emit(OpCode.MAKE_FUNCTION, node.name, node.span)
-        self._emit_store(node.name, node.span)
-
-    def _extract_literal(self, expr: N.Expr) -> Any:
-        """Try to evaluate a literal expression at compile time. Returns None if non-literal."""
-        if isinstance(expr, N.IntLiteral):
-            return expr.value
-        if isinstance(expr, N.FloatLiteral):
-            return expr.value
-        if isinstance(expr, N.StringLiteral):
-            return expr.value
-        if isinstance(expr, N.BoolLiteral):
-            return expr.value
-        if isinstance(expr, N.NoneLiteral):
-            return None
-        return object()  # sentinel: non-literal (can't be used as default)
-
-    # ── Agent declarations ─────────────────────────────────────────────── #
-
-    def visit_AgentDecl(self, node: N.AgentDecl) -> None:
-        self._scope_stack.append(_Scope.AGENT)
-
-        # Serialize policy entries for APPLY_POLICY opcode
-        policy_dict: dict[str, Any] = {}
-        if node.policy:
-            for entry in node.policy.entries:
-                policy_dict[entry.key] = entry.value
-
-        # AGENT_ENTER: set up agent scope, apply policy
-        self._emit(OpCode.AGENT_ENTER, (node.name, node.goal), node.span)
-        if policy_dict:
-            self._emit(OpCode.APPLY_POLICY, policy_dict, node.span)
-
-        # Compile imports inside agent scope
-        for imp in node.imports:
-            self.visit(imp)
-
-        # Compile plan body
-        for stmt in node.plan.body:
-            self.visit(stmt)
-
-        # Load None as the agent's return value, then exit
-        self._emit(OpCode.LOAD_CONST, self._co.add_const(None))
-        self._emit(OpCode.AGENT_EXIT, node.name, node.span)
-        self._scope_stack.pop()
-
-    # ── Import statements ──────────────────────────────────────────────── #
-
-    def visit_UseToolStmt(self, node: N.UseToolStmt) -> None:
-        self._emit(OpCode.IMPORT_TOOL, node.tool_path, node.span)
-        root = node.tool_path.split(".")[0]
-        self._emit_store(root, node.span)
-
-    def visit_UsePyStmt(self, node: N.UsePyStmt) -> None:
-        alias = node.alias or node.module_path.split(".")[-1]
-        self._emit(OpCode.IMPORT_PY, (node.module_path, node.alias), node.span)
-        self._emit_store(alias, node.span)
-
-    def visit_UseMemoryStmt(self, node: N.UseMemoryStmt) -> None:
-        # Memory namespace registration — no-op in bytecode (handled at runtime init)
-        pass
-
-    # ── Agent primitives ───────────────────────────────────────────────── #
-
-    def visit_RememberStmt(self, node: N.RememberStmt) -> None:
-        self.visit(node.value)
-        self._emit(OpCode.AGENT_REMEMBER, node.namespace, node.span)
-
-    def visit_ForgetStmt(self, node: N.ForgetStmt) -> None:
-        self.visit(node.key)
-        self._emit(OpCode.AGENT_FORGET, node.namespace, node.span)
-
-    def visit_RecallStmt(self, node: N.RecallStmt) -> None:
-        self._emit(
-            OpCode.AGENT_RECALL, (node.query, node.namespace, node.var), node.span
-        )
-
-    def visit_ApproveStmt(self, node: N.ApproveStmt) -> None:
-        self._emit(OpCode.AGENT_APPROVE, (node.target, node.action), node.span)
-
-    def visit_GuardStmt(self, node: N.GuardStmt) -> None:
-        self.visit(node.condition)
-        self._emit(OpCode.AGENT_GUARD, None, node.span)
-
-    def visit_RetryStmt(self, node: N.RetryStmt) -> None:
-        self._emit(OpCode.SETUP_RETRY, (node.count, node.backoff), node.span)
-        for stmt in node.body:
-            self.visit(stmt)
-        self._emit(OpCode.END_RETRY, None, node.span)
-
-    def visit_EvalStmt(self, node: N.EvalStmt) -> None:
-        criteria = []
-        for c in node.criteria:
-            lit = self._extract_literal(c.threshold)
-            criteria.append(
-                {
-                    "metric": c.metric,
-                    "op": c.op,
-                    "threshold": lit if type(lit) is not object else str(c.threshold),
-                }
+    def _compile_statement(self, stmt, capture: bool):
+        method = getattr(self, f"_st_{type(stmt).__name__}", None)
+        if method is None:
+            raise InthonSemanticError(
+                f"VM: unsupported statement {type(stmt).__name__}", span=stmt.span
             )
-        self._emit(OpCode.AGENT_EVAL, (node.subject, node.rubric, criteria), node.span)
+        method(stmt, capture)
 
-    # ── Expression visitors ────────────────────────────────────────────── #
+    # -- declarations ------------------------------------------------------------
+    def _st_LetDecl(self, stmt: nodes.LetDecl, capture: bool):
+        line, col = self._line(stmt)
+        self._compile_expr(stmt.value)
+        self._pop()
+        if stmt.type_annotation is not None:
+            midx = self._meta(stmt.type_annotation)
+            self._emit(Op.CHECK_TYPE, midx, line, col)
+        self._emit(Op.DECLARE_NAME, self._name(stmt.name), line, col)
+        if capture:
+            self._emit_load_none()
 
-    def visit_IntLiteral(self, node: N.IntLiteral) -> None:
-        idx = self._co.add_const(node.value)
-        self._emit(OpCode.LOAD_CONST, idx, node.span)
+    def _st_ConstDecl(self, stmt: nodes.ConstDecl, capture: bool):
+        line, col = self._line(stmt)
+        self._compile_expr(stmt.value)
+        self._pop()
+        if stmt.type_annotation is not None:
+            midx = self._meta(stmt.type_annotation)
+            self._emit(Op.CHECK_TYPE, midx, line, col)
+        self._emit(Op.DECLARE_CONST, self._name(stmt.name), line, col)
+        if capture:
+            self._emit_load_none()
 
-    def visit_FloatLiteral(self, node: N.FloatLiteral) -> None:
-        idx = self._co.add_const(node.value)
-        self._emit(OpCode.LOAD_CONST, idx, node.span)
+    def _st_FnDecl(self, stmt: nodes.FnDecl, capture: bool):
+        line, col = self._line(stmt)
+        body = CodeObject(name=stmt.name)
+        saved = self.code
+        self.code = body
+        saved_depth, saved_max = self._depth, self._max_depth
+        self._depth = self._max_depth = 0
+        saved_loops = self._loops
+        self._loops = []
+        self._compile_statements(stmt.body.statements, capture=True)
+        self._emit(Op.RETURN_VALUE, 0, *self._line(stmt))
+        body.stacksize = self._max_depth
+        self.code = saved
+        self._loops = saved_loops
+        self._depth, self._max_depth = saved_depth, saved_max
 
-    def visit_StringLiteral(self, node: N.StringLiteral) -> None:
-        idx = self._co.add_const(node.value)
-        self._emit(OpCode.LOAD_CONST, idx, node.span)
+        defaults = {}
+        for param in stmt.params:
+            if param.default is not None:
+                dcode = CodeObject(name=f"{stmt.name}.default.{param.name}")
+                saved2 = self.code
+                self.code = dcode
+                saved_depth, saved_max = self._depth, self._max_depth
+                self._depth = self._max_depth = 0
+                self._compile_expr(param.default)
+                self._emit(Op.RETURN_VALUE)
+                self.code = saved2
+                self._depth, self._max_depth = saved_depth, saved_max
+                defaults[param.name] = dcode
 
-    def visit_BoolLiteral(self, node: N.BoolLiteral) -> None:
-        idx = self._co.add_const(node.value)
-        self._emit(OpCode.LOAD_CONST, idx, node.span)
+        meta_idx = self._meta({"decl": stmt, "body": body, "defaults": defaults})
+        self._emit(Op.LOAD_META, meta_idx, line, col)
+        self._push()
+        self._emit(Op.MAKE_FUNCTION, self._name(stmt.name), line, col)
+        self._pop()
+        if capture:
+            self._emit_load_none()
 
-    def visit_NoneLiteral(self, node: N.NoneLiteral) -> None:
-        idx = self._co.add_const(None)
-        self._emit(OpCode.LOAD_CONST, idx, node.span)
+    def _st_AgentDecl(self, stmt: nodes.AgentDecl, capture: bool):
+        line, col = self._line(stmt)
+        for imp in stmt.imports:
+            self._compile_statement(imp, capture=False)
 
-    def visit_Identifier(self, node: N.Identifier) -> None:
-        self._emit(OpCode.LOAD_GLOBAL, node.name, node.span)
+        plan_code = None
+        if stmt.plan is not None:
+            plan_code = CodeObject(name=f"agent:{stmt.name}")
+            saved = self.code
+            self.code = plan_code
+            saved_depth, saved_max = self._depth, self._max_depth
+            self._depth = self._max_depth = 0
+            saved_loops = self._loops
+            self._loops = []
+            self._compile_statements(stmt.plan.statements, capture=True)
+            self._emit(Op.RETURN_VALUE)
+            plan_code.stacksize = self._max_depth
+            self.code = saved
+            self._loops = saved_loops
+            self._depth, self._max_depth = saved_depth, saved_max
 
-    def visit_BinaryOp(self, node: N.BinaryOp) -> None:
-        self.visit(node.left)
-        self.visit(node.right)
-        op_map = {
-            "+": OpCode.BINARY_ADD,
-            "-": OpCode.BINARY_SUB,
-            "*": OpCode.BINARY_MUL,
-            "/": OpCode.BINARY_DIV,
-            "%": OpCode.BINARY_MOD,
-            "**": OpCode.BINARY_POW,
-            "==": OpCode.COMPARE_EQ,
-            "!=": OpCode.COMPARE_NE,
-            "<": OpCode.COMPARE_LT,
-            "<=": OpCode.COMPARE_LE,
-            ">": OpCode.COMPARE_GT,
-            ">=": OpCode.COMPARE_GE,
-            "and": OpCode.LOGICAL_AND,
-            "or": OpCode.LOGICAL_OR,
-        }
-        if node.op not in op_map:
-            raise CompilerError(f"Unknown binary operator: {node.op!r}")
-        self._emit(op_map[node.op], span=node.span)
-
-    def visit_UnaryOp(self, node: N.UnaryOp) -> None:
-        self.visit(node.operand)
-        if node.op == "not":
-            self._emit(OpCode.UNARY_NOT, span=node.span)
-        elif node.op == "-":
-            self._emit(OpCode.UNARY_NEG, span=node.span)
-        elif node.op == "+":
-            self._emit(OpCode.UNARY_POS, span=node.span)
-        else:
-            raise CompilerError(f"Unknown unary operator: {node.op!r}")
-
-    def visit_ListExpr(self, node: N.ListExpr) -> None:
-        for elem in node.elements:
-            self.visit(elem)
-        self._emit(OpCode.BUILD_LIST, len(node.elements), node.span)
-
-    def visit_DictExpr(self, node: N.DictExpr) -> None:
-        for key, val in node.pairs:
-            self.visit(key)
-            self.visit(val)
-        self._emit(OpCode.BUILD_DICT, len(node.pairs), node.span)
-
-    def visit_MemberExpr(self, node: N.MemberExpr) -> None:
-        self.visit(node.obj)
-        self._emit(OpCode.GET_ATTR, node.attr, node.span)
-
-    def visit_IndexExpr(self, node: N.IndexExpr) -> None:
-        self.visit(node.obj)
-        self.visit(node.index)
-        self._emit(OpCode.GET_ITEM, span=node.span)
-
-    def visit_CallExpr(self, node: N.CallExpr) -> None:
-        # Compile callee
-        self.visit(node.callee)
-
-        # Compile positional args
-        for arg in node.args:
-            self.visit(arg)
-
-        # Compile keyword args — interleaved as (key_const, value) pairs
-        for kw_name, kw_val in node.kwargs:
-            idx = self._co.add_const(kw_name)
-            self._emit(OpCode.LOAD_CONST, idx, node.span)
-            self.visit(kw_val)
-
-        self._emit(
-            OpCode.CALL_FUNCTION,
-            (len(node.args), len(node.kwargs)),
-            node.span,
+        policies = {entry.key: entry.value for entry in stmt.policies}
+        meta_idx = self._meta(
+            {
+                "decl": stmt,
+                "plan": plan_code,
+                "policies": policies,
+                "criteria": {c.name: c.criteria for c in stmt.criteria},
+            }
         )
+        self._emit(Op.LOAD_META, meta_idx, line, col)
+        self._push()
+        self._emit(Op.MAKE_AGENT, self._name(stmt.name), line, col)
+        self._pop()
+        # bare agent with no required inputs auto-executes
+        if not stmt.inputs and stmt.plan is not None:
+            self._emit(Op.LOAD_NAME, self._name(stmt.name), line, col)
+            self._push()
+            self._emit(Op.CALL_FUNCTION, 0, line, col)
+            if not capture:
+                self._emit(Op.POP_TOP, 0, line, col)
+        elif capture:
+            self._emit_load_none()
+
+    # -- imports ----------------------------------------------------------------------
+    def _st_UseTool(self, stmt: nodes.UseTool, capture: bool):
+        line, col = self._line(stmt)
+        self.declared_tools.add(stmt.path)
+        midx = self._meta(stmt.path)
+        self._emit(Op.IMPORT_TOOL, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_UsePy(self, stmt: nodes.UsePy, capture: bool):
+        line, col = self._line(stmt)
+        midx = self._meta((stmt.module, stmt.alias))
+        self._emit(Op.IMPORT_PY, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_UseMemory(self, stmt: nodes.UseMemory, capture: bool):
+        line, col = self._line(stmt)
+        args = []
+        for a in stmt.args:
+            if isinstance(a, nodes.StringLiteral):
+                args.append(a.value)
+        midx = self._meta((stmt.namespace, tuple(args)))
+        self._emit(Op.USE_MEMORY, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    # -- control flow ----------------------------------------------------------------------
+    def _st_IfStmt(self, stmt: nodes.IfStmt, capture: bool):
+        line, col = self._line(stmt)
+        self._compile_expr(stmt.condition)
+        self._pop()
+        j_else = self._emit(Op.POP_JUMP_IF_FALSE, 0, line, col)
+        self._compile_statements(stmt.then_block.statements, capture=capture)
+        j_end = self._emit(Op.JUMP_FORWARD, 0, line, col)
+        self._patch(j_else, len(self.code.instructions))
+        if stmt.else_block is not None:
+            if isinstance(stmt.else_block, nodes.IfStmt):
+                self._st_IfStmt(stmt.else_block, capture)
+            else:
+                self._compile_statements(stmt.else_block.statements, capture=capture)
+        elif capture:
+            self._emit_load_none()
+        self._patch(j_end, len(self.code.instructions))
+
+    def _st_ForStmt(self, stmt: nodes.ForStmt, capture: bool):
+        line, col = self._line(stmt)
+        tmp = f"__loopval_{len(self.code.instructions)}"
+        if capture:
+            self._emit_load_none()
+            self._emit(Op.DECLARE_NAME, self._name(tmp), line, col)
+            self._pop()
+        self._compile_expr(stmt.iterable)
+        self._pop()
+        self._emit(Op.GET_ITER, 0, line, col)
+        self._push()
+        ctx = _LoopCtx()
+        self._loops.append(ctx)
+        ctx.continue_target = len(self.code.instructions)
+        self._emit(Op.TICK, 0, line, col)
+        fidx = self._meta([self._name(stmt.var), 0])  # [name_idx, end_target] (patched)
+        self._emit(Op.FOR_ITER, fidx, line, col)
+        self._compile_statements(stmt.body.statements, capture=capture)
+        if capture:
+            self._emit(Op.STORE_NAME, self._name(tmp), line, col)
+            self._pop()
+        self._emit(Op.JUMP_ABSOLUTE, ctx.continue_target, line, col)
+        end = len(self.code.instructions)
+        self.code.meta[fidx][1] = end
+        for patch in ctx.break_patches:
+            self._patch(patch, end)
+        self._loops.pop()
+        self._pop()  # iterator
+        if capture:
+            self._emit(Op.LOAD_NAME, self._name(tmp), line, col)
+            self._push()
+
+    def _st_WhileStmt(self, stmt: nodes.WhileStmt, capture: bool):
+        line, col = self._line(stmt)
+        tmp = f"__loopval_{len(self.code.instructions)}"
+        if capture:
+            self._emit_load_none()
+            self._emit(Op.DECLARE_NAME, self._name(tmp), line, col)
+            self._pop()
+        ctx = _LoopCtx()
+        self._loops.append(ctx)
+        ctx.continue_target = len(self.code.instructions)
+        self._compile_expr(stmt.condition)
+        self._pop()
+        j_end = self._emit(Op.POP_JUMP_IF_FALSE, 0, line, col)
+        self._emit(Op.TICK, 0, line, col)
+        self._compile_statements(stmt.body.statements, capture=capture)
+        if capture:
+            self._emit(Op.STORE_NAME, self._name(tmp), line, col)
+            self._pop()
+        self._emit(Op.JUMP_ABSOLUTE, ctx.continue_target, line, col)
+        end = len(self.code.instructions)
+        self._patch(j_end, end)
+        for patch in ctx.break_patches:
+            self._patch(patch, end)
+        self._loops.pop()
+        if capture:
+            self._emit(Op.LOAD_NAME, self._name(tmp), line, col)
+            self._push()
+
+    def _st_ReturnStmt(self, stmt: nodes.ReturnStmt, capture: bool):
+        line, col = self._line(stmt)
+        if stmt.value is not None:
+            self._compile_expr(stmt.value)
+            self._pop()
+        else:
+            self._emit_load_none()
+            self._pop()
+        self._emit(Op.RETURN_VALUE, 0, line, col)
+
+    def _st_BreakStmt(self, stmt: nodes.BreakStmt, capture: bool):
+        line, col = self._line(stmt)
+        if not self._loops:
+            raise InthonSemanticError("'break' outside of a loop", span=stmt.span)
+        idx = self._emit(Op.JUMP_ABSOLUTE, 0, line, col)
+        self._loops[-1].break_patches.append(idx)
+        if capture:
+            self._emit_load_none()
+
+    def _st_ContinueStmt(self, stmt: nodes.ContinueStmt, capture: bool):
+        line, col = self._line(stmt)
+        if not self._loops:
+            raise InthonSemanticError("'continue' outside of a loop", span=stmt.span)
+        self._emit(Op.JUMP_ABSOLUTE, self._loops[-1].continue_target, line, col)
+        if capture:
+            self._emit_load_none()
+
+    # -- agent primitives ----------------------------------------------------------------------
+    def _st_ApproveStmt(self, stmt: nodes.ApproveStmt, capture: bool):
+        line, col = self._line(stmt)
+        midx = self._meta((stmt.tool_path, stmt.action))
+        self._emit(Op.APPROVE_GATE, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_RememberStmt(self, stmt: nodes.RememberStmt, capture: bool):
+        line, col = self._line(stmt)
+        self._compile_expr(stmt.value)
+        self._pop()
+        midx = self._meta(stmt.namespace)
+        self._emit(Op.AGENT_REMEMBER, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_ForgetStmt(self, stmt: nodes.ForgetStmt, capture: bool):
+        line, col = self._line(stmt)
+        self._compile_expr(stmt.value)
+        self._pop()
+        midx = self._meta(stmt.namespace)
+        self._emit(Op.AGENT_FORGET, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_GuardStmt(self, stmt: nodes.GuardStmt, capture: bool):
+        line, col = self._line(stmt)
+        self._compile_expr(stmt.condition)
+        self._pop()
+        self._emit(Op.GUARD_ASSERT, 0, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_RetryStmt(self, stmt: nodes.RetryStmt, capture: bool):
+        line, col = self._line(stmt)
+        handler = {"count": stmt.count, "backoff": stmt.backoff, "catch_name": stmt.catch_name}
+        handler["body_ip"] = len(self.code.instructions) + 1
+        midx = self._meta(handler)
+        self._emit(Op.RETRY_BEGIN, midx, line, col)
+        self._compile_statements(stmt.body.statements, capture=capture)
+        if capture:
+            self._pop()
+        self._emit(Op.RETRY_END, 0, line, col)
+        j_end = self._emit(Op.JUMP_FORWARD, 0, line, col)
+        handler["catch_ip"] = len(self.code.instructions)
+        if stmt.catch_body is not None:
+            self._compile_statements(stmt.catch_body.statements, capture=capture)
+            if capture:
+                self._pop()
+        handler["end_ip"] = len(self.code.instructions)
+        self.code.meta[midx] = handler
+        self._patch(j_end, len(self.code.instructions))
+
+    def _st_EvalStmt(self, stmt: nodes.EvalStmt, capture: bool):
+        line, col = self._line(stmt)
+        if stmt.subject == "self":
+            midx = self._meta((stmt.rubric, stmt.rewriter))
+            self._emit(Op.SELF_EVAL, midx, line, col)
+            self._push()
+            if not capture:
+                self._emit(Op.POP_TOP, 0, line, col)
+                self._pop()
+            return
+        self._emit(Op.LOAD_NAME, self._name(stmt.subject), line, col)
+        self._push()
+        count = 0
+        for criterion in stmt.criteria:
+            self._emit(Op.LOAD_CONST, self._lit(InthonString(criterion.name)), line, col)
+            self._emit(Op.LOAD_CONST, self._lit(InthonString(criterion.op)), line, col)
+            self._compile_expr(criterion.value)
+            self._push(2)
+            count += 1
+        midx = self._meta((stmt.rubric, count))
+        self._emit(Op.EVAL_RUBRIC, midx, line, col)
+        self._pop(3 * count)
+        if not capture:
+            self._emit(Op.POP_TOP, 0, line, col)
+            self._pop()
+
+    def _st_PolicyStmt(self, stmt: nodes.PolicyStmt, capture: bool):
+        line, col = self._line(stmt)
+        policies = {entry.key: entry.value for entry in stmt.entries}
+        midx = self._meta(policies)
+        self._emit(Op.APPLY_POLICY, midx, line, col)
+        if capture:
+            self._emit_load_none()
+
+    def _st_ExprStmt(self, stmt: nodes.ExprStmt, capture: bool):
+        self._compile_expr(stmt.expr)
+        self._pop()
+        if not capture:
+            self._emit(Op.POP_TOP, 0, *self._line(stmt))
+
+    def _st_AssignStmt(self, stmt: nodes.AssignStmt, capture: bool):
+        line, col = self._line(stmt)
+        target = stmt.target
+        if isinstance(target, nodes.Identifier):
+            self._compile_expr(stmt.value)
+            self._pop()
+            self._emit(Op.STORE_NAME, self._name(target.name), line, col)
+        elif isinstance(target, nodes.IndexExpr):
+            self._compile_expr(target.object)
+            self._compile_expr(target.index)
+            self._compile_expr(stmt.value)
+            self._pop(3)
+            self._emit(Op.STORE_SUBSCR, 0, line, col)
+        elif isinstance(target, nodes.MemberExpr):
+            self._compile_expr(target.object)
+            self._compile_expr(stmt.value)
+            self._pop(2)
+            self._emit(Op.STORE_ATTR, self._name(target.name), line, col)
+        if capture:
+            self._emit_load_none()
+
+    # -- expressions --------------------------------------------------------------------------------
+    def _compile_expr(self, expr):
+        method = getattr(self, f"_ex_{type(expr).__name__}", None)
+        if method is None:
+            raise InthonSemanticError(
+                f"VM: unsupported expression {type(expr).__name__}", span=expr.span
+            )
+        method(expr)
+        self._push()
+
+    def _ex_IntLiteral(self, expr):
+        self._emit(Op.LOAD_CONST, self._lit(InthonInt(expr.value)), *self._line(expr))
+
+    def _ex_FloatLiteral(self, expr):
+        self._emit(Op.LOAD_CONST, self._lit(InthonFloat(expr.value)), *self._line(expr))
+
+    def _ex_StringLiteral(self, expr):
+        self._emit(Op.LOAD_CONST, self._lit(InthonString(expr.value)), *self._line(expr))
+
+    def _ex_BoolLiteral(self, expr):
+        self._emit(Op.LOAD_CONST, self._lit(TRUE if expr.value else FALSE), *self._line(expr))
+
+    def _ex_NoneLiteral(self, expr):
+        self._emit(Op.LOAD_CONST, self._lit(NONE), *self._line(expr))
+
+    def _ex_InterpString(self, expr):
+        n = 0
+        for part in expr.parts:
+            if isinstance(part, str):
+                self._emit(Op.LOAD_CONST, self._lit(InthonString(part)), *self._line(expr))
+                self._push()
+            else:
+                self._compile_expr(part)
+            n += 1
+        self._emit(Op.BUILD_STRING, n, *self._line(expr))
+        self._pop(n)
+
+    def _ex_ListExpr(self, expr):
+        for el in expr.elements:
+            self._compile_expr(el)
+        self._emit(Op.BUILD_LIST, len(expr.elements), *self._line(expr))
+        self._pop(len(expr.elements))
+
+    def _ex_DictExpr(self, expr):
+        for k, v in expr.pairs:
+            self._compile_expr(k)
+            self._compile_expr(v)
+        self._emit(Op.BUILD_DICT, len(expr.pairs), *self._line(expr))
+        self._pop(2 * len(expr.pairs))
+
+    def _ex_Identifier(self, expr):
+        self._emit(Op.LOAD_NAME, self._name(expr.name), *self._line(expr))
+
+    def _ex_RecallExpr(self, expr):
+        q = self._lit(InthonString(expr.query))
+        self._emit(Op.LOAD_CONST, q, *self._line(expr))
+        self._push()
+        midx = self._meta(expr.namespace)
+        self._emit(Op.AGENT_RECALL, midx, *self._line(expr))
+        self._pop()
+
+    def _ex_UnaryOp(self, expr):
+        if expr.op == "not":
+            self._compile_expr(expr.operand)
+            self._pop()
+            self._emit(Op.UNARY_NOT, 0, *self._line(expr))
+        elif expr.op == "-":
+            self._compile_expr(expr.operand)
+            self._pop()
+            self._emit(Op.UNARY_NEG, 0, *self._line(expr))
+        else:  # unary + : operand only (no-op)
+            self._compile_expr(expr.operand)
+            self._pop()
+
+    def _ex_BinaryOp(self, expr):
+        line, col = self._line(expr)
+        op = expr.op
+        if op == "and":
+            self._compile_expr(expr.left)
+            j = self._emit(Op.JUMP_IF_FALSE_OR_POP, 0, line, col)
+            self._pop()
+            self._compile_expr(expr.right)
+            self._patch(j, len(self.code.instructions))
+            self._pop(2)
+            return
+        if op == "or":
+            self._compile_expr(expr.left)
+            j = self._emit(Op.JUMP_IF_TRUE_OR_POP, 0, line, col)
+            self._pop()
+            self._compile_expr(expr.right)
+            self._patch(j, len(self.code.instructions))
+            self._pop(2)
+            return
+        self._compile_expr(expr.left)
+        self._compile_expr(expr.right)
+        if op == "+":
+            self._emit(Op.BINARY_ADD, 0, line, col)
+        elif op == "-":
+            self._emit(Op.BINARY_SUB, 0, line, col)
+        elif op == "*":
+            self._emit(Op.BINARY_MUL, 0, line, col)
+        elif op == "/":
+            self._emit(Op.BINARY_DIV, 0, line, col)
+        elif op == "%":
+            self._emit(Op.BINARY_MOD, 0, line, col)
+        elif op == "**":
+            self._emit(Op.BINARY_POW, 0, line, col)
+        elif op in CMP_OPS:
+            self._emit(Op.COMPARE_OP, CMP_OPS.index(op), line, col)
+        self._pop(2)
+
+    def _ex_MemberExpr(self, expr):
+        self._compile_expr(expr.object)
+        self._pop()
+        self._emit(Op.LOAD_ATTR, self._name(expr.name), *self._line(expr))
+
+    def _ex_IndexExpr(self, expr):
+        self._compile_expr(expr.object)
+        self._compile_expr(expr.index)
+        self._pop(2)
+        self._emit(Op.BINARY_SUBSCR, 0, *self._line(expr))
+
+    def _ex_CallExpr(self, expr):
+        line, col = self._line(expr)
+        tool_path = self._tool_path(expr.callee)
+        if tool_path is not None:
+            midx = self._meta(tool_path)
+            self._emit(Op.LOAD_META, midx, line, col)
+            self._push()
+        else:
+            self._compile_expr(expr.callee)
+        for a in expr.args:
+            self._compile_expr(a)
+        n_pos = len(expr.args)
+        n_kw = len(expr.kwargs)
+        if n_kw:
+            kw_names = tuple(name for name, _ in expr.kwargs)
+            kidx = self._meta(kw_names)
+            for _, v in expr.kwargs:
+                self._compile_expr(v)
+            self._emit(Op.LOAD_META, kidx, line, col)
+            self._push()
+            op = Op.CALL_TOOL if tool_path is not None else Op.CALL_FUNCTION_KW
+            self._emit(op, n_pos | (n_kw << 8), line, col)
+            self._pop(n_pos + n_kw + 2)
+        else:
+            op = Op.CALL_TOOL if tool_path is not None else Op.CALL_FUNCTION
+            self._emit(op, n_pos, line, col)
+            self._pop(n_pos + 1)
+
+    def _tool_path(self, callee) -> Optional[str]:
+        parts = []
+        node = callee
+        while isinstance(node, nodes.MemberExpr):
+            parts.append(node.name)
+            node = node.object
+        if not isinstance(node, nodes.Identifier):
+            return None
+        parts.append(node.name)
+        path = ".".join(reversed(parts))
+        if path in self.declared_tools:
+            return path
+        return None
 
 
-def compile_program(program: N.Program, filename: str = "<stdin>") -> CodeObject:
-    """Convenience function: compile a Program AST into a CodeObject."""
-    compiler = Compiler(filename=filename)
-    return compiler.compile(program)
+def compile_program(program: nodes.Program, filename: str = "<stdin>") -> CodeObject:
+    return Compiler(filename).compile(program)

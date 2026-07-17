@@ -26,7 +26,7 @@ from ..policy.model import Capability
 from .code_object import CodeObject
 from .frame import Frame
 from .machine import InthonVM
-from .opcodes import OpCode
+from .old_opcodes import OpCode
 
 
 class AsyncInthonVM(InthonVM):

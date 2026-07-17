@@ -1,455 +1,675 @@
+"""Parse-tree → AST transformer (engine spec §4.3).
+
+Uses Lark's @v_args(meta=True) so every AST node carries a source span.
+Also performs string-interpolation lowering ("Hello, {name}") and type
+expression validation.
+"""
+
 from __future__ import annotations
-import lark
-from typing import Any
-from ..ast import nodes as N
-from ..lexer.tokens import Span
+
+from typing import Any, Optional
+
+from lark import Token, Transformer, v_args
+from lark.tree import Meta
+
+from ..ast import nodes
+from ..errors import InthonParseError, InthonTypeSyntaxError, Span
+
+_PRIMITIVE_TYPES = {"str", "int", "float", "bool", "bytes", "none", "any"}
+_AGENT_TYPES = {
+    "Goal", "Plan", "ToolCall", "ToolResult", "Trace", "MemoryRef",
+    "Approval", "Policy", "DataFrame", "Tensor", "Model", "Dataset", "Embedding",
+}
+_COLLECTION_TYPES = {"list", "dict", "tuple", "set"}
 
 
-class InthonTransformer(lark.Transformer):
-    def __init__(self, filename: str = "<stdin>") -> None:
+def _span(meta: Meta, filename: str) -> Span:
+    return Span(
+        filename=filename,
+        line=meta.line,
+        col=meta.column,
+        end_line=meta.end_line,
+        end_col=meta.end_column,
+    )
+
+
+def _tok_text(t: Any) -> str:
+    return str(t)
+
+
+class InthonTransformer(Transformer):
+    def __init__(self, filename: str = "<stdin>", expr_parser=None, source: str = ""):
         super().__init__()
-        self._filename = filename
+        self.filename = filename
+        self.expr_parser = expr_parser  # Lark instance with start="expr" for interpolation
+        self.source = source
 
-    def _get_span(self, meta: Any) -> Span | None:
-        if meta and hasattr(meta, "line"):
-            offset = getattr(meta, "start_pos", 0)
-            length = getattr(meta, "end_pos", offset) - offset
-            return Span(
-                file=self._filename,
-                line=meta.line,
-                col=meta.column,
-                offset=offset,
-                length=max(1, length),
-            )
+    # -- helpers -------------------------------------------------------------
+    def _s(self, meta: Meta) -> Span:
+        return _span(meta, self.filename)
+
+    def _type_error(self, name: str, span: Span) -> InthonTypeSyntaxError:
+        return InthonTypeSyntaxError(
+            f"Unknown type '{name}'",
+            span=span,
+            source_line=self._line_at(span),
+        )
+
+    def _line_at(self, span: Span) -> Optional[str]:
+        lines = self.source.splitlines()
+        if 1 <= span.line <= len(lines):
+            return lines[span.line - 1]
         return None
 
-    # Helper to wrap list rules that fold
-    def _fold_binary(
-        self, children: list[Any], default_span: Span | None = None
-    ) -> Any:
-        if len(children) == 1:
-            return children[0]
-        # children are: [left, op, right, op, right, ...]
-        # or [left, op, right]
-        left = children[0]
-        i = 1
-        while i < len(children):
-            op = str(children[i])
-            right = children[i + 1]
-            span = getattr(left, "span", default_span)
-            left = N.BinaryOp(op=op, left=left, right=right, span=span)
-            i += 2
-        return left
+    # -- program / blocks ------------------------------------------------------
+    @v_args(meta=True)
+    def program(self, meta: Meta, children):
+        return nodes.Program(statements=tuple(children), span=self._s(meta))
 
-    # --- Program ---
-    def program(self, children: list[Any]) -> N.Program:
-        return N.Program(body=tuple(children))
+    @v_args(meta=True)
+    def block(self, meta: Meta, children):
+        return nodes.Block(statements=tuple(children), span=self._s(meta))
 
-    # --- Imports ---
-    def use_tool_stmt(self, children: list[Any]) -> N.UseToolStmt:
-        return N.UseToolStmt(tool_path=str(children[0]))
+    # -- imports -----------------------------------------------------------------
+    def import_stmt(self, children):
+        return children[0]
 
-    def use_py_stmt(self, children: list[Any]) -> N.UsePyStmt:
-        module_path = str(children[0])
+    @v_args(meta=True)
+    def use_tool_stmt(self, meta: Meta, children):
+        return nodes.UseTool(path=children[0], span=self._s(meta))
+
+    @v_args(meta=True)
+    def use_py_stmt(self, meta: Meta, children):
+        module = children[0]
         alias = str(children[1]) if len(children) > 1 else None
-        return N.UsePyStmt(module_path=module_path, alias=alias)
+        return nodes.UsePy(module=module, alias=alias, span=self._s(meta))
 
-    def use_memory_stmt(self, children: list[Any]) -> N.UseMemoryStmt:
-        namespace = str(children[0])
-        # children[1] is (args, kwargs) returned by call_args
-        args = children[1][0] if len(children) > 1 and children[1] is not None else ()
-        return N.UseMemoryStmt(namespace=namespace, args=args)
+    @v_args(meta=True)
+    def use_memory_stmt(self, meta: Meta, children):
+        ns = children[0]
+        args, kwargs = children[1] if len(children) > 1 else ((), ())
+        return nodes.UseMemory(namespace=ns, args=args, kwargs=kwargs, span=self._s(meta))
 
-    def import_stmt(self, children: list[Any]) -> Any:
-        return children[0]
+    @v_args(meta=True)
+    def call_args(self, meta: Meta, children):
+        args, kwargs = (), ()
+        if children:
+            for child in children[0]:
+                if isinstance(child, tuple) and len(child) == 2 and child[0] == "__kw__":
+                    kwargs += ((child[1][0], child[1][1]),)
+                else:
+                    args += (child,)
+        return args, kwargs
 
-    # --- Variables ---
-    def let_stmt(self, children: list[Any]) -> N.LetStmt:
-        name = str(children[0])
-        type_ann = children[1] if len(children) == 3 else None
-        value = children[-1]
-        return N.LetStmt(name=name, type_ann=type_ann, value=value)
-
-    def const_stmt(self, children: list[Any]) -> N.ConstStmt:
-        name = str(children[0])
-        type_ann = children[1] if len(children) == 3 else None
-        value = children[-1]
-        return N.ConstStmt(name=name, type_ann=type_ann, value=value)
-
-    def type_annotation(self, children: list[Any]) -> Any:
-        return children[0]
-
-    # --- Types ---
-    def primitive_type(self, children: list[Any]) -> N.PrimitiveType:
-        return N.PrimitiveType(name=str(children[0]))
-
-    def collection_type(self, children: list[Any]) -> Any:
-        kind = str(children[0])
-        if kind == "list":
-            return N.ListType(element=children[1])
-        elif kind == "dict":
-            return N.DictType(key=children[1], value=children[2])
-        elif kind == "tuple":
-            return N.TupleType(elements=tuple(children[1:]))
-        elif kind == "set":
-            return N.AgentSpecificType(name=f"set[{children[1].name}]")
-        return N.PrimitiveType(name="any")
-
-    def agent_type(self, children: list[Any]) -> N.AgentSpecificType:
-        return N.AgentSpecificType(name=str(children[0]))
-
-    # --- Functions ---
-    def fn_decl(self, children: list[Any]) -> N.FnDecl:
-        name = str(children[0])
-        params = ()
-        return_type = None
-        body = ()
-
-        idx = 1
-        if idx < len(children) and isinstance(children[idx], list):
-            params = tuple(children[idx])
-            idx += 1
-        if idx < len(children) and isinstance(
-            children[idx],
-            (N.PrimitiveType, N.ListType, N.DictType, N.TupleType, N.AgentSpecificType),
-        ):
-            return_type = children[idx]
-            idx += 1
-        if idx < len(children):
-            body = children[idx]
-        return N.FnDecl(name=name, params=params, return_type=return_type, body=body)
-
-    def param_list(self, children: list[Any]) -> list[N.Param]:
+    @v_args(meta=True)
+    def arg_list(self, meta: Meta, children):
         return children
 
-    def param(self, children: list[Any]) -> N.Param:
+    def arg(self, children):
+        return children[0]
+
+    def keyword_arg(self, children):
+        return ("__kw__", (str(children[0]), children[1]))
+
+    def positional_arg(self, children):
+        return children[0]
+
+    # -- dotted names --------------------------------------------------------------
+    def dotted_name(self, children):
+        return ".".join(str(c) for c in children)
+
+    # -- variables -----------------------------------------------------------------
+    @v_args(meta=True)
+    def let_stmt(self, meta: Meta, children):
         name = str(children[0])
-        type_ann = None
+        if len(children) == 3:
+            ann, value = children[1], children[2]
+        else:
+            ann, value = None, children[1]
+        return nodes.LetDecl(name=name, type_annotation=ann, value=value, span=self._s(meta))
+
+    @v_args(meta=True)
+    def const_stmt(self, meta: Meta, children):
+        name = str(children[0])
+        if len(children) == 3:
+            ann, value = children[1], children[2]
+        else:
+            ann, value = None, children[1]
+        return nodes.ConstDecl(name=name, type_annotation=ann, value=value, span=self._s(meta))
+
+    def type_annotation(self, children):
+        return children[0]
+
+    # -- type expressions ------------------------------------------------------------
+    @v_args(meta=True)
+    def named_type(self, meta: Meta, children):
+        name = str(children[0])
+        if name not in _PRIMITIVE_TYPES and name not in _AGENT_TYPES:
+            raise self._type_error(name, self._s(meta))
+        return nodes.NamedType(name=name, span=self._s(meta))
+
+    @v_args(meta=True)
+    def generic_type(self, meta: Meta, children):
+        name = str(children[0])
+        if name not in _COLLECTION_TYPES and name not in _AGENT_TYPES:
+            raise self._type_error(name, self._s(meta))
+        if name in ("list", "set"):
+            pass
+        elif name == "tuple":
+            pass
+        else:
+            raise self._type_error(name, self._s(meta))
+        return nodes.GenericType(name=name, args=(children[1],), span=self._s(meta))
+
+    @v_args(meta=True)
+    def multi_generic_type(self, meta: Meta, children):
+        name = str(children[0])
+        args = tuple(children[1:])
+        if name == "dict":
+            if len(args) != 2:
+                raise self._type_error(f"{name} expects 2 type arguments", self._s(meta))
+        elif name == "tuple":
+            pass
+        else:
+            raise self._type_error(name, self._s(meta))
+        return nodes.GenericType(name=name, args=args, span=self._s(meta))
+
+    @v_args(meta=True)
+    def fn_type(self, meta: Meta, children):
+        *params, ret = children
+        return nodes.FnType(params=tuple(params), ret=ret, span=self._s(meta))
+
+    # -- functions --------------------------------------------------------------------
+    @v_args(meta=True)
+    def fn_decl(self, meta: Meta, children):
+        name = str(children[0])
+        rest = children[1:]
+        params: tuple = ()
+        ret = None
+        body = None
+        if rest and isinstance(rest[0], list):
+            params = tuple(rest[0])
+            rest = rest[1:]
+        if rest and isinstance(rest[0], nodes.TypeExpr):
+            ret = rest[0]
+            rest = rest[1:]
+        if rest:
+            body = rest[0]
+        return nodes.FnDecl(name=name, params=params, return_type=ret, body=body, span=self._s(meta))
+
+    def param_list(self, children):
+        return list(children)
+
+    def param(self, children):
+        name = str(children[0])
+        ann = None
         default = None
+        for child in children[1:]:
+            if isinstance(child, nodes.TypeExpr):
+                ann = child
+            else:
+                default = child
+        return nodes.Param(name=name, type_annotation=ann, default=default)
 
-        idx = 1
-        if idx < len(children) and isinstance(
-            children[idx],
-            (N.PrimitiveType, N.ListType, N.DictType, N.TupleType, N.AgentSpecificType),
-        ):
-            type_ann = children[idx]
-            idx += 1
-        if idx < len(children):
-            default = children[idx]
-        return N.Param(name=name, type_ann=type_ann, default=default)
-
-    # --- Agent ---
-    def agent_decl(self, children: list[Any]) -> N.AgentDecl:
+    # -- agents -------------------------------------------------------------------------
+    @v_args(meta=True)
+    def agent_decl(self, meta: Meta, children):
         name = str(children[0])
-        body_node = children[1]
-        return N.AgentDecl(
-            name=name,
-            goal=body_node.get("goal"),
-            inputs=body_node.get("inputs", ()),
-            outputs=body_node.get("outputs", ()),
-            imports=body_node.get("imports", ()),
-            policy=body_node.get("policy"),
-            plan=body_node.get("plan"),
+        body_items = children[1] if len(children) > 1 else []
+        goal = None
+        inputs: tuple = ()
+        outputs: tuple = ()
+        imports: list = []
+        policies: list = []
+        plan = None
+        criteria: list = []
+        rewriters: list = []
+        for item in body_items:
+            if isinstance(item, nodes.Statement) and type(item).__name__ == "_GoalDecl":
+                goal = item.goal
+            elif isinstance(item, _GoalMarker):
+                goal = item.goal
+            elif isinstance(item, _FieldsMarker):
+                if item.kind == "inputs":
+                    inputs = tuple(item.fields)
+                else:
+                    outputs = tuple(item.fields)
+            elif isinstance(item, (nodes.UseTool, nodes.UsePy, nodes.UseMemory)):
+                imports.append(item)
+            elif isinstance(item, nodes.CriteriaDecl):
+                criteria.append(item)
+            elif isinstance(item, nodes.RewriterDecl):
+                rewriters.append(item)
+            elif isinstance(item, nodes.PolicyStmt):
+                policies.extend(item.entries)
+            elif isinstance(item, nodes.Block):
+                plan = item
+            elif isinstance(item, list):
+                # plan_block arrives as list of statements
+                plan = nodes.Block(statements=tuple(item), span=self._s(meta))
+        return nodes.AgentDecl(
+            name=name, goal=goal, inputs=inputs, outputs=outputs,
+            imports=tuple(imports), policies=tuple(policies), plan=plan,
+            criteria=tuple(criteria), rewriters=tuple(rewriters),
+            span=self._s(meta),
         )
 
-    def agent_body(self, children: list[Any]) -> dict[str, Any]:
-        result: dict[str, Any] = {
-            "goal": None,
-            "inputs": (),
-            "outputs": (),
-            "imports": [],
-            "policy": None,
-            "plan": None,
-        }
-        for child in children:
-            if (
-                isinstance(child, tuple)
-                and len(child) > 0
-                and isinstance(child[0], N.TypedField)
-            ):
-                # inputs/outputs
-                pass
-            elif isinstance(child, N.PolicyBlock):
-                result["policy"] = child
-            elif isinstance(child, N.PlanBlock):
-                result["plan"] = child
-            elif isinstance(child, (N.UseToolStmt, N.UsePyStmt, N.UseMemoryStmt)):
-                result["imports"].append(child)
-            elif isinstance(child, str):
-                result["goal"] = child
-            elif isinstance(child, dict):
-                # structure of inputs / outputs
-                if "inputs" in child:
-                    result["inputs"] = child["inputs"]
-                if "outputs" in child:
-                    result["outputs"] = child["outputs"]
-        result["imports"] = tuple(result["imports"])
-        return result
+    def agent_body(self, children):
+        return list(children)
 
-    def goal_decl(self, children: list[Any]) -> str:
-        return str(children[0]).strip("\"'")
+    @v_args(meta=True)
+    def goal_decl(self, meta: Meta, children):
+        return _GoalMarker(goal=_unquote(str(children[0])))
 
-    def inputs_decl(self, children: list[Any]) -> dict[str, Any]:
-        return {"inputs": tuple(children)}
+    @v_args(meta=True)
+    def inputs_decl(self, meta: Meta, children):
+        return _FieldsMarker(kind="inputs", fields=list(children))
 
-    def outputs_decl(self, children: list[Any]) -> dict[str, Any]:
-        return {"outputs": tuple(children)}
+    @v_args(meta=True)
+    def outputs_decl(self, meta: Meta, children):
+        return _FieldsMarker(kind="outputs", fields=list(children))
 
-    def typed_field(self, children: list[Any]) -> N.TypedField:
-        return N.TypedField(name=str(children[0]), type_ann=children[1])
+    def typed_field(self, children):
+        return nodes.TypedField(name=str(children[0]), type_annotation=children[1])
 
-    def policy_block(self, children: list[Any]) -> N.PolicyBlock:
-        return N.PolicyBlock(entries=tuple(children))
+    @v_args(meta=True)
+    def criteria_decl(self, meta: Meta, children):
+        return nodes.CriteriaDecl(name=str(children[0]), criteria=tuple(children[1:]), span=self._s(meta))
 
-    def policy_entry(self, children: list[Any]) -> N.PolicyEntry:
+    @v_args(meta=True)
+    def rewriter_decl(self, meta: Meta, children):
+        return nodes.RewriterDecl(name=str(children[0]), body=children[1], span=self._s(meta))
+
+    @v_args(meta=True)
+    def policy_block(self, meta: Meta, children):
+        return nodes.PolicyStmt(entries=tuple(children), span=self._s(meta))
+
+    def policy_stmt(self, children):
+        return children[0]
+
+    def policy_entry(self, children):
         key = str(children[0])
-        val = children[1]
-        if isinstance(val, lark.Token):
-            if val.type == "INT":
-                val = int(val)
-            elif val.type == "FLOAT":
-                val = float(val)
-            elif val.type == "BOOL_LIT":
-                val = True if val.value == "true" else False
-            elif val.type == "STRING":
-                val = val.value.strip("\"'")
+        raw = children[1]
+        if isinstance(raw, Token):
+            text = str(raw)
+            if raw.type == "STRING":
+                value: Any = _unquote(text)
+            elif raw.type == "INT":
+                value = int(text.replace("_", ""))
+            elif raw.type == "FLOAT":
+                value = float(text.replace("_", ""))
+            elif raw.type == "BOOL_LIT":
+                value = text == "true"
+            elif raw.type == "NONE_LIT":
+                value = None
             else:
-                val = str(val)
-        elif isinstance(val, str):
-            val = val.strip("\"'")
-            if val.lower() == "true":
-                val = True
-            elif val.lower() == "false":
-                val = False
-        elif hasattr(val, "value"):
-            val = val.value
-        return N.PolicyEntry(key=key, value=val)
+                value = text
+        else:
+            value = raw  # dotted_name string
+        return nodes.PolicyEntry(key=key, value=value)
 
-    def plan_block(self, children: list[Any]) -> N.PlanBlock:
-        return N.PlanBlock(body=tuple(children))
+    def plan_block(self, children):
+        return list(children)
 
-    # --- Control Flow ---
-    def return_stmt(self, children: list[Any]) -> N.ReturnStmt:
-        val = children[0] if children else None
-        return N.ReturnStmt(value=val)
+    # -- control flow ----------------------------------------------------------------------
+    @v_args(meta=True)
+    def return_stmt(self, meta: Meta, children):
+        return nodes.ReturnStmt(value=children[0] if children else None, span=self._s(meta))
 
-    def if_stmt(self, children: list[Any]) -> N.IfStmt:
+    @v_args(meta=True)
+    def break_stmt(self, meta: Meta, children):
+        return nodes.BreakStmt(span=self._s(meta))
+
+    @v_args(meta=True)
+    def continue_stmt(self, meta: Meta, children):
+        return nodes.ContinueStmt(span=self._s(meta))
+
+    @v_args(meta=True)
+    def if_stmt(self, meta: Meta, children):
         condition = children[0]
-        then_branch = children[1]
-        else_branch = None
-        if len(children) > 2:
-            eb = children[2]
-            if isinstance(eb, N.IfStmt):
-                else_branch = (eb,)
-            else:
-                else_branch = eb
-        return N.IfStmt(
-            condition=condition, then_branch=then_branch, else_branch=else_branch
-        )
+        then_block = children[1]
+        else_block = children[2] if len(children) > 2 else None
+        return nodes.IfStmt(condition=condition, then_block=then_block, else_block=else_block, span=self._s(meta))
 
-    def for_stmt(self, children: list[Any]) -> N.ForStmt:
-        return N.ForStmt(var=str(children[0]), iterable=children[1], body=children[2])
+    @v_args(meta=True)
+    def for_stmt(self, meta: Meta, children):
+        return nodes.ForStmt(var=str(children[0]), iterable=children[1], body=children[2], span=self._s(meta))
 
-    def while_stmt(self, children: list[Any]) -> N.WhileStmt:
-        return N.WhileStmt(condition=children[0], body=children[1])
+    @v_args(meta=True)
+    def while_stmt(self, meta: Meta, children):
+        return nodes.WhileStmt(condition=children[0], body=children[1], span=self._s(meta))
 
-    # --- Agent Primitives ---
-    def approve_stmt(self, children: list[Any]) -> N.ApproveStmt:
-        return N.ApproveStmt(target=str(children[0]), action=str(children[1]))
+    # -- agent primitives ---------------------------------------------------------------------
+    @v_args(meta=True)
+    def approve_stmt(self, meta: Meta, children):
+        return nodes.ApproveStmt(tool_path=children[0], action=str(children[1]), span=self._s(meta))
 
-    def remember_stmt(self, children: list[Any]) -> N.RememberStmt:
-        return N.RememberStmt(value=children[0], namespace=str(children[1]))
+    @v_args(meta=True)
+    def remember_stmt(self, meta: Meta, children):
+        return nodes.RememberStmt(value=children[0], namespace=children[1], span=self._s(meta))
 
-    def forget_stmt(self, children: list[Any]) -> N.ForgetStmt:
-        return N.ForgetStmt(key=children[0], namespace=str(children[1]))
+    @v_args(meta=True)
+    def forget_stmt(self, meta: Meta, children):
+        return nodes.ForgetStmt(value=children[0], namespace=children[1], span=self._s(meta))
 
-    def recall_stmt(self, children: list[Any]) -> N.RecallStmt:
-        var_name = self._expr_to_target_str(children[0])
-        return N.RecallStmt(
-            var=var_name,
-            query=str(children[1]).strip("\"'"),
-            namespace=str(children[2]),
-        )
+    @v_args(meta=True)
+    def guard_stmt(self, meta: Meta, children):
+        return nodes.GuardStmt(condition=children[0], span=self._s(meta))
 
-    def guard_stmt(self, children: list[Any]) -> N.GuardStmt:
-        return N.GuardStmt(condition=children[0])
-
-    def retry_stmt(self, children: list[Any]) -> N.RetryStmt:
-        count = int(children[0])
+    @v_args(meta=True)
+    def retry_stmt(self, meta: Meta, children):
+        count = int(str(children[0]))
         backoff = str(children[1])
         body = children[2]
-        catch_blk = children[3] if len(children) > 3 else None
-        return N.RetryStmt(
-            count=count, backoff=backoff, body=body, catch_block=catch_blk
+        catch_name, catch_body = None, None
+        if len(children) > 3:
+            catch_name, catch_body = children[3]
+        return nodes.RetryStmt(
+            count=count, backoff=backoff, body=body,
+            catch_name=catch_name, catch_body=catch_body, span=self._s(meta),
         )
 
-    def catch_block(self, children: list[Any]) -> N.CatchBlock:
-        return N.CatchBlock(var=str(children[0]), body=children[1])
+    def catch_block(self, children):
+        return (str(children[0]), children[1])
 
-    def eval_stmt(self, children: list[Any]) -> N.EvalStmt:
+    @v_args(meta=True)
+    def eval_rubric(self, meta: Meta, children):
         subject = str(children[0])
         rubric = str(children[1])
         criteria = tuple(children[2:])
-        return N.EvalStmt(subject=subject, rubric=rubric, criteria=criteria)
+        return nodes.EvalStmt(subject=subject, rubric=rubric, criteria=criteria, span=self._s(meta))
 
-    def eval_criterion(self, children: list[Any]) -> N.EvalCriterion:
-        return N.EvalCriterion(
-            metric=str(children[0]), op=str(children[1]), threshold=children[2]
-        )
+    @v_args(meta=True)
+    def eval_self(self, meta: Meta, children):
+        subject = str(children[0])
+        rubric = str(children[1])
+        rewriter = str(children[2]) if len(children) > 2 else None
+        return nodes.EvalStmt(subject=subject, rubric=rubric, criteria=(), rewriter=rewriter, span=self._s(meta))
 
-    # --- Expressions ---
-    def or_expr(self, children: list[Any]) -> Any:
-        if len(children) == 1:
-            return children[0]
-        left = children[0]
-        for right in children[1:]:
-            span = getattr(left, "span", None)
-            left = N.BinaryOp(op="or", left=left, right=right, span=span)
-        return left
+    @v_args(meta=True)
+    def eval_criterion(self, meta: Meta, children):
+        name = str(children[0])
+        if len(children) == 3:
+            op = str(children[1])
+            value = children[2]
+        else:
+            op = ":"
+            value = children[1]
+        return nodes.EvalCriterion(name=name, op=op, value=value, span=self._s(meta))
 
-    def and_expr(self, children: list[Any]) -> Any:
-        if len(children) == 1:
-            return children[0]
-        left = children[0]
-        for right in children[1:]:
-            span = getattr(left, "span", None)
-            left = N.BinaryOp(op="and", left=left, right=right, span=span)
-        return left
+    # -- expressions ---------------------------------------------------------------------------
+    @v_args(meta=True)
+    def or_op(self, meta: Meta, children):
+        return nodes.BinaryOp(left=children[0], op="or", right=children[1], span=self._s(meta))
 
-    def unary_not(self, children: list[Any]) -> N.UnaryOp:
-        return N.UnaryOp(op="not", operand=children[0])
+    @v_args(meta=True)
+    def and_op(self, meta: Meta, children):
+        return nodes.BinaryOp(left=children[0], op="and", right=children[1], span=self._s(meta))
 
-    def comparison(self, children: list[Any]) -> Any:
-        return self._fold_binary(children)
+    @v_args(meta=True)
+    def unary_not(self, meta: Meta, children):
+        return nodes.UnaryOp(op="not", operand=children[0], span=self._s(meta))
 
-    def add_expr(self, children: list[Any]) -> Any:
-        return self._fold_binary(children)
+    @v_args(meta=True)
+    def comparison_op(self, meta: Meta, children):
+        return nodes.BinaryOp(left=children[0], op=str(children[1]), right=children[2], span=self._s(meta))
 
-    def mul_expr(self, children: list[Any]) -> Any:
-        return self._fold_binary(children)
+    @v_args(meta=True)
+    def add_op(self, meta: Meta, children):
+        return nodes.BinaryOp(left=children[0], op=str(children[1]), right=children[2], span=self._s(meta))
 
-    def unary_minus(self, children: list[Any]) -> N.UnaryOp:
-        return N.UnaryOp(op=str(children[0]), operand=children[1])
+    @v_args(meta=True)
+    def mul_op(self, meta: Meta, children):
+        return nodes.BinaryOp(left=children[0], op=str(children[1]), right=children[2], span=self._s(meta))
 
-    def power_expr(self, children: list[Any]) -> Any:
-        if len(children) == 1:
-            return children[0]
-        return N.BinaryOp(op="**", left=children[0], right=children[1])
+    @v_args(meta=True)
+    def unary_signed(self, meta: Meta, children):
+        return nodes.UnaryOp(op=str(children[0]), operand=children[1], span=self._s(meta))
 
-    def call_expr(self, children: list[Any]) -> N.CallExpr:
-        callee = children[0]
-        args, kwargs = (
-            children[1] if len(children) > 1 and children[1] is not None else ((), ())
-        )
-        return N.CallExpr(callee=callee, args=args, kwargs=kwargs)
-
-    def member_expr(self, children: list[Any]) -> N.MemberExpr:
-        return N.MemberExpr(obj=children[0], attr=str(children[1]))
-
-    def index_expr(self, children: list[Any]) -> N.IndexExpr:
-        return N.IndexExpr(obj=children[0], index=children[1])
-
-    def method_chain(self, children: list[Any]) -> N.CallExpr:
-        obj = children[0]
-        method_name = str(children[1])
-        args, kwargs = (
-            children[2] if len(children) > 2 and children[2] is not None else ((), ())
-        )
-        return N.CallExpr(
-            callee=N.MemberExpr(obj=obj, attr=method_name), args=args, kwargs=kwargs
-        )
-
-    def arg_list(
-        self, children: list[Any]
-    ) -> tuple[tuple[Any, ...], tuple[tuple[str, Any], ...]]:
-        args = []
-        kwargs = []
-        for child in children:
-            if (
-                isinstance(child, tuple)
-                and len(child) == 2
-                and isinstance(child[0], str)
-            ):
-                kwargs.append(child)
-            else:
-                args.append(child)
-        return tuple(args), tuple(kwargs)
-
-    def keyword_arg(self, children: list[Any]) -> tuple[str, Any]:
-        return str(children[0]), children[1]
-
-    def positional_arg(self, children: list[Any]) -> Any:
+    def expr_fragment(self, children):
         return children[0]
 
-    def int_literal(self, children: list[Any]) -> N.IntLiteral:
-        return N.IntLiteral(value=int(children[0]))
-
-    def float_literal(self, children: list[Any]) -> N.FloatLiteral:
-        return N.FloatLiteral(value=float(children[0]))
-
-    def string_literal(self, children: list[Any]) -> N.StringLiteral:
-        val = str(children[0])
-        val = val[1:-1]  # strip quote chars
-        # Handle escapes simple replacements
-        val = (
-            val.replace('\\"', '"')
-            .replace("\\'", "'")
-            .replace("\\n", "\n")
-            .replace("\\t", "\t")
-        )
-        return N.StringLiteral(value=val)
-
-    def bool_literal(self, children: list[Any]) -> N.BoolLiteral:
-        return N.BoolLiteral(value=True if str(children[0]) == "true" else False)
-
-    def none_literal(self, children: list[Any]) -> N.NoneLiteral:
-        return N.NoneLiteral()
-
-    def identifier(self, children: list[Any]) -> N.Identifier:
-        return N.Identifier(name=str(children[0]))
-
-    def list_expr(self, children: list[Any]) -> N.ListExpr:
-        return N.ListExpr(elements=tuple(children))
-
-    def dict_expr(self, children: list[Any]) -> N.DictExpr:
-        return N.DictExpr(pairs=tuple(children))
-
-    def kv_pair(self, children: list[Any]) -> tuple[Any, Any]:
-        return children[0], children[1]
-
-    def expr_stmt(self, children: list[Any]) -> Any:
-        if isinstance(children[0], N.AssignStmt):
+    @v_args(meta=True)
+    def power_expr(self, meta: Meta, children):
+        if len(children) == 1:
             return children[0]
-        return N.ExprStmt(expr=children[0])
+        return nodes.BinaryOp(left=children[0], op="**", right=children[1], span=self._s(meta))
 
-    def _expr_to_target_str(self, expr: N.Expr) -> str:
-        if isinstance(expr, N.Identifier):
-            return expr.name
-        if isinstance(expr, N.MemberExpr):
-            return f"{self._expr_to_target_str(expr.obj)}.{expr.attr}"
-        if isinstance(expr, N.IndexExpr):
-            return f"{self._expr_to_target_str(expr.obj)}[{self._expr_to_target_str(expr.index)}]"
-        if isinstance(expr, N.IntLiteral):
-            return str(expr.value)
-        if isinstance(expr, N.FloatLiteral):
-            return str(expr.value)
-        if isinstance(expr, N.StringLiteral):
-            return f'"{expr.value}"'
-        if isinstance(expr, N.BoolLiteral):
-            return "true" if expr.value else "false"
-        if isinstance(expr, N.NoneLiteral):
-            return "none"
-        raise ValueError(f"Invalid assignment target expression type: {type(expr)}")
+    @v_args(meta=True)
+    def call_expr(self, meta: Meta, children):
+        callee = children[0]
+        args: tuple = ()
+        kwargs: tuple = ()
+        for child in children[1:]:
+            if isinstance(child, list):
+                for a in child:
+                    if isinstance(a, tuple) and len(a) == 2 and a[0] == "__kw__":
+                        kwargs += (a[1],)
+                    else:
+                        args += (a,)
+        return nodes.CallExpr(callee=callee, args=args, kwargs=kwargs, span=self._s(meta))
 
-    def assignment(self, children: list[Any]) -> N.AssignStmt:
-        target_str = self._expr_to_target_str(children[0])
-        return N.AssignStmt(target=target_str, value=children[1])
+    @v_args(meta=True)
+    def member_expr(self, meta: Meta, children):
+        return nodes.MemberExpr(object=children[0], name=str(children[1]), span=self._s(meta))
 
-    def dotted_name(self, children: list[Any]) -> str:
-        return ".".join(str(c) for c in children)
+    @v_args(meta=True)
+    def index_expr(self, meta: Meta, children):
+        return nodes.IndexExpr(object=children[0], index=children[1], span=self._s(meta))
 
-    def call_args(self, children: list[Any]) -> Any:
-        return children[0] if children else ((), ())
+    # -- primaries --------------------------------------------------------------------------------
+    @v_args(meta=True)
+    def int_literal(self, meta: Meta, children):
+        return nodes.IntLiteral(value=int(str(children[0]).replace("_", "")), span=self._s(meta))
 
-    def block(self, children: list[Any]) -> tuple[N.Statement, ...]:
-        return tuple(children)
+    @v_args(meta=True)
+    def float_literal(self, meta: Meta, children):
+        return nodes.FloatLiteral(value=float(str(children[0]).replace("_", "")), span=self._s(meta))
+
+    @v_args(meta=True)
+    def string_literal(self, meta: Meta, children):
+        raw = _unquote(str(children[0]))
+        parts = self._interpolate(raw, self._s(meta))
+        if parts is None:
+            val = raw.replace("{{", "{").replace("}}", "}")
+            return nodes.StringLiteral(value=val, span=self._s(meta))
+        return nodes.InterpString(parts=tuple(parts), span=self._s(meta))
+
+    @v_args(meta=True)
+    def bool_literal(self, meta: Meta, children):
+        return nodes.BoolLiteral(value=str(children[0]) == "true", span=self._s(meta))
+
+    @v_args(meta=True)
+    def none_literal(self, meta: Meta, children):
+        return nodes.NoneLiteral(span=self._s(meta))
+
+    @v_args(meta=True)
+    def identifier(self, meta: Meta, children):
+        return nodes.Identifier(name=str(children[0]), span=self._s(meta))
+
+    @v_args(meta=True)
+    def recall_expr(self, meta: Meta, children):
+        query = _unquote(str(children[0]))
+        return nodes.RecallExpr(query=query, namespace=children[1], span=self._s(meta))
+
+    @v_args(meta=True)
+    def list_expr(self, meta: Meta, children):
+        return nodes.ListExpr(elements=tuple(children), span=self._s(meta))
+
+    @v_args(meta=True)
+    def dict_expr(self, meta: Meta, children):
+        pairs = tuple(children)
+        return nodes.DictExpr(pairs=pairs, span=self._s(meta))
+
+    def kv_pair(self, children):
+        return (children[0], children[1])
+
+    # -- expression statements -----------------------------------------------------------------------
+    @v_args(meta=True)
+    def expr_stmt(self, meta: Meta, children):
+        if len(children) == 1:
+            return nodes.ExprStmt(expr=children[0], span=self._s(meta))
+        target, value = children[0], children[1]
+        if not isinstance(target, (nodes.Identifier, nodes.MemberExpr, nodes.IndexExpr)):
+            raise InthonParseError(
+                "Invalid assignment target",
+                span=self._s(meta),
+                hint="Assignment targets must be a name, a member (a.b), or an index (a[i]).",
+                source_line=self._line_at(self._s(meta)),
+            )
+        if isinstance(value, nodes.RecallExpr) and isinstance(target, nodes.Identifier):
+            return nodes.RecallStmt(target=target, value=value, span=self._s(meta))
+        return nodes.AssignStmt(target=target, value=value, span=self._s(meta))
+
+    # -- string interpolation ---------------------------------------------------------------------------
+    def _interpolate(self, raw: str, span: Span) -> Optional[list]:
+        """Split *raw* into literal/expr parts; None if no interpolation."""
+        if "{" not in raw and "}" not in raw:
+            return None
+        parts: list = []
+        buf: list[str] = []
+        i = 0
+        col_offset = 1  # opening quote
+        found = False
+        while i < len(raw):
+            ch = raw[i]
+            if ch == "{" and i + 1 < len(raw) and raw[i + 1] == "{":
+                buf.append("{")
+                i += 2
+                continue
+            if ch == "}" and i + 1 < len(raw) and raw[i + 1] == "}":
+                buf.append("}")
+                i += 2
+                continue
+            if ch == "{":
+                found = True
+                depth = 1
+                j = i + 1
+                inner: list[str] = []
+                in_str: Optional[str] = None
+                while j < len(raw) and depth > 0:
+                    c = raw[j]
+                    if in_str:
+                        if c == in_str:
+                            in_str = None
+                        inner.append(c)
+                    elif c in "\"'":
+                        in_str = c
+                        inner.append(c)
+                    elif c == "{":
+                        depth += 1
+                        inner.append(c)
+                    elif c == "}":
+                        depth -= 1
+                        if depth > 0:
+                            inner.append(c)
+                    else:
+                        inner.append(c)
+                    j += 1
+                if depth != 0:
+                    raise InthonParseError(
+                        "Unterminated '{' in string interpolation",
+                        span=span,
+                        hint="Close the interpolation with '}', or escape a literal brace as '{{'.",
+                        source_line=self._line_at(span),
+                    )
+                if buf:
+                    parts.append("".join(buf))
+                    buf = []
+                expr_src = "".join(inner).strip()
+                if not expr_src:
+                    raise InthonParseError(
+                        "Empty interpolation '{}'",
+                        span=span,
+                        hint="Put an expression inside the braces, or escape a literal brace as '{{'.",
+                        source_line=self._line_at(span),
+                    )
+                parts.append(self._parse_inner_expr(expr_src, span, i))
+                i = j
+                continue
+            if ch == "}":
+                raise InthonParseError(
+                    "Unmatched '}' in string literal",
+                    span=span,
+                    hint="Escape a literal brace as '}}'.",
+                    source_line=self._line_at(span),
+                )
+            buf.append(ch)
+            i += 1
+        if buf:
+            parts.append("".join(buf))
+        return parts if found else None
+
+    def _parse_inner_expr(self, src: str, span: Span, offset: int) -> nodes.Expression:
+        from .parser import parse_expression_fragment
+
+        try:
+            expr = parse_expression_fragment(src, self.filename, span)
+            return _rebase_spans(expr, span, offset + 1)
+        except InthonParseError as exc:
+            raise InthonParseError(
+                f"Invalid expression in string interpolation: {exc.message}",
+                span=span,
+                hint="Interpolations accept any INTHON expression, e.g. \"total: {a + b}\".",
+                source_line=self._line_at(span),
+            )
+
+
+def _rebase_spans(node, span: Span, col_base: int):
+    """Rebase a fragment AST's spans onto the host string's position."""
+    import dataclasses
+
+    if isinstance(node, (list, tuple)):
+        return type(node)(_rebase_spans(x, span, col_base) for x in node)
+    if not isinstance(node, nodes.Node):
+        return node
+    updates = {}
+    for f in dataclasses.fields(node):
+        value = getattr(node, f.name)
+        if f.name == "span":
+            if value is not None:
+                updates[f.name] = Span(
+                    filename=span.filename,
+                    line=span.line,
+                    col=span.col + col_base + (value.col - 1),
+                    end_line=span.line,
+                    end_col=span.col + col_base + (value.end_col - 1),
+                )
+        elif isinstance(value, (nodes.Node, list, tuple)):
+            updates[f.name] = _rebase_spans(value, span, col_base)
+    if updates:
+        return dataclasses.replace(node, **updates)
+    return node
+
+
+class _GoalMarker:
+    def __init__(self, goal: str):
+        self.goal = goal
+
+
+class _FieldsMarker:
+    def __init__(self, kind: str, fields: list):
+        self.kind = kind
+        self.fields = fields
+
+
+def _unquote(text: str) -> str:
+    """Strip quotes and process escape sequences."""
+    if len(text) >= 2 and text[0] in "\"'" and text[-1] == text[0]:
+        body = text[1:-1]
+    else:
+        body = text
+    out: list[str] = []
+    i = 0
+    escapes = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "'": "'", "0": "\0"}
+    while i < len(body):
+        ch = body[i]
+        if ch == "\\" and i + 1 < len(body):
+            nxt = body[i + 1]
+            if nxt in escapes:
+                out.append(escapes[nxt])
+                i += 2
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)

@@ -44,7 +44,7 @@ from ..runtime.values import (
 from ..policy.model import Capability
 from .code_object import CodeObject
 from .frame import Frame, RetryState
-from .opcodes import OpCode
+from .old_opcodes import OpCode
 
 _SENTINEL = object()  # used to detect "no default"
 
@@ -661,9 +661,8 @@ class InthonVM:
             except Exception:
                 return {}
         ctx.sandbox.check_budget()
-        ctx.policy.check_tool(tool_path)
-
         spec = ctx.tools.get_spec(tool_path)
+        ctx.policy.check_tool(spec)
         for eff in spec.side_effects:
             if eff == "network":
                 ctx.policy.check_capability(Capability.NETWORK)

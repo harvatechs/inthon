@@ -1,8 +1,14 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable, Any
-from ..runtime.errors import ApprovalDeniedError
+"""Approval gateway: human-in-the-loop gates (spec §approve)."""
 
+from __future__ import annotations
+
+import sys
+from typing import Callable, Optional
+
+from ..errors import ApprovalDeniedError, Span
+
+
+from dataclasses import dataclass
 
 @dataclass
 class ApprovalRequest:
@@ -13,40 +19,73 @@ class ApprovalRequest:
 
 
 class ApprovalGate:
+    """Evaluates `approve <subject> before <action>` requests.
+
+    The handler receives (subject, action, details) and returns True/False.
+    Host applications inject their own handler (UI prompt, Slack callback,
+    auto-approver for tests).  The default handler prompts on the terminal
+    when interactive, and denies otherwise (fail-closed).
     """
-    Synchronous approval gate for v0.1.
-    For headless execution (such as testing), an auto-approve callback handler can be registered.
-    """
 
-    def __init__(self) -> None:
-        self._handler: Callable[[ApprovalRequest], bool] | None = None
+    def __init__(
+        self,
+        handler: Optional[Callable] = None,
+        tracer=None,
+        auto_approve: bool = False,
+    ):
+        self.handler = handler
+        self.tracer = tracer
+        self.auto_approve = auto_approve
 
-    def set_handler(self, handler: Callable[[ApprovalRequest], bool]) -> None:
-        """Register a custom approval handler (e.g. web UI, CLI prompt, API call)."""
-        self._handler = handler
+    def set_handler(self, handler: Callable) -> None:
+        self.handler = handler
 
-    def request(self, target: str, action: str, context: Any) -> None:
-        req = ApprovalRequest(
-            target=target,
-            action=action,
-            context_summary=f"Agent '{context.current_agent}' wants to {action} on {target}",
-        )
-        if self._handler is None:
-            approved = self._cli_prompt(req)
+    def request(self, subject: str, action: str, details: dict, span: Optional[Span] = None) -> bool:
+        if self.tracer is not None:
+            self.tracer.emit("approval_requested", span, subject=subject, action=action)
+
+        if self.handler is not None:
+            import inspect
+            try:
+                sig = inspect.signature(self.handler)
+                params_count = len(sig.parameters)
+            except Exception:
+                params_count = 3
+            if params_count == 1:
+                req = ApprovalRequest(
+                    target=subject,
+                    action=action,
+                    context_summary=details.get("summary", f"wants to {action} on {subject}"),
+                )
+                approved = bool(self.handler(req))
+            else:
+                approved = bool(self.handler(subject, action, details))
+        elif self.auto_approve:
+            approved = True
         else:
-            approved = self._handler(req)
+            approved = self._terminal_prompt(subject, action, details)
+
+        if self.tracer is not None:
+            self.tracer.emit(
+                "approval_granted" if approved else "approval_denied",
+                span,
+                subject=subject,
+                action=action,
+            )
         if not approved:
             raise ApprovalDeniedError(
-                f"INTHON_POLICY_002: Human denied approval for '{action}' on '{target}'"
+                f"INTHON_POLICY_002: Human denied approval for '{action}' on '{subject}'",
+                span=span,
+                hint="Re-run with an approval handler, --yes, or wrap in retry/catch.",
             )
+        return True
 
-    def _cli_prompt(self, req: ApprovalRequest) -> bool:
-        print("\n[INTHON APPROVAL REQUIRED]")
-        print(f"  Action: {req.action} -> {req.target}")
-        print(f"  Context: {req.context_summary}")
-        try:
-            response = input("  Approve? [y/N]: ").strip().lower()
-            return response in ("y", "yes")
-        except (IOError, EOFError):
-            # Fallback for headless environments without stdin
-            return False
+    def _terminal_prompt(self, subject: str, action: str, details: dict) -> bool:
+        if not sys.stdin.isatty():
+            return False  # fail-closed when nobody can answer
+        print(f"\n[inthon] approval requested: {subject} → {action}")
+        for key, value in details.items():
+            print(f"    {key}: {value}")
+        answer = input("Approve? [y/N] ").strip().lower()
+        return answer in ("y", "yes")
+

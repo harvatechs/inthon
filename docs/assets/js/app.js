@@ -437,9 +437,99 @@ def run_inthon(code_str):
     }
   }
 
+  // Theme Toggle Management
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  
+  // Apply initial theme from localStorage
+  const currentTheme = localStorage.getItem('inthon-theme') || 'light';
+  if (currentTheme === 'dark') {
+    document.documentElement.classList.add('dark-theme');
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark-theme');
+      localStorage.setItem('inthon-theme', isDark ? 'dark' : 'light');
+    });
+  }
+
   // Guide Sidebar Toggle Logic
   const sidebarItems = document.querySelectorAll('.sidebar-item');
   const guideSections = document.querySelectorAll('.guide-section');
+  const tocList = document.getElementById('toc-list');
+  const mainPane = document.querySelector('.guide-content');
+
+  function generateTOC() {
+    if (!tocList || !mainPane) return;
+    tocList.innerHTML = '';
+    
+    // Find active section
+    const activeSection = document.querySelector('.guide-section.active');
+    if (!activeSection) return;
+
+    const headings = activeSection.querySelectorAll('h2, h3');
+    if (headings.length === 0) {
+      const emptyMsg = document.createElement('li');
+      emptyMsg.className = 'toc-item';
+      emptyMsg.textContent = 'On this page';
+      emptyMsg.style.cursor = 'default';
+      emptyMsg.style.color = 'var(--text-muted)';
+      tocList.appendChild(emptyMsg);
+      return;
+    }
+
+    headings.forEach((heading, index) => {
+      // Ensure heading has an ID
+      if (!heading.id) {
+        heading.id = 'guide-heading-' + index;
+      }
+      
+      const item = document.createElement('li');
+      item.className = 'toc-item' + (heading.tagName === 'H3' ? ' depth-h3' : ' depth-h2');
+      item.textContent = heading.textContent;
+      item.setAttribute('data-target', heading.id);
+      
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        heading.scrollIntoView({ behavior: 'smooth' });
+        
+        // Highlight active TOC item
+        document.querySelectorAll('.toc-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+      });
+      
+      tocList.appendChild(item);
+    });
+    
+    setupTOCScrollObserver(headings);
+  }
+
+  function setupTOCScrollObserver(headings) {
+    if (headings.length === 0) return;
+    
+    const observerOptions = {
+      root: mainPane,
+      rootMargin: '0px 0px -60% 0px',
+      threshold: 0
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          document.querySelectorAll('.toc-item').forEach(item => {
+            if (item.getAttribute('data-target') === id) {
+              item.classList.add('active');
+            } else {
+              item.classList.remove('active');
+            }
+          });
+        }
+      });
+    }, observerOptions);
+    
+    headings.forEach(heading => observer.observe(heading));
+  }
 
   if (sidebarItems.length > 0) {
     sidebarItems.forEach(item => {
@@ -460,10 +550,75 @@ def run_inthon(code_str):
         });
 
         // Scroll to top of reading pane
-        const mainPane = document.querySelector('.guide-content');
         if (mainPane) {
           mainPane.scrollTop = 0;
         }
+        
+        // Re-generate Table of Contents
+        generateTOC();
+      });
+    });
+  }
+
+  // Sidebar Search Filter Logic
+  const searchInput = document.getElementById('sidebar-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      sidebarItems.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(query)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  }
+
+  // Dynamically wrap pre code blocks with headers and copy buttons
+  function wrapCodeBlocks() {
+    const preBlocks = document.querySelectorAll('.guide-content pre, .spec-section pre');
+    preBlocks.forEach((pre) => {
+      if (pre.parentNode.classList.contains('code-wrapper')) return;
+      
+      const code = pre.querySelector('code');
+      if (!code) return;
+      
+      let lang = 'code';
+      const classes = code.className.split(' ');
+      classes.forEach((c) => {
+        if (c.startsWith('language-')) {
+          lang = c.replace('language-', '');
+        }
+      });
+      
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-wrapper';
+      
+      const header = document.createElement('div');
+      header.className = 'code-header';
+      header.innerHTML = `
+        <span>${lang.toUpperCase()}</span>
+        <button class="btn-copy-code" title="Copy code">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        </button>
+      `;
+      
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(header);
+      wrapper.appendChild(pre);
+      
+      const copyBtn = header.querySelector('.btn-copy-code');
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(code.textContent.trim()).then(() => {
+          copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+          copyBtn.style.color = '#28a745';
+          setTimeout(() => {
+            copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+            copyBtn.style.color = '';
+          }, 2000);
+        });
       });
     });
   }
@@ -515,9 +670,7 @@ def run_inthon(code_str):
   const installPanes = document.querySelectorAll('.install-pane');
   toggleButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      // Deactivate all buttons
       toggleButtons.forEach(b => b.classList.remove('active'));
-      // Activate clicked button
       btn.classList.add('active');
 
       const targetTab = btn.getAttribute('data-tab');
@@ -530,5 +683,9 @@ def run_inthon(code_str):
       });
     });
   });
+
+  // Initialize Code Blocks & TOC
+  wrapCodeBlocks();
+  generateTOC();
 });
 

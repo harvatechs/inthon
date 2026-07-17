@@ -1,150 +1,193 @@
-// Lark EBNF grammar for INTHON v0.1
+// ============================================================================
+// INTHON Grammar v1.0 — canonical, Lark LALR(1), zero conflicts.
+//
+// Single source of truth for the INTHON surface syntax.  Consumed by
+// inthon/parser/parser.py with lexer="basic" so that every keyword is a
+// reserved word (spec FE-03).  Newlines become ";" via parser/semi.py
+// (Go-style ASI), and every statement list tolerates ";" separators.
+//
+// Extensions over the v0.2 draft:
+//   * break / continue statements
+//   * top-level policy blocks
+//   * recall as a prefix expression (composes with let / assignment)
+//   * fn types in annotations
+//   * string interpolation "Hello, {name}" (handled in the transformer)
+//   * semicolons as statement separators (Go-style ASI + explicit)
+// ============================================================================
+
 ?start: program
-program: statement*
 
-// ─── Statements ──────────────────────────────────────────────────────────────
-?statement: statement_core ";"?
-?statement_core: import_stmt
-               | let_stmt
-               | const_stmt
-               | fn_decl
-               | agent_decl
-               | return_stmt
-               | approve_stmt
-               | remember_stmt
-               | forget_stmt
-               | recall_stmt
-               | guard_stmt
-               | retry_stmt
-               | eval_stmt
-               | if_stmt
-               | for_stmt
-               | while_stmt
-               | expr_stmt
+program: (statement ";"*)*
 
-// ─── Import Statements ───────────────────────────────────────────────────────
+// ─── Statements ────────────────────────────────────────────────────────────
+?statement: import_stmt
+          | let_stmt
+          | const_stmt
+          | fn_decl
+          | agent_decl
+          | return_stmt
+          | break_stmt
+          | continue_stmt
+          | approve_stmt
+          | remember_stmt
+          | forget_stmt
+          | guard_stmt
+          | retry_stmt
+          | eval_stmt
+          | if_stmt
+          | for_stmt
+          | while_stmt
+          | policy_stmt
+          | expr_stmt
+
+// ─── Imports / capability declarations ─────────────────────────────────────
 import_stmt: use_tool_stmt
            | use_py_stmt
            | use_memory_stmt
 
-use_tool_stmt: "use" "tool" dotted_name
-use_py_stmt:   "use" "py" "." dotted_name ("as" CNAME)?
+use_tool_stmt:   "use" "tool" dotted_name
+use_py_stmt:     "use" "py" "." dotted_name ("as" CNAME)?
 use_memory_stmt: "use" "memory" "." dotted_name call_args?
 
-// ─── Variable Declarations ───────────────────────────────────────────────────
+// ─── Variables ─────────────────────────────────────────────────────────────
 let_stmt:   "let" CNAME type_annotation? "=" expr
 const_stmt: "const" CNAME type_annotation? "=" expr
+
 type_annotation: ":" type_expr
 
-// ─── Type Expressions ────────────────────────────────────────────────────────
-?type_expr: primitive_type
-          | collection_type
-          | agent_type
+?type_expr: CNAME                                          -> named_type
+          | CNAME "[" type_expr "]"                        -> generic_type
+          | CNAME "[" type_expr ("," type_expr)+ "]"       -> multi_generic_type
+          | "fn" "(" (type_expr ("," type_expr)*)? ")" "->" type_expr -> fn_type
 
-primitive_type: PRIMITIVE_TYPE
-collection_type: "list" "[" type_expr "]"
-               | "dict" "[" type_expr "," type_expr "]"
-               | "tuple" "[" type_expr ("," type_expr)* "]"
-               | "set" "[" type_expr "]"
-agent_type: AGENT_TYPE
-
-// ─── Function Declaration ────────────────────────────────────────────────────
+// ─── Functions ─────────────────────────────────────────────────────────────
 fn_decl: "fn" CNAME "(" param_list? ")" ("->" type_expr)? block
+
 param_list: param ("," param)*
 param: CNAME type_annotation? ("=" expr)?
 
-// ─── Agent Declaration ───────────────────────────────────────────────────────
+// ─── Agents ────────────────────────────────────────────────────────────────
 agent_decl: "agent" CNAME "{" agent_body "}"
-agent_body: goal_decl? inputs_decl? outputs_decl? import_stmt* policy_block? plan_block
-goal_decl:    "goal" STRING
-inputs_decl:  "inputs" "{" typed_field+ "}"
-outputs_decl: "outputs" "{" typed_field+ "}"
-typed_field:  CNAME ":" type_expr
-policy_block: "policy" "{" policy_entry* "}"
-policy_entry: CNAME ":" (STRING | INT | FLOAT | BOOL_LIT | dotted_name)
-plan_block: "plan" "{" statement* "}"
 
-// ─── Control Flow ────────────────────────────────────────────────────────────
-return_stmt:  "return" expr?
-if_stmt: "if" expr block ("else" (if_stmt | block))?
+agent_body: (agent_item ";"*)*
+?agent_item: goal_decl
+           | inputs_decl
+           | outputs_decl
+           | import_stmt
+           | criteria_decl
+           | rewriter_decl
+           | policy_block
+           | plan_block
+
+goal_decl:      "goal" STRING
+inputs_decl:    "inputs" "{" typed_field (";"* typed_field)* ";"* "}"
+outputs_decl:   "outputs" "{" typed_field (";"* typed_field)* ";"* "}"
+typed_field:    CNAME ":" type_expr
+criteria_decl:  "criteria" CNAME "{" eval_criterion (";"* eval_criterion)* ";"* "}"
+rewriter_decl:  "rewriter" CNAME block
+policy_block:   "policy" "{" (policy_entry ";"*)* "}"
+policy_stmt:    policy_block
+policy_entry:   CNAME ":" (STRING | INT | FLOAT | BOOL_LIT | NONE_LIT | dotted_name)
+plan_block:     "plan" "{" (statement ";"*)* "}"
+
+// ─── Control flow ──────────────────────────────────────────────────────────
+return_stmt:   "return" expr?
+break_stmt:    "break"
+continue_stmt: "continue"
+
+if_stmt:    "if" expr block ("else" (if_stmt | block))?
 for_stmt:   "for" CNAME "in" expr block
 while_stmt: "while" expr block
 
-// ─── Agent Primitives ────────────────────────────────────────────────────────
+// ─── Agent primitives ──────────────────────────────────────────────────────
 approve_stmt:  "approve" dotted_name "before" CNAME
 remember_stmt: "remember" expr "in" dotted_name
 forget_stmt:   "forget" expr "from" dotted_name
-recall_stmt:   expr "=" "recall" STRING "from" dotted_name
 guard_stmt:    "guard" expr
 retry_stmt:    "retry" INT "with" "backoff" CNAME block catch_block?
 catch_block:   "catch" CNAME block
-eval_stmt:     "eval" CNAME "against" CNAME "{" eval_criterion+ "}"
+
+eval_stmt: "eval" CNAME "against" CNAME "{" eval_criterion (";"* eval_criterion)* ";"* "}" -> eval_rubric
+         | "eval" CNAME "against" CNAME ("on" "fail" "rewrite" "with" CNAME)? -> eval_self
+
 eval_criterion: CNAME COMPARISON_OP expr
+              | CNAME ":" expr
 
-// ─── Expressions ─────────────────────────────────────────────────────────────
+// ─── Expressions (precedence: or < and < not < cmp < add < mul < unary < pow) ─
 ?expr: or_expr
-?or_expr: and_expr ("or" and_expr)*
-?and_expr: not_expr ("and" not_expr)*
-?not_expr: "not" not_expr  -> unary_not
-         | comparison
-?comparison: add_expr (COMPARISON_OP add_expr)*
-COMPARISON_OP: "==" | "!=" | "<" | "<=" | ">" | ">="
-?add_expr: mul_expr (ADD_OP mul_expr)*
+
+// Separate non-inlined entry point used for interpolation fragments & REPL.
+expr_fragment: or_expr
+
+?or_expr:  or_expr "or" and_expr     -> or_op
+        | and_expr
+?and_expr: and_expr "and" not_expr   -> and_op
+        | not_expr
+?not_expr: "not" not_expr            -> unary_not
+        | comparison
+
+?comparison: comparison COMPARISON_OP add_expr -> comparison_op
+           | add_expr
+COMPARISON_OP: "==" | "!=" | "<=" | ">=" | "<" | ">"
+
+?add_expr: add_expr ADD_OP mul_expr  -> add_op
+         | mul_expr
 ADD_OP: "+" | "-"
-?mul_expr: unary_expr (MUL_OP unary_expr)*
+
+?mul_expr: mul_expr MUL_OP unary_expr -> mul_op
+         | unary_expr
 MUL_OP: "*" | "/" | "%"
-?unary_expr: ADD_OP unary_expr  -> unary_minus
+
+?unary_expr: ADD_OP unary_expr       -> unary_signed
            | power_expr
+
 ?power_expr: postfix_expr ("**" unary_expr)?
-?postfix_expr: primary_expr
-             | call_expr
-             | member_expr
-             | index_expr
-             | method_chain
 
-call_expr:    postfix_expr "(" arg_list? ")"
-member_expr:  postfix_expr "." CNAME
-index_expr:   postfix_expr "[" expr "]"
-method_chain: postfix_expr "." CNAME "(" arg_list? ")"
+?postfix_expr: postfix_expr "(" arg_list? ")"   -> call_expr
+             | postfix_expr "." CNAME           -> member_expr
+             | postfix_expr "[" expr "]"        -> index_expr
+             | primary_expr
+
 arg_list: arg ("," arg)*
-?arg: keyword_arg | positional_arg
-keyword_arg: CNAME ":" expr
-positional_arg: expr
+?arg: CNAME ":" expr                 -> keyword_arg
+    | expr                           -> positional_arg
 
-?primary_expr: INT       -> int_literal
-             | FLOAT     -> float_literal
-             | STRING    -> string_literal
-             | BOOL_LIT  -> bool_literal
-             | NONE_LIT  -> none_literal
-             | CNAME     -> identifier
+?primary_expr: INT                   -> int_literal
+             | FLOAT                 -> float_literal
+             | STRING                -> string_literal
+             | BOOL_LIT              -> bool_literal
+             | NONE_LIT              -> none_literal
+             | CNAME                 -> identifier
+             | recall_expr
              | list_expr
              | dict_expr
              | "(" expr ")"
+
+recall_expr: "recall" STRING "from" dotted_name
 
 list_expr: "[" (expr ("," expr)*)? "]"
 dict_expr: "{" (kv_pair ("," kv_pair)*)? "}"
 kv_pair: expr ":" expr
 
-expr_stmt: assignment | expr
-assignment: expr "=" expr
+expr_stmt: expr ("=" expr)?
 
+// ─── Shared rules ──────────────────────────────────────────────────────────
 dotted_name: CNAME ("." CNAME)*
-call_args:   "(" arg_list? ")"
-block:       "{" statement* "}"
+call_args: "(" arg_list? ")"
+block: "{" (statement ";"*)* "}"
 
-// ─── Terminals ───────────────────────────────────────────────────────────────
-PRIMITIVE_TYPE: "str" | "int" | "float" | "bool" | "bytes" | "none" | "any"
-AGENT_TYPE: "Goal" | "Plan" | "ToolCall" | "ToolResult" | "Trace"
-          | "MemoryRef" | "Approval" | "Policy" | "DataFrame"
-          | "Tensor" | "Model" | "Dataset" | "Embedding"
-
+// ─── Terminals ─────────────────────────────────────────────────────────────
 BOOL_LIT.2: "true" | "false"
 NONE_LIT.2: "none"
-CNAME:    /[A-Za-z_][A-Za-z0-9_]*/
-STRING:   /\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'/ // Allows standard escaped strings
-INT:      /[0-9]+/
-FLOAT:    /[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?/
+CNAME: /[A-Za-z_][A-Za-z0-9_]*/
+STRING: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/
+FLOAT.2: /[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9]+)?|[0-9][0-9_]*[eE][+-]?[0-9]+/
+INT: /[0-9][0-9_]*/
 
-%ignore /[ \t\r\n]+/
-%ignore /\/\/[^\n]*/
-%ignore /\/\*.*?\*\//s
+LINE_COMMENT:  /\/\/[^\n]*/
+BLOCK_COMMENT: /\/\*[\s\S]*?\*\//
+WS: /[ \t\r\n]+/
+
+%ignore WS
+%ignore LINE_COMMENT
+%ignore BLOCK_COMMENT

@@ -21,6 +21,16 @@ class Transpiler(ASTVisitor):
         super().__init__()
         self._indent = 0
 
+    def _target_to_str(self, node: Any) -> str:
+        if isinstance(node, N.Identifier):
+            return node.name
+        if isinstance(node, N.MemberExpr):
+            return f"{self._target_to_str(node.object)}.{node.name}"
+        if isinstance(node, N.IndexExpr):
+            idx_str = str(node.index.value) if hasattr(node.index, "value") else ""
+            return f"{self._target_to_str(node.object)}[{idx_str}]"
+        return str(node)
+
     def transpile(self, program: N.Program) -> str:
         lines = [
             "def run_inthon(ctx):",
@@ -31,7 +41,7 @@ class Transpiler(ASTVisitor):
             "    ",
         ]
         self._indent = 1
-        for stmt in program.body:
+        for stmt in program.statements:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -52,7 +62,7 @@ class Transpiler(ASTVisitor):
             return ""
         # Prefix value-producing statements with _last_val assignment
         if isinstance(
-            stmt, (N.ExprStmt, N.LetStmt, N.ConstStmt, N.AssignStmt, N.RecallStmt)
+            stmt, (N.ExprStmt, N.LetDecl, N.ConstDecl, N.AssignStmt)
         ):
             if not code.strip().startswith("_last_val ="):
                 return f"_last_val = {code}"
@@ -116,19 +126,20 @@ class Transpiler(ASTVisitor):
 
     # ─── Statements ────────────────────────────────────────────────────────── #
 
-    def visit_LetStmt(self, node: N.LetStmt) -> str:
+    def visit_LetDecl(self, node: N.LetDecl) -> str:
         val = self.visit(node.value)
         return f"ctx.set_var('{node.name}', {val})"
 
-    def visit_ConstStmt(self, node: N.ConstStmt) -> str:
+    def visit_ConstDecl(self, node: N.ConstDecl) -> str:
         val = self.visit(node.value)
         return f"ctx.set_var('{node.name}', {val})"
 
     def visit_AssignStmt(self, node: N.AssignStmt) -> str:
         val = self.visit(node.value)
-        if "." in node.target or "[" in node.target:
-            return f"ctx.assign_target_expression('{node.target}', {val})"
-        return f"ctx.assign_var('{node.target}', {val})"
+        target_str = self._target_to_str(node.target)
+        if "." in target_str or "[" in target_str:
+            return f"ctx.assign_target_expression('{target_str}', {val})"
+        return f"ctx.assign_var('{target_str}', {val})"
 
     def visit_ExprStmt(self, node: N.ExprStmt) -> str:
         return self.visit(node.expr)
@@ -161,7 +172,7 @@ class Transpiler(ASTVisitor):
         cond = f"to_python({self.visit(node.condition)})"
         lines = [f"while {cond}:"]
         self._indent += 1
-        for stmt in node.body:
+        for stmt in (node.body.statements if node.body else []):
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -177,7 +188,7 @@ class Transpiler(ASTVisitor):
                 f"ctx.assign_var('{node.var}', from_python(loop_val_{node.var}))"
             )
         )
-        for stmt in node.body:
+        for stmt in (node.body.statements if node.body else []):
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -191,7 +202,7 @@ class Transpiler(ASTVisitor):
             f"def user_fn_{node.name}():",
         ]
         self._indent += 1
-        for stmt in node.body:
+        for stmt in (node.body.statements if node.body else []):
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 fn_lines.extend(self._add_indent(stmt_code))
@@ -217,7 +228,7 @@ class Transpiler(ASTVisitor):
             stmt_code = self._visit_stmt(imp)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
-        for stmt in node.plan.body:
+        for stmt in (node.plan.statements if node.plan else []):
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -232,22 +243,23 @@ class Transpiler(ASTVisitor):
         )
         return "\n".join(lines)
 
-    def visit_UseToolStmt(self, node: N.UseToolStmt) -> str:
-        return f"ctx.assign_var('{node.tool_path.split('.')[0]}', InthonToolRef('{node.tool_path}'))"
+    def visit_UseTool(self, node: N.UseTool) -> str:
+        pkg = node.path.split(".")[0]
+        return f"ctx.assign_var('{pkg}', InthonToolRef('{node.path}'))"
 
-    def visit_UsePyStmt(self, node: N.UsePyStmt) -> str:
-        alias = node.alias or node.module_path.split(".")[-1]
-        return f"ctx.assign_var('{alias}', ctx.importer.import_module('{node.module_path}', '{node.alias}'))"
+    def visit_UsePy(self, node: N.UsePy) -> str:
+        alias = node.alias or node.module.split(".")[-1]
+        return f"ctx.assign_var('{alias}', ctx.importer.import_module('{node.module}', '{node.alias}'))"
 
-    def visit_UseMemoryStmt(self, node: N.UseMemoryStmt) -> str:
+    def visit_UseMemory(self, node: N.UseMemory) -> str:
         return ""
 
     def visit_RememberStmt(self, node: N.RememberStmt) -> str:
         val = self.visit(node.value)
         return f"ctx.memory.remember(to_python({val}), '{node.namespace}')"
 
-    def visit_RecallStmt(self, node: N.RecallStmt) -> str:
-        return f"ctx.assign_var('{node.var}', from_python(ctx.memory.recall('{node.query}', '{node.namespace}')))"
+    def visit_RecallExpr(self, node: N.RecallExpr) -> str:
+        return f"from_python(ctx.memory.recall('{node.query}', '{node.namespace}'))"
 
     def visit_ForgetStmt(self, node: N.ForgetStmt) -> str:
         val = self.visit(node.key)
@@ -358,12 +370,17 @@ def run_transpiled(
     except ReturnSignal as ret:
         result_val = ret.value
 
-    duration_ms = (time.perf_counter() - t0) * 1000
-
+    trace_data = ctx.tracer.finish(
+        result_type=type(result_val).__name__,
+        result_preview=repr(to_python(result_val))
+    )
     return RunResult(
-        output=to_python(result_val),
-        trace_json=ctx.tracer.to_json(),
-        cost_usd=ctx.cost_usd,
-        duration_ms=round(duration_ms, 2),
-        errors=ctx.errors,
+        ok=True,
+        result=result_val,
+        result_python=to_python(result_val),
+        result_display=str(to_python(result_val)),
+        trace=trace_data,
+        stdout="",
+        error=None,
+        backend="transpile",
     )

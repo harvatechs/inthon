@@ -16,7 +16,7 @@ Key design decisions:
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
-from .opcodes import OpCode
+from .old_opcodes import OpCode
 
 
 @dataclass

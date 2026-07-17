@@ -51,12 +51,14 @@ class SubprocessPyBridge:
         self,
         max_workers: int = 1,
         timeout_sec: float = 30.0,
+        extra_allowed: Optional[set[str]] = None,
     ) -> None:
         self._timeout = timeout_sec
         self._lock = threading.Lock()
         self._proc: subprocess.Popen | None = None
         self._req_counter = 0
         self._pending: dict[int, Any] = {}
+        self._extra_allowed = set(extra_allowed) if extra_allowed else set()
 
     # ── Public API ─────────────────────────────────────────────────────── #
 
@@ -142,7 +144,7 @@ class SubprocessPyBridge:
             return self._proc
 
         self._proc = subprocess.Popen(
-            [sys.executable, _WORKER_PATH],
+            [sys.executable, _WORKER_PATH] + list(self._extra_allowed),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

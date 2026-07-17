@@ -8,10 +8,10 @@ behaviours as the tree-walk Interpreter tests, verifying functional equivalence.
 from __future__ import annotations
 import pytest
 from inthon import run_vm
-from inthon.parser.parser import parse
-from inthon.vm.compiler import compile_program
+from inthon.vm.old_parser import parse
+from inthon.vm.old_compiler import compile_program
 from inthon.vm.machine import InthonVM
-from inthon.vm.opcodes import OpCode
+from inthon.vm.old_opcodes import OpCode
 from inthon.runtime.context import ExecutionContext
 from inthon.tools.builtin_tools import register_builtins
 
@@ -214,8 +214,9 @@ agent TestBot {
 agent MemBot {
     goal "Test memory"
     plan {
+        use memory.session
         remember "hello" in session
-        x = recall "hello" from session
+        let x = recall "hello" from session
     }
 }
 """

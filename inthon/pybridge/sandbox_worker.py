@@ -92,6 +92,13 @@ try:
 except Exception:
     pass
 
+# Parse command line extra allowed modules
+_extra_cli = sys.argv[1:]
+_ALLOWED_MODULES_SET.update(_extra_cli)
+
+from inthon.pybridge.allowlist import GLOBAL_EXTRA_ALLOWED
+GLOBAL_EXTRA_ALLOWED.update(_extra_cli)
+
 _ALLOWED_MODULES: frozenset[str] = frozenset(_ALLOWED_MODULES_SET)
 
 _BLOCKED_BUILTINS: frozenset[str] = frozenset(

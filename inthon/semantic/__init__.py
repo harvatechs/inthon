@@ -1,5 +1,6 @@
-# ruff: noqa: F401
-from .scope import ScopeChain, Symbol, SymbolKind, SemanticError
-from .analyzer import SemanticAnalyzer
-from .type_checker import infer_type, is_subtype
-from .permissions import PermissionAnalyzer
+"""INTHON semantic analysis package."""
+
+from .analyzer import AnalysisFailure, SemanticAnalyzer
+from .scope import Scope, Symbol
+
+__all__ = ["SemanticAnalyzer", "AnalysisFailure", "Scope", "Symbol"]

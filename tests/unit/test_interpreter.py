@@ -254,8 +254,9 @@ def test_memory_actions_remember_recall_forget():
             allow_memory_persist: true
         }
         plan {
+            use memory.session
             remember "INTHON rules" in session
-            x = recall "rules" from session
+            let x = recall "rules" from session
             forget "rules" from session
             return x
         }
@@ -342,7 +343,7 @@ def test_dynamic_target_assignment_nested():
     src = """
     use py.json as js
     // Parse json to dict
-    let data = js.loads("{\\"a\\": {\\"b\\": 10}}")
+    let data = js.loads("{{\\"a\\": {{\\"b\\": 10}}}}")
     data.a.b = 20
     let val = data.a.b
     """

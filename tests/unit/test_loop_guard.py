@@ -5,8 +5,8 @@ tests/unit/test_loop_guard.py — Unit tests for the Metacognitive Loop Guard.
 from __future__ import annotations
 import pytest
 from inthon.runtime.context import ExecutionContext
-from inthon.parser.parser import parse
-from inthon.vm.compiler import compile_program
+from inthon.vm.old_parser import parse
+from inthon.vm.old_compiler import compile_program
 from inthon.vm.machine import InthonVM
 from inthon.policy.loop_guard import LoopDetectedError
 

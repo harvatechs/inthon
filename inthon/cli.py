@@ -1,4 +1,6 @@
 from __future__ import annotations
+import json
+import sys
 from pathlib import Path
 import typer
 from rich.console import Console
@@ -10,7 +12,6 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
-
 
 @app.command("run")
 def run_cmd(
@@ -41,7 +42,7 @@ def run_cmd(
 
         def runner():
             return run_in_container(
-                file,
+                str(file),
                 mock_tools=mock_tools,
                 max_cost_usd=max_cost,
             )
@@ -50,7 +51,7 @@ def run_cmd(
 
         def runner():
             return run_file_transpiled(
-                file,
+                str(file),
                 mock_tools=mock_tools,
                 max_cost_usd=max_cost,
             )
@@ -59,7 +60,7 @@ def run_cmd(
 
         def runner():
             return run_file_vm(
-                file,
+                str(file),
                 mock_tools=mock_tools,
                 max_cost_usd=max_cost,
                 persist_memory=persist_memory,
@@ -70,7 +71,7 @@ def run_cmd(
 
         def runner():
             return run_file(
-                file,
+                str(file),
                 mock_tools=mock_tools,
                 max_cost_usd=max_cost,
                 dry_run=dry_run,
@@ -78,6 +79,12 @@ def run_cmd(
 
     try:
         result = runner()
+        if not result.ok:
+            if result.error is not None:
+                raise result.error
+            else:
+                console.print("[red]Execution failed[/red]")
+                raise typer.Exit(code=1)
         if trace_out:
             trace_out.write_text(result.trace_json, encoding="utf-8")
             console.print(f"[green]Trace written to {trace_out}[/green]")
@@ -183,14 +190,14 @@ def ast_cmd(
 ) -> None:
     """Print the parsed AST."""
     from .parser.parser import parse
-    from .ast.printer import print_ast, ast_to_json
+    from .ast.printer import format_ast
 
     source = file.read_text(encoding="utf-8")
     program = parse(source, filename=str(file))
     if fmt == "json":
-        print(ast_to_json(program))
+        print(program.to_json_str().replace('"type":', '"node_type":'))
     else:
-        print_ast(program)
+        print(format_ast(program))
 
 
 @app.command("ir")
@@ -198,13 +205,11 @@ def ir_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
 ) -> None:
     """Print the lowered IR as JSON."""
-    from .parser.parser import parse
-    from .ir.builder import build_ir
-    from .ir.serializer import ir_to_json
+    from .api import compile_ir
+    from .ir import ir_to_json
 
     source = file.read_text(encoding="utf-8")
-    program = parse(source, filename=str(file))
-    ir = build_ir(program)
+    ir = compile_ir(source, filename=str(file))
     print(ir_to_json(ir))
 
 
@@ -300,6 +305,129 @@ def convert_skill_cmd(
     except Exception as exc:
         console.print(f"[red]Error converting skill: {exc}[/red]")
         raise typer.Exit(code=1)
+
+
+@app.command("dis")
+def dis_cmd(
+    file: Path = typer.Argument(..., help="Path to .inth file"),
+) -> None:
+    """Disassemble compiled InthonVM bytecode."""
+    from .parser.parser import parse
+    from .vm.compiler import compile_program
+    from .vm.dis import disassemble
+
+    source = file.read_text(encoding="utf-8")
+    try:
+        program = parse(source, filename=str(file))
+        code = compile_program(program, filename=str(file))
+        print(disassemble(code))
+    except Exception as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+
+
+@app.command("init")
+def init_cmd(
+    directory: Path = typer.Argument(Path("."), help="Project directory"),
+) -> None:
+    """Scaffold a new INTHON project."""
+    directory.mkdir(parents=True, exist_ok=True)
+    main_inth = directory / "main.inth"
+    toml = directory / "inthon.toml"
+    if main_inth.exists():
+        console.print(f"[red]inthon: {main_inth} already exists[/red]")
+        raise typer.Exit(code=1)
+    main_inth.write_text(HELLO_WORLD, encoding="utf-8")
+    if not toml.exists():
+        toml.write_text(DEFAULT_TOML, encoding="utf-8")
+    console.print(f"[green]Created {main_inth} and {toml}[/green]")
+    console.print(f"Run it with:  inthon run {main_inth}")
+
+
+@app.command("trace")
+def trace_cmd(
+    file: Path = typer.Argument(..., help="trace JSON file"),
+    events: bool = typer.Option(False, "--events", help="list every event"),
+) -> None:
+    """Summarize a trace JSON file."""
+    import json
+    if not file.exists():
+        console.print(f"[red]inthon: no such file: {file}[/red]")
+        raise typer.Exit(code=1)
+    doc = json.loads(file.read_text(encoding="utf-8"))
+    events_list = doc.get("events", [])
+    counts: dict = {}
+    tool_calls = []
+    cost = 0.0
+    for ev in events_list:
+        t = ev.get("type", "?")
+        counts[t] = counts.get(t, 0) + 1
+        if t == "tool_end":
+            tool_calls.append(ev)
+            cost += ev.get("cost_usd", 0.0) or 0.0
+    console.print(f"trace: {file}")
+    console.print(f"  schema version : {doc.get('trace_version', '?')}")
+    console.print(f"  program hash   : {str(doc.get('program_hash', '?'))[:16]}")
+    console.print(f"  duration       : {doc.get('duration_ms', '?')} ms")
+    result = doc.get("result", {})
+    console.print(f"  result         : {result.get('preview', '?') if isinstance(result, dict) else result}")
+    console.print(f"  events         : {len(events_list)}")
+    for t, c in sorted(counts.items()):
+        console.print(f"    {t:<20} {c}")
+    if tool_calls:
+        console.print(f"  tool calls     : {len(tool_calls)} (total cost ${cost:.4f})")
+        for tc in tool_calls:
+            console.print(f"    {tc.get('tool', '?')} (${tc.get('cost_usd', 0.0):.4f})")
+    if events:
+        console.print("  ---")
+        for i, ev in enumerate(events_list):
+            console.print(f"  [{i}] {json.dumps(ev)}")
+
+
+HELLO_WORLD = """# main.inth — your first INTHON program
+
+agent Greeter {
+    goal "greet the user warmly"
+    inputs {
+        name: str
+    }
+    outputs {
+        message: str
+    }
+    plan {
+        let message = "Hello, {name}! Welcome to INTHON."
+        message
+    }
+}
+
+fn main() {
+    let g = Greeter(name: "world")
+    print(g.message)
+}
+
+main()
+"""
+
+DEFAULT_TOML = """# inthon.toml — project configuration
+
+[runtime]
+backend = "tree"        # "tree" (interpreter) | "vm" (bytecode VM)
+mock = true             # deterministic mock tools; false = real implementations
+strict_types = false
+auto_approve = false    # dev-only: auto-approve `approve ... before` gates
+# memory_dir = ".inthon"
+
+# Host-level ceiling policy: programs can narrow but never widen these.
+# [policy]
+# allow_network = false
+# max_cost_usd = 1.0
+# max_tool_calls = 25
+
+# Extra Python modules importable via `use py.<module>` (the hardcoded
+# denylist — os, sys, subprocess, ... — can never be enabled).
+# [pybridge]
+# allowed_modules = ["scipy"]
+"""
 
 
 if __name__ == "__main__":

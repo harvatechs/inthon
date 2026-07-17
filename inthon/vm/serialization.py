@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 from .code_object import CodeObject, Instruction
 from .frame import Frame, RetryState
-from .opcodes import OpCode
+from .old_opcodes import OpCode
 from ..runtime.values import (
     InthonInt,
     InthonFloat,
@@ -47,13 +47,13 @@ def serialize_value(val: Any) -> Any:
         return val
 
     if isinstance(val, InthonInt):
-        return {"__type__": "inthon_int", "v": val.v}
+        return {"__type__": "inthon_int", "v": val.value}
     if isinstance(val, InthonFloat):
-        return {"__type__": "inthon_float", "v": val.v}
+        return {"__type__": "inthon_float", "v": val.value}
     if isinstance(val, InthonStr):
-        return {"__type__": "inthon_str", "v": val.v}
+        return {"__type__": "inthon_str", "v": val.value}
     if isinstance(val, InthonBool):
-        return {"__type__": "inthon_bool", "v": val.v}
+        return {"__type__": "inthon_bool", "v": val.value}
     if isinstance(val, InthonNone):
         return {"__type__": "inthon_none"}
 

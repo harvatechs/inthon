@@ -1,84 +1,149 @@
+"""ExecutionContext: the shared runtime state for both backends."""
+
 from __future__ import annotations
+
 import time
-import uuid
 from dataclasses import dataclass, field
-from typing import Any
-from ..tools.registry import ToolRegistry
-from ..policy.engine import PolicyEngine
-from ..memory.store import MemoryStore
-from .trace import TraceLogger
+from typing import Callable, Optional
+
+from ..errors import InthonMemoryError_, Span
+from ..memory import InMemoryStore, SQLiteMemoryStore
+from ..policy import ApprovalGate, Policy, PolicyEngine
+from ..pybridge import SafeModuleImporter, default_importer
+from ..tools import ToolRegistry, default_registry
+from .environment import Environment
 from .sandbox import Sandbox
-from .builtins import builtin_values
+from .trace import TraceLogger
+
+_SESSION_NAMESPACES = {"session", "default", "scratch", "tmp"}
 
 
 @dataclass
-class ExecutionContext:
-    # Identity
-    run_id: str = field(default_factory=lambda: f"run_{uuid.uuid4().hex[:12]}")
+class RunOptions:
+    """How to execute an INTHON program."""
+
+    mock: bool = True                      # use mock tool implementations
+    backend: str = "tree"                  # "tree" (interpreter) | "vm" (bytecode)
+    trace: bool = True
+    policy: Optional[Policy] = None        # base policy (host-level); program may narrow
+    auto_approve: bool = False
+    approval_handler: Optional[Callable] = None
+    memory_dir: Optional[str] = None       # SQLite memory location (default: cwd/.inthon)
+    registry: Optional[ToolRegistry] = None
+    importer: Optional[SafeModuleImporter] = None
+    strict_types: bool = True
     filename: str = "<stdin>"
-    started_at: float = field(default_factory=time.time)
-    # Variable storage — stack of dicts (innermost last)
-    _scope_stack: list[dict[str, Any]] = field(default_factory=lambda: [{}])
-    # Subsystems
-    tools: ToolRegistry = field(default_factory=ToolRegistry)
-    policy: PolicyEngine = field(default_factory=PolicyEngine)
-    memory: MemoryStore = field(default_factory=lambda: MemoryStore.in_memory())
-    tracer: TraceLogger = field(default_factory=TraceLogger)
-    sandbox: Sandbox = field(default_factory=Sandbox)
-    # Execution statistics
-    tool_call_count: int = 0
-    py_call_count: int = 0
-    cost_usd: float = 0.0
-    errors: list[dict] = field(default_factory=list)
+    source: str = ""
     dry_run: bool = False
-    # Agent state (populated when inside an agent block)
-    current_agent: str | None = None
-    agent_goal: str | None = None
-    config: dict = field(default_factory=dict, init=False)
+    write_out: Optional[Callable[[str], None]] = None   # print sink (test injectable)
+    write_err: Optional[Callable[[str], None]] = None
 
-    def __post_init__(self) -> None:
-        from pathlib import Path
-        import tomllib
 
-        # Try to locate inthon.toml in the current directory or parents
-        for p in [Path.cwd(), *Path.cwd().parents]:
-            toml_path = p / "inthon.toml"
-            if toml_path.is_file():
-                try:
-                    with open(toml_path, "rb") as f:
-                        self.config = tomllib.load(f)
-                    break
-                except Exception:
-                    pass
+class ExecutionContext:
+    """Everything a run needs: scopes, tools, policy, memory, trace, sandbox."""
 
-        # Apply sandbox settings from toml
-        sandbox_cfg = self.config.get("sandbox", {})
-        if "max_runtime_sec" in sandbox_cfg:
-            self.sandbox.max_runtime_sec = float(sandbox_cfg["max_runtime_sec"])
-        if "max_cost_usd" in sandbox_cfg:
-            self.sandbox.max_cost_usd = float(sandbox_cfg["max_cost_usd"])
-        if "max_tool_calls" in sandbox_cfg:
-            self.sandbox.max_tool_calls = int(sandbox_cfg["max_tool_calls"])
+    def __init__(self, options: Optional[RunOptions] = None, **kwargs):
+        self.options = options or RunOptions(**kwargs)
+        self.filename = self.options.filename
+        self.mock = self.options.mock
+        self.dry_run = self.options.dry_run
+        self.backend = self.options.backend
+        self.started_at = time.time()
 
-        # Apply memory persistence from toml if memory is default InMemoryStore
-        permissions = self.config.get("permissions", {})
-        if permissions.get("memory_persist", False):
-            from ..memory.store import InMemoryStore
+        self.tracer = TraceLogger(
+            program=self.options.source,
+            filename=self.filename,
+            backend=self.backend,
+            enabled=self.options.trace,
+        )
+        self.tools = self.options.registry or default_registry()
+        self.importer = self.options.importer or default_importer()
+        self.policy = PolicyEngine(
+            base=self.options.policy or Policy(),
+            tracer=self.tracer,
+            ceiling=self.options.policy is not None,
+        )
+        self.approvals = ApprovalGate(
+            handler=self.options.approval_handler,
+            tracer=self.tracer,
+            auto_approve=self.options.auto_approve,
+        )
+        self.policy.approval_gate = self.approvals
+        self.sandbox = Sandbox(self)
 
-            if isinstance(self.memory, InMemoryStore):
-                db_dir = (
-                    Path(self.filename).parent
-                    if self.filename and self.filename != "<stdin>"
-                    else Path.cwd()
-                )
-                self.memory = MemoryStore.persistent(
-                    db_path=str(db_dir / ".inthon" / "memory.db")
-                )
+        # memory
+        self._session_store = InMemoryStore()
+        self._persistent_store: Optional[SQLiteMemoryStore] = None
+        self.declared_memory: set[str] = set()
 
-        for name, value in builtin_values().items():
-            self.set_var(name, value)
+        # agent execution state
+        self.agent_stack: list[str] = []
+        self.criteria_tables: dict[str, object] = {}
 
-    # ── Scope helpers ────────────────────────────────────────────────────── #
+        # output sinks
+        self._write_out = self.options.write_out or (lambda s: print(s))
+        self._write_err = self.options.write_err or (lambda s: print(s, file=__import__("sys").stderr))
+
+        # global scope with builtins installed by the interpreter
+        self.env = Environment(kind="global", label="global")
+
+        # Scope stack compatibility layer for old VM
+        self._scope_stack: list[dict[str, Any]] = [{}]
+        # Memory compatibility layer
+        self.memory = MemoryCompat(self)
+        self.tool_call_count = 0
+        self.cost_usd = 0.0
+        self.py_call_count = 0
+
+    # -- output -------------------------------------------------------------
+    def write_out(self, text: str):
+        self._write_out(text)
+
+    def write_err(self, text: str):
+        self._write_err(text)
+
+    # -- memory -------------------------------------------------------------
+    def memory_store_for(self, namespace: str):
+        if namespace in _SESSION_NAMESPACES:
+            return self._session_store
+        if self._persistent_store is None:
+            import os
+
+            memory_dir = self.options.memory_dir or os.path.join(os.getcwd(), ".inthon")
+            self._persistent_store = SQLiteMemoryStore(os.path.join(memory_dir, "memory.db"))
+        return self._persistent_store
+
+    def declare_memory(self, namespace: str):
+        self.declared_memory.add(namespace)
+
+    def check_memory_declared(self, namespace: str, span: Optional[Span] = None):
+        if namespace not in self.declared_memory:
+            from ..errors import InthonCapabilityError
+
+            raise InthonCapabilityError(
+                f"Memory namespace '{namespace}' used without declaration",
+                span=span,
+                hint=f"Add 'use memory.{namespace}' before remember/recall/forget.",
+            )
+
+    # -- agents ---------------------------------------------------------------
+    @property
+    def current_agent(self) -> Optional[str]:
+        return self.agent_stack[-1] if self.agent_stack else getattr(self, "_current_agent", None)
+
+    @current_agent.setter
+    def current_agent(self, value):
+        self._current_agent = value
+
+    @property
+    def agent_goal(self) -> Optional[str]:
+        return getattr(self, "_agent_goal", None)
+
+    @agent_goal.setter
+    def agent_goal(self, value):
+        self._agent_goal = value
+
+    # -- compatibility scope stack --------------------------------------------
     def push_scope(self) -> None:
         self._scope_stack.append({})
 
@@ -100,21 +165,33 @@ class ExecutionContext:
         for scope in reversed(self._scope_stack):
             if name in scope:
                 return scope[name]
+        if name in self.env.vars:
+            return self.env.vars[name]
         raise RuntimeError(f"INTHON_RUNTIME_001: Undefined variable '{name}'")
 
     def has_var(self, name: str) -> bool:
+        if name in self.env.vars:
+            return True
         return any(name in s for s in self._scope_stack)
 
-    # ── Finalisation ─────────────────────────────────────────────────────── #
-    def to_trace_summary(self) -> dict:
-        return {
-            "run_id": self.run_id,
-            "filename": self.filename,
-            "started_at": self.started_at,
-            "ended_at": time.time(),
-            "duration_ms": round((time.time() - self.started_at) * 1000, 2),
-            "tool_calls": self.tracer.tool_events(),
-            "py_calls": self.tracer.py_events(),
-            "errors": self.errors,
-            "cost": {"usd": round(self.cost_usd, 6)},
-        }
+    def close(self):
+        if self._persistent_store is not None:
+            self._persistent_store.close()
+
+
+class MemoryCompat:
+    def __init__(self, ctx):
+        self.ctx = ctx
+
+    def write(self, key, val, namespace):
+        store = self.ctx.memory_store_for(namespace)
+        store.remember(key, val)
+
+    def delete(self, key, namespace):
+        store = self.ctx.memory_store_for(namespace)
+        return store.forget(key)
+
+    def search(self, query, namespace):
+        store = self.ctx.memory_store_for(namespace)
+        return store.recall(query)
+
