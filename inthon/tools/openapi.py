@@ -3,7 +3,7 @@ import json
 import urllib.request
 import urllib.parse
 from typing import Any, Callable
-from .schema import ToolSpec, ToolParam, ToolArgSchema, ToolCostModel
+from .schema import ToolSpec, ToolParam, ToolArgSchema
 from .registry import ToolRegistry
 
 

@@ -27,6 +27,7 @@ import importlib
 import builtins
 import traceback
 from pathlib import Path
+from inthon.pybridge.allowlist import GLOBAL_EXTRA_ALLOWED
 
 # Add workspace root to sys.path if not present, so we can import allowlist before replacing __import__
 _workspace_root = str(Path(__file__).resolve().parents[2])
@@ -96,7 +97,6 @@ except Exception:
 _extra_cli = sys.argv[1:]
 _ALLOWED_MODULES_SET.update(_extra_cli)
 
-from inthon.pybridge.allowlist import GLOBAL_EXTRA_ALLOWED
 GLOBAL_EXTRA_ALLOWED.update(_extra_cli)
 
 _ALLOWED_MODULES: frozenset[str] = frozenset(_ALLOWED_MODULES_SET)

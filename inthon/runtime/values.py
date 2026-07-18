@@ -10,8 +10,6 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Optional
 
-from ..errors import Span
-
 
 class InthonValue:
     """Base class of all INTHON values."""

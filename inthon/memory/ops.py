@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ..errors import InthonMemoryError_, Span
+from ..errors import Span
 from ..runtime.values import NONE, InthonValue, display
 
 

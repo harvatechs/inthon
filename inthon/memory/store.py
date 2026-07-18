@@ -13,7 +13,6 @@ from ..runtime.values import (
     InthonString,
     InthonValue,
     bool_value,
-    display,
 )
 from .embed import cosine, embed
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from ..errors import Span, SemanticError
+from ..errors import Span
+from ..errors import SemanticError as SemanticError
 
 
 @dataclass

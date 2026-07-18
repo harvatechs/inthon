@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Any
 from ..ast.visitor import ASTVisitor
 from ..ast import nodes as N
 from .nodes import (

@@ -11,7 +11,6 @@ from .ast import nodes
 from .errors import InthonError
 from .runtime.context import ExecutionContext, RunOptions
 from .runtime.values import InthonValue, display
-from .version import __version__
 
 
 @dataclass

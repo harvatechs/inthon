@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from ..errors import Span, ToolExecutionError, ToolNotFoundError
 from ..runtime.values import box
 from .builtin_tools import builtin_tool_specs
-from .schema import ToolParam, ToolSpec
+from .schema import ToolSpec
 from .validator import validate_call
 
 
@@ -82,31 +82,8 @@ class ToolRegistry:
     def list_tools(self) -> list[str]:
         return self.paths()
 
-    def get_spec(self, name: str) -> ToolSpec:
-        return self.get(name)
-
     def use_mocks(self, enable: bool) -> None:
         self.mock_mode = enable
-
-    def call(self, path: str, args: list, kwargs: dict) -> ToolResult:
-        from ..runtime.context import ExecutionContext
-        ctx = ExecutionContext()
-        ctx.tools = self
-        try:
-            res_val = self.invoke(ctx, path, args, kwargs)
-            from ..runtime.values import to_python
-            return ToolResult(
-                tool=path,
-                success=True,
-                output=to_python(res_val),
-            )
-        except Exception as e:
-            return ToolResult(
-                tool=path,
-                success=False,
-                output=None,
-                error=str(e),
-            )
 
     # -- invocation ----------------------------------------------------------------
     def invoke(self, ctx, path: str, args: list, kwargs: dict, span: Optional[Span] = None) -> Any:

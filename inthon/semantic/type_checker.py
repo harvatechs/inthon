@@ -10,6 +10,7 @@ Gradual typing contract:
 from __future__ import annotations
 
 from typing import Optional
+from .scope import Scope
 
 from ..ast import nodes
 
@@ -186,7 +187,6 @@ def infer_type(expr: nodes.Expression, scope: Scope) -> str:
         return f"dict[{kt}, {vt}]"
 
     # For other expressions, map scope variables to TypeEnv
-    from .scope import Scope
     tenv = TypeEnv()
     curr_scope = scope
     curr_env = tenv

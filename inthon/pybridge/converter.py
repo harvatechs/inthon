@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..errors import InthonConversionError, Span
+from ..errors import InthonConversionError
 from ..runtime.values import (
     NONE,
     InthonDict,

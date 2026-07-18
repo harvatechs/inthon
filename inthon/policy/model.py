@@ -7,6 +7,7 @@ they cannot affect the outside world, so they are not exfiltration vectors.
 """
 
 from __future__ import annotations
+from enum import Enum, auto
 
 from dataclasses import dataclass, fields
 from typing import Any
@@ -160,8 +161,6 @@ def _min_fs(a: str, b: str) -> str:
     order = {"none": 0, "read_only": 1, "read_write": 2}
     return a if order[a] <= order[b] else b
 
-
-from enum import Enum, auto
 
 class Capability(Enum):
     NETWORK = auto()

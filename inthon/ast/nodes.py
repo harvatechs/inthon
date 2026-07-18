@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, fields
-from typing import Any, Optional, Sequence
+from typing import Any, Optional
 
 from ..errors import Span
 

@@ -11,11 +11,9 @@ from ..errors import (
     InthonCapabilityError,
     InthonConstError,
     InthonDuplicateError,
-    InthonImportError_,
     InthonNameError,
     InthonSemanticError,
     InthonStaticTypeError,
-    InthonTypeSyntaxError,
     Span,
     ToolNotFoundError,
     PyBridgeError,
@@ -521,7 +519,7 @@ class SemanticAnalyzer:
                     return InthonCapabilityError(
                         f"Tool namespace '{name}' used but not imported",
                         span=span,
-                        hint=f"Add one of: " + ", ".join(f"use tool {p}" for p in matches[:3]),
+                        hint="Add one of: " + ", ".join(f"use tool {p}" for p in matches[:3]),
                     )
                 hint = "Declare it first with 'let' or 'const', or import it with 'use'."
         return InthonNameError(f"Undefined name '{name}'", span=span, hint=hint)

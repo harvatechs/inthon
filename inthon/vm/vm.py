@@ -8,7 +8,6 @@ results — the differential test-suite proves this on every example program.
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from ..ast import nodes
 from ..errors import (

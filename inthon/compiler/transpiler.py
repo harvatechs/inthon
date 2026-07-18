@@ -1,5 +1,4 @@
 from __future__ import annotations
-import time
 from typing import Any
 from ..ast import nodes as N
 from ..ast.visitor import ASTVisitor
@@ -292,7 +291,6 @@ def run_transpiled(
     from ..semantic.analyzer import SemanticAnalyzer
     from ..tools.builtin_tools import register_builtins
 
-    t0 = time.perf_counter()
     program = parse(source, filename=filename)
     SemanticAnalyzer().analyze(program)
 

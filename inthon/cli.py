@@ -1,6 +1,5 @@
 from __future__ import annotations
 import json
-import sys
 from pathlib import Path
 import typer
 from rich.console import Console
@@ -350,7 +349,6 @@ def trace_cmd(
     events: bool = typer.Option(False, "--events", help="list every event"),
 ) -> None:
     """Summarize a trace JSON file."""
-    import json
     if not file.exists():
         console.print(f"[red]inthon: no such file: {file}[/red]")
         raise typer.Exit(code=1)

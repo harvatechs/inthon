@@ -8,7 +8,7 @@ bytecode VM, so both backends produce identical results and traces.
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Optional
 
 from ..ast import nodes
 from ..errors import (
@@ -17,7 +17,6 @@ from ..errors import (
     InthonIndexError,
     InthonSemanticError,
     InthonTypeError_,
-    PolicyViolationError,
     Span,
 )
 from ..memory import ops as memory_ops

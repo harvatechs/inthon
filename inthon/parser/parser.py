@@ -24,7 +24,8 @@ from lark.exceptions import (
 )
 
 from ..ast import nodes
-from ..errors import InthonError, InthonParseError, Span, ParseError
+from ..errors import InthonError, InthonParseError, Span
+from ..errors import ParseError as ParseError
 from ..lexer.keywords import KEYWORDS, NOT_KEYWORDS
 from .transformer import InthonTransformer
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..errors import Span, ToolValidationError
-from ..runtime.values import InthonValue, unbox
+from ..runtime.values import unbox
 from .schema import ToolSpec
 
 _TYPE_CHECKS = {

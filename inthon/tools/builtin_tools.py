@@ -335,7 +335,6 @@ def register_builtins(registry, mock=True) -> None:
 
 def register_skills(registry) -> None:
     from pathlib import Path
-    import json
     import subprocess
     import sys
     import shutil
@@ -357,7 +356,6 @@ def register_skills(registry) -> None:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 
-            skill_name = data.get("skill_name")
             for t in data.get("tools", []):
                 name = t.get("name")
                 description = t.get("description", "")

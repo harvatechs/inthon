@@ -529,7 +529,6 @@ class InthonTransformer(Transformer):
         parts: list = []
         buf: list[str] = []
         i = 0
-        col_offset = 1  # opening quote
         found = False
         while i < len(raw):
             ch = raw[i]

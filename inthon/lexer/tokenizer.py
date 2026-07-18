@@ -256,4 +256,4 @@ def tokenize(source: str, filename: str = "<stdin>") -> List[Token]:
 
 # Backward compatibility aliases
 Tokenizer = Lexer
-from ..errors import InthonLexError as LexerError
+LexerError = InthonLexError

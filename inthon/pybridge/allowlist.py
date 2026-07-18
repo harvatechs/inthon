@@ -1,6 +1,9 @@
 """PyBridge allowlist / denylist (spec §pybridge, SB-06..SB-10)."""
 
 from __future__ import annotations
+import builtins
+import types
+from dataclasses import dataclass, field
 
 #: Modules that may be imported via `use py.<name>` by default.
 #: Configurable via [pybridge] allowed_modules in inthon.toml.
@@ -111,10 +114,6 @@ BLOCKED_ATTRIBUTES: frozenset[str] = frozenset(
 def is_dunder(name: str) -> bool:
     return len(name) >= 4 and name.startswith("__") and name.endswith("__")
 
-
-import builtins
-import types
-from dataclasses import dataclass, field
 
 @dataclass
 class AllowlistConfig:
