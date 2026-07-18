@@ -57,7 +57,9 @@ def node_from_json(data: dict) -> "Node":
     for f in fields(cls):
         if f.name == "span":
             continue
-        kwargs[f.name] = _node_value(getattr(cls, "__dataclass_fields__")[f.name], data.get(f.name))
+        kwargs[f.name] = _node_value(
+            getattr(cls, "__dataclass_fields__")[f.name], data.get(f.name)
+        )
     return cls(**kwargs)
 
 
@@ -124,7 +126,12 @@ class FnType(TypeExpr):
 class Program(Node):
     statements: tuple = ()
 
-    def __init__(self, statements: tuple = (), body: Optional[tuple] = None, span: Optional[Span] = None):
+    def __init__(
+        self,
+        statements: tuple = (),
+        body: Optional[tuple] = None,
+        span: Optional[Span] = None,
+    ):
         if body is not None:
             statements = body
         object.__setattr__(self, "statements", tuple(statements))
@@ -285,13 +292,13 @@ class RewriterDecl(Statement):
 class AgentDecl(Statement):
     name: str = ""
     goal: Optional[str] = None
-    inputs: tuple = ()      # tuple[TypedField]
-    outputs: tuple = ()     # tuple[TypedField]
-    imports: tuple = ()     # tuple[UseTool|UsePy|UseMemory]
-    policies: tuple = ()    # tuple[PolicyEntry]
+    inputs: tuple = ()  # tuple[TypedField]
+    outputs: tuple = ()  # tuple[TypedField]
+    imports: tuple = ()  # tuple[UseTool|UsePy|UseMemory]
+    policies: tuple = ()  # tuple[PolicyEntry]
     plan: Optional[Block] = None
-    criteria: tuple = ()    # tuple[CriteriaDecl]
-    rewriters: tuple = ()   # tuple[RewriterDecl]
+    criteria: tuple = ()  # tuple[CriteriaDecl]
+    rewriters: tuple = ()  # tuple[RewriterDecl]
 
     @property
     def policy(self) -> Optional[PolicyCompatibilityWrapper]:
@@ -398,9 +405,9 @@ class RetryStmt(Statement):
 @_register
 @dataclass(frozen=True)
 class EvalStmt(Statement):
-    subject: str = ""               # variable name or 'self'
+    subject: str = ""  # variable name or 'self'
     rubric: str = ""
-    criteria: tuple = ()            # tuple[EvalCriterion]; empty for self-eval form
+    criteria: tuple = ()  # tuple[EvalCriterion]; empty for self-eval form
     rewriter: Optional[str] = None  # for `eval self ... on fail rewrite with X`
 
 

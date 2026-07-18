@@ -75,7 +75,9 @@ class InthonError(Exception):
                 gutter = f"{self.span.line:4d} | "
                 lines.append(gutter + self.source_line.rstrip("\n"))
                 caret_width = max(1, (self.span.end_col - self.span.col))
-                lines.append(" " * len(gutter) + " " * (self.span.col - 1) + "^" * caret_width)
+                lines.append(
+                    " " * len(gutter) + " " * (self.span.col - 1) + "^" * caret_width
+                )
         if self.hint:
             lines.append(f"  Hint: {self.hint}")
         return "\n".join(lines)
@@ -93,7 +95,9 @@ class InthonParseError(InthonError):
 
 class InthonLexError(InthonParseError):
     code = "INTHON_PARSE_002"
-    default_hint = "Check for unterminated strings, stray characters, or invalid number formats."
+    default_hint = (
+        "Check for unterminated strings, stray characters, or invalid number formats."
+    )
 
 
 class InthonTypeSyntaxError(InthonParseError):
@@ -110,12 +114,16 @@ class InthonSemanticError(InthonError):
 
 class InthonNameError(InthonSemanticError):
     code = "INTHON_SEM_002"
-    default_hint = "Declare the name with 'let' or 'const' before use, or import it with 'use'."
+    default_hint = (
+        "Declare the name with 'let' or 'const' before use, or import it with 'use'."
+    )
 
 
 class InthonDuplicateError(InthonSemanticError):
     code = "INTHON_SEM_001"
-    default_hint = "Rename one of the declarations; names must be unique within a scope."
+    default_hint = (
+        "Rename one of the declarations; names must be unique within a scope."
+    )
 
 
 class InthonConstError(InthonSemanticError):
@@ -204,12 +212,16 @@ class PyBridgeError(InthonError):
 
 class InthonImportError_(PyBridgeError):
     code = "INTHON_PY_001"
-    default_hint = "Add the module to [pybridge] allowed_modules in inthon.toml if it is safe."
+    default_hint = (
+        "Add the module to [pybridge] allowed_modules in inthon.toml if it is safe."
+    )
 
 
 class InthonPyAttributeError(PyBridgeError):
     code = "INTHON_PY_002"
-    default_hint = "Private/dunder attributes and dangerous callables are blocked by the sandbox."
+    default_hint = (
+        "Private/dunder attributes and dangerous callables are blocked by the sandbox."
+    )
 
 
 class InthonConversionError(PyBridgeError):
@@ -261,15 +273,35 @@ class InthonCLIError(InthonError):
 ALL_ERROR_CODES = {
     cls.code
     for cls in [
-        InthonParseError, InthonLexError, InthonTypeSyntaxError,
-        InthonSemanticError, InthonNameError, InthonDuplicateError,
-        InthonConstError, InthonCapabilityError, InthonStaticTypeError,
-        InthonTypeError_, InthonIndexError, InthonArityError, InthonFailure,
-        GuardAssertionError, PolicyViolationError, BudgetExhaustedError,
-        ApprovalDeniedError, ToolNotFoundError, ToolValidationError,
-        ToolExecutionError, ToolTimeoutError, InthonImportError_,
-        InthonPyAttributeError, InthonConversionError, InthonMemoryError_,
-        InthonVMError, InthonStackOverflow, InthonIterationLimit,
-        InthonRecursionLimit, InthonCLIError,
+        InthonParseError,
+        InthonLexError,
+        InthonTypeSyntaxError,
+        InthonSemanticError,
+        InthonNameError,
+        InthonDuplicateError,
+        InthonConstError,
+        InthonCapabilityError,
+        InthonStaticTypeError,
+        InthonTypeError_,
+        InthonIndexError,
+        InthonArityError,
+        InthonFailure,
+        GuardAssertionError,
+        PolicyViolationError,
+        BudgetExhaustedError,
+        ApprovalDeniedError,
+        ToolNotFoundError,
+        ToolValidationError,
+        ToolExecutionError,
+        ToolTimeoutError,
+        InthonImportError_,
+        InthonPyAttributeError,
+        InthonConversionError,
+        InthonMemoryError_,
+        InthonVMError,
+        InthonStackOverflow,
+        InthonIterationLimit,
+        InthonRecursionLimit,
+        InthonCLIError,
     ]
 }

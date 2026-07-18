@@ -26,7 +26,9 @@ _MAX_DEPTH = 50
 _MAX_ITEMS = 100_000
 
 
-def from_python(obj: Any, importer=None, path: str = "", _depth: int = 0) -> InthonValue:
+def from_python(
+    obj: Any, importer=None, path: str = "", _depth: int = 0
+) -> InthonValue:
     if obj is None:
         return NONE
     if isinstance(obj, bool):
@@ -41,9 +43,18 @@ def from_python(obj: Any, importer=None, path: str = "", _depth: int = 0) -> Int
         return InthonString(obj)
     # numpy scalars → native numbers (duck-typed to avoid a hard numpy dep)
     if type(obj).__module__ == "numpy" and type(obj).__name__ in (
-        "int64", "int32", "float64", "float32", "int_", "float_",
+        "int64",
+        "int32",
+        "float64",
+        "float32",
+        "int_",
+        "float_",
     ):
-        return InthonFloat(float(obj)) if "float" in type(obj).__name__ else InthonInt(int(obj))
+        return (
+            InthonFloat(float(obj))
+            if "float" in type(obj).__name__
+            else InthonInt(int(obj))
+        )
     if isinstance(obj, (list, tuple, set, frozenset)):
         if _depth > _MAX_DEPTH:
             raise InthonConversionError("Value too deep to convert from Python")
@@ -56,7 +67,9 @@ def from_python(obj: Any, importer=None, path: str = "", _depth: int = 0) -> Int
             raise InthonConversionError("Value too deep to convert from Python")
         if len(obj) > _MAX_ITEMS:
             raise InthonConversionError("Dict too large to convert from Python")
-        return InthonDict({k: from_python(v, importer, path, _depth + 1) for k, v in obj.items()})
+        return InthonDict(
+            {k: from_python(v, importer, path, _depth + 1) for k, v in obj.items()}
+        )
     # everything else stays proxied
     return InthonPyObject(obj, importer=importer, path=path)
 

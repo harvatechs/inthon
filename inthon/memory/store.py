@@ -29,6 +29,7 @@ class MemoryEntry:
     @property
     def value(self) -> Any:
         from ..runtime.values import to_python
+
         return to_python(self._value)
 
     def to_json(self) -> dict:
@@ -97,17 +98,23 @@ class MemoryStore:
         return InMemoryStore()
 
     @classmethod
-    def persistent(cls, db_path: str = ".inthon/memory.db", use_embeddings: bool = True) -> MemoryStore:
+    def persistent(
+        cls, db_path: str = ".inthon/memory.db", use_embeddings: bool = True
+    ) -> MemoryStore:
         from pathlib import Path
+
         try:
             from .sqlite_store import SQLiteMemoryStore
+
             if db_path != ":memory:":
                 Path(db_path).parent.mkdir(parents=True, exist_ok=True)
             return SQLiteMemoryStore(db_path=db_path, use_embeddings=use_embeddings)
         except Exception:
             return InMemoryStore()
 
-    def remember(self, namespace: str, key: str, value: InthonValue, text: str) -> MemoryEntry:
+    def remember(
+        self, namespace: str, key: str, value: InthonValue, text: str
+    ) -> MemoryEntry:
         raise NotImplementedError
 
     def recall(self, namespace: str, query: str, limit: int = 1) -> list[MemoryEntry]:
@@ -124,6 +131,7 @@ class MemoryStore:
 
     def write(self, key: str, value: Any, namespace: str) -> MemoryEntry:
         from ..runtime.values import from_python
+
         val_wrapped = from_python(value)
         entry = self.remember(namespace, key, val_wrapped, str(value))
         entry.namespace = namespace
@@ -177,8 +185,12 @@ class InMemoryStore(MemoryStore):
     def _ns(self, namespace: str) -> dict[str, MemoryEntry]:
         return self._data.setdefault(namespace, {})
 
-    def remember(self, namespace: str, key: str, value: InthonValue, text: str) -> MemoryEntry:
-        entry = MemoryEntry(key=key, _value=value, text=text, embedding=embed(text), namespace=namespace)
+    def remember(
+        self, namespace: str, key: str, value: InthonValue, text: str
+    ) -> MemoryEntry:
+        entry = MemoryEntry(
+            key=key, _value=value, text=text, embedding=embed(text), namespace=namespace
+        )
         self._ns(namespace)[key] = entry
         return entry
 

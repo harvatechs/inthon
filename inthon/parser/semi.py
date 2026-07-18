@@ -44,26 +44,62 @@ _AFTER = {
 }
 
 _CONTINUATION = {
-    TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH,
-    TokenType.PERCENT, TokenType.STAR_STAR, TokenType.EQ_EQ, TokenType.NOT_EQ,
-    TokenType.LT, TokenType.GT, TokenType.LT_EQ, TokenType.GT_EQ,
-    TokenType.AND, TokenType.OR, TokenType.DOT, TokenType.COMMA,
-    TokenType.COLON, TokenType.ASSIGN,
+    TokenType.PLUS,
+    TokenType.MINUS,
+    TokenType.STAR,
+    TokenType.SLASH,
+    TokenType.PERCENT,
+    TokenType.STAR_STAR,
+    TokenType.EQ_EQ,
+    TokenType.NOT_EQ,
+    TokenType.LT,
+    TokenType.GT,
+    TokenType.LT_EQ,
+    TokenType.GT_EQ,
+    TokenType.AND,
+    TokenType.OR,
+    TokenType.DOT,
+    TokenType.COMMA,
+    TokenType.COLON,
+    TokenType.ASSIGN,
     TokenType.LBRACE,
     # continuation keywords
-    TokenType.ELSE, TokenType.CATCH, TokenType.ON, TokenType.IN,
-    TokenType.FROM, TokenType.BEFORE, TokenType.WITH, TokenType.BACKOFF,
-    TokenType.AGAINST, TokenType.AS,
+    TokenType.ELSE,
+    TokenType.CATCH,
+    TokenType.ON,
+    TokenType.IN,
+    TokenType.FROM,
+    TokenType.BEFORE,
+    TokenType.WITH,
+    TokenType.BACKOFF,
+    TokenType.AGAINST,
+    TokenType.AS,
 }
 
 # tokens after which "{" opens a dict literal rather than a block
 _DICT_PRECEDERS = {
-    TokenType.ASSIGN, TokenType.LPAREN, TokenType.LBRACKET, TokenType.COMMA,
-    TokenType.COLON, TokenType.RETURN, TokenType.PLUS, TokenType.MINUS,
-    TokenType.STAR, TokenType.SLASH, TokenType.PERCENT, TokenType.STAR_STAR,
-    TokenType.AND, TokenType.OR, TokenType.NOT, TokenType.EQ_EQ,
-    TokenType.NOT_EQ, TokenType.LT, TokenType.GT, TokenType.LT_EQ,
-    TokenType.GT_EQ, TokenType.IN,
+    TokenType.ASSIGN,
+    TokenType.LPAREN,
+    TokenType.LBRACKET,
+    TokenType.COMMA,
+    TokenType.COLON,
+    TokenType.RETURN,
+    TokenType.PLUS,
+    TokenType.MINUS,
+    TokenType.STAR,
+    TokenType.SLASH,
+    TokenType.PERCENT,
+    TokenType.STAR_STAR,
+    TokenType.AND,
+    TokenType.OR,
+    TokenType.NOT,
+    TokenType.EQ_EQ,
+    TokenType.NOT_EQ,
+    TokenType.LT,
+    TokenType.GT,
+    TokenType.LT_EQ,
+    TokenType.GT_EQ,
+    TokenType.IN,
 }
 
 
@@ -71,10 +107,10 @@ def insert_semicolons(source: str, filename: str = "<stdin>") -> str:
     tokens = Lexer(source, filename).tokenize()
     insertions: list[int] = []
 
-    depth = 0                    # () and [] nesting
-    brace_stack: list[bool] = [] # True = dict literal, False = block
-    prev: Token | None = None    # last significant token
-    pending = False              # saw a newline awaiting a decision
+    depth = 0  # () and [] nesting
+    brace_stack: list[bool] = []  # True = dict literal, False = block
+    prev: Token | None = None  # last significant token
+    pending = False  # saw a newline awaiting a decision
 
     for tok in tokens:
         if tok.type == TokenType.NEWLINE:

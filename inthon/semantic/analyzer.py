@@ -45,6 +45,7 @@ class SemanticAnalyzer:
     def __init__(self, ctx: Optional[ExecutionContext] = None):
         if ctx is None:
             from ..runtime.context import ExecutionContext
+
             ctx = ExecutionContext()
         self.ctx = ctx
         self.errors: list = []
@@ -77,7 +78,9 @@ class SemanticAnalyzer:
                     is_const = name in self.ctx.env.consts
                     global_scope.declare(Symbol(name, "const" if is_const else "let"))
                     tenv.set(name, "any")
-        self._walk_statements(program.statements, global_scope, tenv, in_loop=False, in_fn=False)
+        self._walk_statements(
+            program.statements, global_scope, tenv, in_loop=False, in_fn=False
+        )
         if self.errors:
             for err in self.errors:
                 if isinstance(err, PyBridgeError):
@@ -88,7 +91,9 @@ class SemanticAnalyzer:
     # ------------------------------------------------------------------
     # statements
     # ------------------------------------------------------------------
-    def _walk_statements(self, statements, scope: Scope, tenv: TypeEnv, in_loop: bool, in_fn: bool):
+    def _walk_statements(
+        self, statements, scope: Scope, tenv: TypeEnv, in_loop: bool, in_fn: bool
+    ):
         for stmt in statements:
             self._walk_statement(stmt, scope, tenv, in_loop, in_fn)
 
@@ -97,7 +102,9 @@ class SemanticAnalyzer:
         scope.children.append(child)
         return child
 
-    def _walk_statement(self, stmt, scope: Scope, tenv: TypeEnv, in_loop: bool, in_fn: bool):
+    def _walk_statement(
+        self, stmt, scope: Scope, tenv: TypeEnv, in_loop: bool, in_fn: bool
+    ):
         method = getattr(self, f"_st_{type(stmt).__name__}", None)
         if method is None:  # pragma: no cover
             return
@@ -109,8 +116,14 @@ class SemanticAnalyzer:
         if not self.ctx.tools.has(path):
             known = self.ctx.tools.paths()
             close = difflib.get_close_matches(path, known, n=1, cutoff=0.6)
-            hint = f"Did you mean '{close[0]}'?" if close else f"Registered tools: {', '.join(known)}"
-            self._error(ToolNotFoundError(f"Unknown tool '{path}'", span=stmt.span, hint=hint))
+            hint = (
+                f"Did you mean '{close[0]}'?"
+                if close
+                else f"Registered tools: {', '.join(known)}"
+            )
+            self._error(
+                ToolNotFoundError(f"Unknown tool '{path}'", span=stmt.span, hint=hint)
+            )
             return
         root = path.split(".")[0]
         scope.declare(Symbol(root, "tool", stmt.span))
@@ -121,8 +134,13 @@ class SemanticAnalyzer:
         top = stmt.module.split(".")[0]
         from ..pybridge.allowlist import HARD_DENYLIST
 
-        if top in HARD_DENYLIST or stmt.module in HARD_DENYLIST or (
-            top not in self.ctx.importer.allowlist and stmt.module not in self.ctx.importer.allowlist
+        if (
+            top in HARD_DENYLIST
+            or stmt.module in HARD_DENYLIST
+            or (
+                top not in self.ctx.importer.allowlist
+                and stmt.module not in self.ctx.importer.allowlist
+            )
         ):
             self._error(
                 PyBridgeError(
@@ -180,7 +198,9 @@ class SemanticAnalyzer:
             tenv.set(stmt.name, declared)
         else:
             tenv.set(stmt.name, value_type)
-        self._declare(scope, Symbol(stmt.name, "const", stmt.span, stmt.type_annotation))
+        self._declare(
+            scope, Symbol(stmt.name, "const", stmt.span, stmt.type_annotation)
+        )
 
     def _st_FnDecl(self, stmt: nodes.FnDecl, scope, tenv, *_):
         self._declare(scope, Symbol(stmt.name, "fn", stmt.span))
@@ -189,7 +209,11 @@ class SemanticAnalyzer:
         tenv.set(stmt.name, "fn")
         params_info = []
         for param in stmt.params:
-            ptype = type_of_typeexpr(param.type_annotation) if param.type_annotation else "any"
+            ptype = (
+                type_of_typeexpr(param.type_annotation)
+                if param.type_annotation
+                else "any"
+            )
             params_info.append((param.name, ptype))
         self.fn_params[stmt.name] = params_info
         fn_scope = self._child(scope, "fn", stmt.name)
@@ -201,14 +225,20 @@ class SemanticAnalyzer:
                         f"Duplicate parameter '{param.name}'", span=param.span
                     )
                 )
-            fn_scope.declare(Symbol(param.name, "param", param.span, param.type_annotation))
+            fn_scope.declare(
+                Symbol(param.name, "param", param.span, param.type_annotation)
+            )
             fn_tenv.set(
                 param.name,
-                type_of_typeexpr(param.type_annotation) if param.type_annotation else "any",
+                type_of_typeexpr(param.type_annotation)
+                if param.type_annotation
+                else "any",
             )
             if param.default is not None:
                 self._walk_expr(param.default, scope, tenv, False, False)
-        self._walk_statements(stmt.body.statements, fn_scope, fn_tenv, in_loop=False, in_fn=stmt.name)
+        self._walk_statements(
+            stmt.body.statements, fn_scope, fn_tenv, in_loop=False, in_fn=stmt.name
+        )
 
     def _st_AgentDecl(self, stmt: nodes.AgentDecl, scope, tenv, *_):
         self._declare(scope, Symbol(stmt.name, "agent", stmt.span))
@@ -221,13 +251,19 @@ class SemanticAnalyzer:
         for field in stmt.inputs:
             if field.name in seen_inputs:
                 self._error(
-                    InthonDuplicateError(f"Duplicate input '{field.name}'", span=field.span)
+                    InthonDuplicateError(
+                        f"Duplicate input '{field.name}'", span=field.span
+                    )
                 )
             seen_inputs.add(field.name)
-            agent_scope.declare(Symbol(field.name, "param", field.span, field.type_annotation))
+            agent_scope.declare(
+                Symbol(field.name, "param", field.span, field.type_annotation)
+            )
             agent_tenv.set(
                 field.name,
-                type_of_typeexpr(field.type_annotation) if field.type_annotation else "any",
+                type_of_typeexpr(field.type_annotation)
+                if field.type_annotation
+                else "any",
             )
         # static policy/tool permission pre-check
         self._check_agent_permissions(stmt)
@@ -240,12 +276,16 @@ class SemanticAnalyzer:
                 )
             )
         else:
-            self._walk_statements(stmt.plan.statements, agent_scope, agent_tenv, False, False)
+            self._walk_statements(
+                stmt.plan.statements, agent_scope, agent_tenv, False, False
+            )
         # rewriters are bodies with access to the eval context
         for rw in stmt.rewriters:
             rw_scope = self._child(agent_scope, "fn", f"rewriter:{rw.name}")
             rw_scope.declare(Symbol("ctx", "param"))
-            self._walk_statements(rw.body.statements, rw_scope, TypeEnv(agent_tenv), False, True)
+            self._walk_statements(
+                rw.body.statements, rw_scope, TypeEnv(agent_tenv), False, True
+            )
 
     def _check_agent_permissions(self, stmt: nodes.AgentDecl):
         from ..policy.model import Policy
@@ -255,7 +295,9 @@ class SemanticAnalyzer:
         except InthonSemanticError as exc:
             self._error(exc)
             return
-        declared_tools = {imp.path for imp in stmt.imports if isinstance(imp, nodes.UseTool)}
+        declared_tools = {
+            imp.path for imp in stmt.imports if isinstance(imp, nodes.UseTool)
+        }
         for path in declared_tools:
             if not self.ctx.tools.has(path):
                 continue
@@ -272,14 +314,22 @@ class SemanticAnalyzer:
     def _st_IfStmt(self, stmt: nodes.IfStmt, scope, tenv, in_loop, in_fn):
         self._walk_expr(stmt.condition, scope, tenv, in_loop, in_fn)
         self._walk_statements(
-            stmt.then_block.statements, self._child(scope, "block"), TypeEnv(tenv), in_loop, in_fn
+            stmt.then_block.statements,
+            self._child(scope, "block"),
+            TypeEnv(tenv),
+            in_loop,
+            in_fn,
         )
         if stmt.else_block is not None:
             if isinstance(stmt.else_block, nodes.IfStmt):
                 self._st_IfStmt(stmt.else_block, scope, tenv, in_loop, in_fn)
             else:
                 self._walk_statements(
-                    stmt.else_block.statements, self._child(scope, "block"), TypeEnv(tenv), in_loop, in_fn
+                    stmt.else_block.statements,
+                    self._child(scope, "block"),
+                    TypeEnv(tenv),
+                    in_loop,
+                    in_fn,
                 )
 
     def _st_ForStmt(self, stmt: nodes.ForStmt, scope, tenv, in_loop, in_fn):
@@ -311,15 +361,21 @@ class SemanticAnalyzer:
     def _st_BreakStmt(self, stmt, scope, tenv, in_loop, in_fn):
         if not in_loop:
             self._error(
-                InthonSemanticError("'break' outside of a loop", span=stmt.span,
-                                    hint="break/continue are only valid inside for/while bodies.")
+                InthonSemanticError(
+                    "'break' outside of a loop",
+                    span=stmt.span,
+                    hint="break/continue are only valid inside for/while bodies.",
+                )
             )
 
     def _st_ContinueStmt(self, stmt, scope, tenv, in_loop, in_fn):
         if not in_loop:
             self._error(
-                InthonSemanticError("'continue' outside of a loop", span=stmt.span,
-                                    hint="break/continue are only valid inside for/while bodies.")
+                InthonSemanticError(
+                    "'continue' outside of a loop",
+                    span=stmt.span,
+                    hint="break/continue are only valid inside for/while bodies.",
+                )
             )
 
     # -- agent primitives ---------------------------------------------------------------------
@@ -354,11 +410,19 @@ class SemanticAnalyzer:
                     hint="Use exponential, linear, or fixed.",
                 )
             )
-        self._walk_statements(stmt.body.statements, self._child(scope, "block"), TypeEnv(tenv), in_loop, in_fn)
+        self._walk_statements(
+            stmt.body.statements,
+            self._child(scope, "block"),
+            TypeEnv(tenv),
+            in_loop,
+            in_fn,
+        )
         if stmt.catch_body is not None:
             catch_scope = self._child(scope, "catch")
             catch_scope.declare(Symbol(stmt.catch_name or "err", "catch", stmt.span))
-            self._walk_statements(stmt.catch_body.statements, catch_scope, TypeEnv(tenv), in_loop, in_fn)
+            self._walk_statements(
+                stmt.catch_body.statements, catch_scope, TypeEnv(tenv), in_loop, in_fn
+            )
 
     def _st_EvalStmt(self, stmt: nodes.EvalStmt, scope, tenv, *_):
         if stmt.subject != "self" and scope.lookup(stmt.subject) is None:
@@ -395,7 +459,8 @@ class SemanticAnalyzer:
             if symbol.kind in ("builtin", "tool", "fn", "agent", "py"):
                 self._error(
                     InthonSemanticError(
-                        f"Cannot assign to {symbol.kind} '{target.name}'", span=target.span
+                        f"Cannot assign to {symbol.kind} '{target.name}'",
+                        span=target.span,
                     )
                 )
             value_type = infer_expr_type(stmt.value, tenv, self.fn_returns)
@@ -418,8 +483,16 @@ class SemanticAnalyzer:
             if scope.lookup(expr.name) is None:
                 self._error(self._undefined_error(expr.name, scope, expr.span))
             return
-        if isinstance(expr, (nodes.IntLiteral, nodes.FloatLiteral, nodes.StringLiteral,
-                             nodes.BoolLiteral, nodes.NoneLiteral)):
+        if isinstance(
+            expr,
+            (
+                nodes.IntLiteral,
+                nodes.FloatLiteral,
+                nodes.StringLiteral,
+                nodes.BoolLiteral,
+                nodes.NoneLiteral,
+            ),
+        ):
             return
         if isinstance(expr, nodes.InterpString):
             for part in expr.parts:
@@ -515,13 +588,18 @@ class SemanticAnalyzer:
             else:
                 tool_roots = {p.split(".")[0] for p in self.ctx.tools.paths()}
                 if name in tool_roots:
-                    matches = [p for p in self.ctx.tools.paths() if p.startswith(name + ".")]
+                    matches = [
+                        p for p in self.ctx.tools.paths() if p.startswith(name + ".")
+                    ]
                     return InthonCapabilityError(
                         f"Tool namespace '{name}' used but not imported",
                         span=span,
-                        hint="Add one of: " + ", ".join(f"use tool {p}" for p in matches[:3]),
+                        hint="Add one of: "
+                        + ", ".join(f"use tool {p}" for p in matches[:3]),
                     )
-                hint = "Declare it first with 'let' or 'const', or import it with 'use'."
+                hint = (
+                    "Declare it first with 'let' or 'const', or import it with 'use'."
+                )
         return InthonNameError(f"Undefined name '{name}'", span=span, hint=hint)
 
     def _error(self, exc):

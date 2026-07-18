@@ -10,6 +10,7 @@ from ..errors import ApprovalDeniedError, Span
 
 from dataclasses import dataclass
 
+
 @dataclass
 class ApprovalRequest:
     target: str
@@ -40,12 +41,15 @@ class ApprovalGate:
     def set_handler(self, handler: Callable) -> None:
         self.handler = handler
 
-    def request(self, subject: str, action: str, details: dict, span: Optional[Span] = None) -> bool:
+    def request(
+        self, subject: str, action: str, details: dict, span: Optional[Span] = None
+    ) -> bool:
         if self.tracer is not None:
             self.tracer.emit("approval_requested", span, subject=subject, action=action)
 
         if self.handler is not None:
             import inspect
+
             try:
                 sig = inspect.signature(self.handler)
                 params_count = len(sig.parameters)
@@ -55,7 +59,9 @@ class ApprovalGate:
                 req = ApprovalRequest(
                     target=subject,
                     action=action,
-                    context_summary=details.get("summary", f"wants to {action} on {subject}"),
+                    context_summary=details.get(
+                        "summary", f"wants to {action} on {subject}"
+                    ),
                 )
                 approved = bool(self.handler(req))
             else:
@@ -88,4 +94,3 @@ class ApprovalGate:
             print(f"    {key}: {value}")
         answer = input("Approve? [y/N] ").strip().lower()
         return answer in ("y", "yes")
-

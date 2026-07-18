@@ -29,9 +29,9 @@ class Instr:
 class CodeObject:
     name: str
     instructions: list = field(default_factory=list)
-    literals: list = field(default_factory=list)   # InthonValue scalars
-    meta: list = field(default_factory=list)       # raw artifacts
-    names: list = field(default_factory=list)      # identifier pool
+    literals: list = field(default_factory=list)  # InthonValue scalars
+    meta: list = field(default_factory=list)  # raw artifacts
+    names: list = field(default_factory=list)  # identifier pool
     stacksize: int = 0
 
     @property
@@ -400,7 +400,11 @@ class Compiler:
 
     def _st_RetryStmt(self, stmt: nodes.RetryStmt, capture: bool):
         line, col = self._line(stmt)
-        handler = {"count": stmt.count, "backoff": stmt.backoff, "catch_name": stmt.catch_name}
+        handler = {
+            "count": stmt.count,
+            "backoff": stmt.backoff,
+            "catch_name": stmt.catch_name,
+        }
         handler["body_ip"] = len(self.code.instructions) + 1
         midx = self._meta(handler)
         self._emit(Op.RETRY_BEGIN, midx, line, col)
@@ -432,7 +436,9 @@ class Compiler:
         self._push()
         count = 0
         for criterion in stmt.criteria:
-            self._emit(Op.LOAD_CONST, self._lit(InthonString(criterion.name)), line, col)
+            self._emit(
+                Op.LOAD_CONST, self._lit(InthonString(criterion.name)), line, col
+            )
             self._emit(Op.LOAD_CONST, self._lit(InthonString(criterion.op)), line, col)
             self._compile_expr(criterion.value)
             self._push(2)
@@ -496,10 +502,14 @@ class Compiler:
         self._emit(Op.LOAD_CONST, self._lit(InthonFloat(expr.value)), *self._line(expr))
 
     def _ex_StringLiteral(self, expr):
-        self._emit(Op.LOAD_CONST, self._lit(InthonString(expr.value)), *self._line(expr))
+        self._emit(
+            Op.LOAD_CONST, self._lit(InthonString(expr.value)), *self._line(expr)
+        )
 
     def _ex_BoolLiteral(self, expr):
-        self._emit(Op.LOAD_CONST, self._lit(TRUE if expr.value else FALSE), *self._line(expr))
+        self._emit(
+            Op.LOAD_CONST, self._lit(TRUE if expr.value else FALSE), *self._line(expr)
+        )
 
     def _ex_NoneLiteral(self, expr):
         self._emit(Op.LOAD_CONST, self._lit(NONE), *self._line(expr))
@@ -508,7 +518,9 @@ class Compiler:
         n = 0
         for part in expr.parts:
             if isinstance(part, str):
-                self._emit(Op.LOAD_CONST, self._lit(InthonString(part)), *self._line(expr))
+                self._emit(
+                    Op.LOAD_CONST, self._lit(InthonString(part)), *self._line(expr)
+                )
                 self._push()
             else:
                 self._compile_expr(part)

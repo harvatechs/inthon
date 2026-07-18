@@ -12,6 +12,7 @@ app = typer.Typer(
 )
 console = Console()
 
+
 @app.command("run")
 def run_cmd(
     file: Path = typer.Argument(..., help="Path to .inth file"),
@@ -368,7 +369,9 @@ def trace_cmd(
     console.print(f"  program hash   : {str(doc.get('program_hash', '?'))[:16]}")
     console.print(f"  duration       : {doc.get('duration_ms', '?')} ms")
     result = doc.get("result", {})
-    console.print(f"  result         : {result.get('preview', '?') if isinstance(result, dict) else result}")
+    console.print(
+        f"  result         : {result.get('preview', '?') if isinstance(result, dict) else result}"
+    )
     console.print(f"  events         : {len(events_list)}")
     for t, c in sorted(counts.items()):
         console.print(f"    {t:<20} {c}")

@@ -164,7 +164,15 @@ def is_safe_attribute_access(parent: object, attr_name: str, value: object) -> b
             return False
 
     # Check if value itself is a dangerous builtin function
-    blocked_builtins = {"exec", "eval", "compile", "__import__", "open", "breakpoint", "input"}
+    blocked_builtins = {
+        "exec",
+        "eval",
+        "compile",
+        "__import__",
+        "open",
+        "breakpoint",
+        "input",
+    }
     if value in blocked_builtins:
         return False
     for b_name in blocked_builtins:
@@ -173,7 +181,11 @@ def is_safe_attribute_access(parent: object, attr_name: str, value: object) -> b
                 return False
 
     # Check if value is a builtin function with a blocked name (like io.open)
-    if type(value).__name__ in ("builtin_function_or_method", "wrapper_descriptor", "method-wrapper"):
+    if type(value).__name__ in (
+        "builtin_function_or_method",
+        "wrapper_descriptor",
+        "method-wrapper",
+    ):
         val_name = getattr(value, "__name__", None)
         if val_name in blocked_builtins:
             return False
@@ -193,14 +205,26 @@ def is_safe_attribute_access(parent: object, attr_name: str, value: object) -> b
 
 
 def is_safe_callable(obj: object) -> bool:
-    blocked_builtins = {"exec", "eval", "compile", "__import__", "open", "breakpoint", "input"}
+    blocked_builtins = {
+        "exec",
+        "eval",
+        "compile",
+        "__import__",
+        "open",
+        "breakpoint",
+        "input",
+    }
     if obj in blocked_builtins:
         return False
     for b_name in blocked_builtins:
         if hasattr(builtins, b_name):
             if obj is getattr(builtins, b_name):
                 return False
-    if type(obj).__name__ in ("builtin_function_or_method", "wrapper_descriptor", "method-wrapper"):
+    if type(obj).__name__ in (
+        "builtin_function_or_method",
+        "wrapper_descriptor",
+        "method-wrapper",
+    ):
         val_name = getattr(obj, "__name__", None)
         if val_name in blocked_builtins:
             return False
@@ -217,4 +241,3 @@ def is_safe_callable(obj: object) -> bool:
     if isinstance(obj, types.ModuleType):
         return False
     return True
-

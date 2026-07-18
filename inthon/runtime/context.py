@@ -22,20 +22,20 @@ _SESSION_NAMESPACES = {"session", "default", "scratch", "tmp"}
 class RunOptions:
     """How to execute an INTHON program."""
 
-    mock: bool = True                      # use mock tool implementations
-    backend: str = "tree"                  # "tree" (interpreter) | "vm" (bytecode)
+    mock: bool = True  # use mock tool implementations
+    backend: str = "tree"  # "tree" (interpreter) | "vm" (bytecode)
     trace: bool = True
-    policy: Optional[Policy] = None        # base policy (host-level); program may narrow
+    policy: Optional[Policy] = None  # base policy (host-level); program may narrow
     auto_approve: bool = False
     approval_handler: Optional[Callable] = None
-    memory_dir: Optional[str] = None       # SQLite memory location (default: cwd/.inthon)
+    memory_dir: Optional[str] = None  # SQLite memory location (default: cwd/.inthon)
     registry: Optional[ToolRegistry] = None
     importer: Optional[SafeModuleImporter] = None
     strict_types: bool = True
     filename: str = "<stdin>"
     source: str = ""
     dry_run: bool = False
-    write_out: Optional[Callable[[str], None]] = None   # print sink (test injectable)
+    write_out: Optional[Callable[[str], None]] = None  # print sink (test injectable)
     write_err: Optional[Callable[[str], None]] = None
 
 
@@ -82,7 +82,9 @@ class ExecutionContext:
 
         # output sinks
         self._write_out = self.options.write_out or (lambda s: print(s))
-        self._write_err = self.options.write_err or (lambda s: print(s, file=__import__("sys").stderr))
+        self._write_err = self.options.write_err or (
+            lambda s: print(s, file=__import__("sys").stderr)
+        )
 
         # global scope with builtins installed by the interpreter
         self.env = Environment(kind="global", label="global")
@@ -110,7 +112,9 @@ class ExecutionContext:
             import os
 
             memory_dir = self.options.memory_dir or os.path.join(os.getcwd(), ".inthon")
-            self._persistent_store = SQLiteMemoryStore(os.path.join(memory_dir, "memory.db"))
+            self._persistent_store = SQLiteMemoryStore(
+                os.path.join(memory_dir, "memory.db")
+            )
         return self._persistent_store
 
     def declare_memory(self, namespace: str):
@@ -129,7 +133,11 @@ class ExecutionContext:
     # -- agents ---------------------------------------------------------------
     @property
     def current_agent(self) -> Optional[str]:
-        return self.agent_stack[-1] if self.agent_stack else getattr(self, "_current_agent", None)
+        return (
+            self.agent_stack[-1]
+            if self.agent_stack
+            else getattr(self, "_current_agent", None)
+        )
 
     @current_agent.setter
     def current_agent(self, value):
@@ -194,4 +202,3 @@ class MemoryCompat:
     def search(self, query, namespace):
         store = self.ctx.memory_store_for(namespace)
         return store.recall(query)
-

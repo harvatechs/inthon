@@ -86,7 +86,9 @@ class ToolRegistry:
         self.mock_mode = enable
 
     # -- invocation ----------------------------------------------------------------
-    def invoke(self, ctx, path: str, args: list, kwargs: dict, span: Optional[Span] = None) -> Any:
+    def invoke(
+        self, ctx, path: str, args: list, kwargs: dict, span: Optional[Span] = None
+    ) -> Any:
         """Full tool-call pipeline.  Returns a boxed INTHON value."""
         spec = self.get(path, span)
 
@@ -111,7 +113,8 @@ class ToolRegistry:
             result = impl(**normalized)
         except Exception as exc:
             raise ToolExecutionError(
-                f"Tool '{path}' failed: {exc}", span=span,
+                f"Tool '{path}' failed: {exc}",
+                span=span,
                 hint="Wrap the call in retry/catch to handle transient tool failures.",
             ) from exc
 
@@ -136,12 +139,14 @@ class ToolRegistry:
 
     def call(self, name: str, args: list, kwargs: dict) -> ToolResult:
         import time
+
         spec = self.get(name)
         mock_mode = getattr(self, "mock_mode", True)
         impl = spec.mock if mock_mode else (spec.handler or spec.mock)
         t0 = time.perf_counter()
         try:
             from .validator import validate_call
+
             normalized = validate_call(spec, args, kwargs, None)
             output = impl(**normalized) if impl else None
             duration_ms = (time.perf_counter() - t0) * 1000
@@ -162,7 +167,6 @@ class ToolRegistry:
                 duration_ms=duration_ms,
                 error=str(exc),
             )
-
 
 
 def _preview(value: Any, limit: int = 120) -> str:
@@ -192,4 +196,3 @@ class ToolResult:
     cost_usd: float = 0.0
     duration_ms: float = 0.0
     error: Optional[str] = None
-

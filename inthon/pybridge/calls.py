@@ -10,7 +10,9 @@ from .converter import from_python, to_python
 from .exception_wrap import wrap_python_exception
 
 
-def py_call(ctx, fn_proxy: InthonPyObject, args: list, kwargs: dict, span: Optional[Span] = None) -> InthonValue:
+def py_call(
+    ctx, fn_proxy: InthonPyObject, args: list, kwargs: dict, span: Optional[Span] = None
+) -> InthonValue:
     """Invoke a proxied Python callable with budget checks and tracing."""
     target = fn_proxy.wrapped
     path = getattr(fn_proxy, "_path", "") or type(target).__name__
@@ -46,7 +48,9 @@ def py_call(ctx, fn_proxy: InthonPyObject, args: list, kwargs: dict, span: Optio
     return from_python(result, importer=importer, path=path + "()")
 
 
-def py_index(ctx, proxy: InthonPyObject, index: InthonValue, span: Optional[Span] = None) -> InthonValue:
+def py_index(
+    ctx, proxy: InthonPyObject, index: InthonValue, span: Optional[Span] = None
+) -> InthonValue:
     """obj[key] on a proxied Python object."""
     target = proxy.wrapped
     importer = getattr(proxy, "_importer", None)

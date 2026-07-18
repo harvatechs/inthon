@@ -48,7 +48,9 @@ def _mock_web_search(query: str, limit: int = 5) -> list[dict]:
     return out
 
 
-def _real_web_search(query: str, limit: int = 5) -> list[dict]:  # pragma: no cover - network
+def _real_web_search(
+    query: str, limit: int = 5
+) -> list[dict]:  # pragma: no cover - network
     raise RuntimeError(
         "web.search has no bundled real provider; register your own via "
         "inthon.tools.register() or run with mock=True (default)."
@@ -87,7 +89,10 @@ def _real_web_read(url):  # pragma: no cover - network
         charset = "utf-8"
         headers = resp.headers
         if headers:
-            if hasattr(headers, "get_content_charset") and headers.get_content_charset():
+            if (
+                hasattr(headers, "get_content_charset")
+                and headers.get_content_charset()
+            ):
                 charset = headers.get_content_charset()
             elif isinstance(headers, dict):
                 ct = headers.get("Content-Type", "")
@@ -96,18 +101,19 @@ def _real_web_read(url):  # pragma: no cover - network
         data = resp.read()
         if charset.lower() == "utf-8":
             snippet = data[:1024].decode("ascii", errors="ignore")
-            m = re.search(r'<meta[^>]*charset=["\']?([a-zA-Z0-9_-]+)', snippet, re.IGNORECASE)
+            m = re.search(
+                r'<meta[^>]*charset=["\']?([a-zA-Z0-9_-]+)', snippet, re.IGNORECASE
+            )
             if m:
                 charset = m.group(1)
             else:
-                m2 = re.search(r'charset=([a-zA-Z0-9_-]+)', snippet, re.IGNORECASE)
+                m2 = re.search(r"charset=([a-zA-Z0-9_-]+)", snippet, re.IGNORECASE)
                 if m2:
                     charset = m2.group(1)
         return data.decode(charset, errors="replace")
 
 
 _web_read_real = _real_web_read
-
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +210,9 @@ def builtin_tool_specs() -> list[ToolSpec]:
         ToolSpec(
             path="web.read",
             description="Fetch a URL (or list of URLs) and return text content.",
-            params=(ToolParam("url", "str|list", True, description="URL or list of URLs"),),
+            params=(
+                ToolParam("url", "str|list", True, description="URL or list of URLs"),
+            ),
             returns="str|list",
             side_effects=("network",),
             permissions=("network",),
@@ -347,43 +355,45 @@ def register_skills(registry) -> None:
         if d.is_dir():
             skills_dir = d
             break
-            
+
     if not skills_dir:
         return
-        
+
     for json_path in sorted(skills_dir.glob("*.json")):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                
+
             for t in data.get("tools", []):
                 name = t.get("name")
                 description = t.get("description", "")
                 script_path = t.get("script_path")
                 args_list = t.get("args", [])
-                
+
                 # Build ToolParam list
                 params_list = []
                 for arg in args_list:
-                    params_list.append(ToolParam(
-                        name=arg["name"],
-                        type=arg.get("type", "str"),
-                        required=arg.get("required", True),
-                        default=arg.get("default", None),
-                        description=arg.get("description", "")
-                    ))
-                
+                    params_list.append(
+                        ToolParam(
+                            name=arg["name"],
+                            type=arg.get("type", "str"),
+                            required=arg.get("required", True),
+                            default=arg.get("default", None),
+                            description=arg.get("description", ""),
+                        )
+                    )
+
                 # Real implementation
                 def make_impl(spath, alist):
                     def impl(**kwargs):
                         uv_path = shutil.which("uv")
-                        
+
                         cmd = []
                         if uv_path:
                             cmd = [uv_path, "run", spath]
                         else:
                             cmd = [sys.executable, spath]
-                            
+
                         for arg in alist:
                             val = kwargs.get(arg["name"])
                             if val is not None:
@@ -392,13 +402,13 @@ def register_skills(registry) -> None:
                                     cmd.append(str(val))
                                 else:
                                     cmd.append(str(val))
-                        
+
                         res = subprocess.run(
                             cmd,
                             capture_output=True,
                             text=True,
                             encoding="utf-8",
-                            errors="replace"
+                            errors="replace",
                         )
                         if res.returncode != 0:
                             raise RuntimeError(
@@ -407,13 +417,15 @@ def register_skills(registry) -> None:
                                 f"STDERR:\n{res.stderr}"
                             )
                         return res.stdout
+
                     return impl
-                
+
                 # Mock implementation
                 def make_mock(n, spath, alist):
                     def mock_impl(**kwargs):
                         args_str = ", ".join(f"{k}={v}" for k, v in kwargs.items())
                         return f"[Mock execution of {n} using {spath} with args: {args_str}]"
+
                     return mock_impl
 
                 spec = ToolSpec(
@@ -425,10 +437,9 @@ def register_skills(registry) -> None:
                     permissions=("allow_shell",),
                     cost_usd=0.01,
                     handler=make_impl(script_path, args_list),
-                    mock=make_mock(name, script_path, args_list)
+                    mock=make_mock(name, script_path, args_list),
                 )
-                
+
                 registry.register(spec)
         except Exception:
             pass
-

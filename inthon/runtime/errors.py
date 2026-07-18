@@ -19,8 +19,10 @@ __all__ = [
     "ReturnSignal",
 ]
 
+
 class ApprovalRequiredError(IntHonRuntimeError):
     pass
+
 
 class ReturnSignal(Exception):
     """Control flow exception to return values from function scopes."""
@@ -28,4 +30,3 @@ class ReturnSignal(Exception):
     def __init__(self, value: Any) -> None:
         super().__init__()
         self.value = value
-

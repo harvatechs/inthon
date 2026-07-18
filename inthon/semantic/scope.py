@@ -12,7 +12,7 @@ from ..errors import SemanticError as SemanticError
 @dataclass
 class Symbol:
     name: str
-    kind: str            # let | const | fn | agent | param | builtin | tool | py | loop | catch
+    kind: str  # let | const | fn | agent | param | builtin | tool | py | loop | catch
     span: Optional[Span] = None
     type_annotation: object = None
 
@@ -20,7 +20,9 @@ class Symbol:
 class Scope:
     __slots__ = ("parent", "kind", "symbols", "children", "label")
 
-    def __init__(self, parent: Optional["Scope"] = None, kind: str = "block", label: str = ""):
+    def __init__(
+        self, parent: Optional["Scope"] = None, kind: str = "block", label: str = ""
+    ):
         self.parent = parent
         self.kind = kind
         self.label = label
@@ -62,4 +64,3 @@ class Scope:
 
 
 ScopeChain = Scope
-

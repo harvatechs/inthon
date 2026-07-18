@@ -123,7 +123,11 @@ def _b_range(ctx, args, kwargs, span):
 def _b_abs(ctx, args, kwargs, span):
     _arity("abs", args, 1)
     v = args[0]
-    return InthonInt(abs(v.value)) if isinstance(v, InthonInt) else InthonFloat(abs(_num(v)))
+    return (
+        InthonInt(abs(v.value))
+        if isinstance(v, InthonInt)
+        else InthonFloat(abs(_num(v)))
+    )
 
 
 def _b_min(ctx, args, kwargs, span):
@@ -253,18 +257,24 @@ def _b_strip(ctx, args, kwargs, span):
 def _b_replace(ctx, args, kwargs, span):
     _arity("replace", args, 3)
     return InthonString(
-        _as_str(args[0], "replace").replace(_as_str(args[1], "replace"), _as_str(args[2], "replace"))
+        _as_str(args[0], "replace").replace(
+            _as_str(args[1], "replace"), _as_str(args[2], "replace")
+        )
     )
 
 
 def _b_starts_with(ctx, args, kwargs, span):
     _arity("starts_with", args, 2)
-    return bool_value(_as_str(args[0], "starts_with").startswith(_as_str(args[1], "starts_with")))
+    return bool_value(
+        _as_str(args[0], "starts_with").startswith(_as_str(args[1], "starts_with"))
+    )
 
 
 def _b_ends_with(ctx, args, kwargs, span):
     _arity("ends_with", args, 2)
-    return bool_value(_as_str(args[0], "ends_with").endswith(_as_str(args[1], "ends_with")))
+    return bool_value(
+        _as_str(args[0], "ends_with").endswith(_as_str(args[1], "ends_with"))
+    )
 
 
 def _b_contains(ctx, args, kwargs, span):
@@ -301,7 +311,9 @@ def _b_now(ctx, args, kwargs, span):
 
 def _b_fail(ctx, args, kwargs, span):
     msg = display(args[0]) if args else "fail() called"
-    raise InthonFailure(msg, span=span, hint="The plan called fail(); this is an intentional abort.")
+    raise InthonFailure(
+        msg, span=span, hint="The plan called fail(); this is an intentional abort."
+    )
 
 
 def _b_log(ctx, args, kwargs, span):
@@ -406,7 +418,10 @@ BUILTINS: dict[str, tuple[Callable, str]] = {
     "fail": (_b_fail, "fail(message) — abort the plan with an error"),
     "log": (_b_log, "log(...) — append a message to the trace"),
     "read_file": (_b_read_file, "read_file(path) — requires filesystem capability"),
-    "write_file": (_b_write_file, "write_file(path, content) — requires read_write filesystem"),
+    "write_file": (
+        _b_write_file,
+        "write_file(path, content) — requires read_write filesystem",
+    ),
 }
 
 
@@ -419,14 +434,18 @@ def install_builtins(env) -> None:
 # ---------------------------------------------------------------------------
 # Value methods (receiver.method(...))
 # ---------------------------------------------------------------------------
-def get_method(receiver: InthonValue, name: str, span: Span = None) -> InthonBoundMethod:
+def get_method(
+    receiver: InthonValue, name: str, span: Span = None
+) -> InthonBoundMethod:
     """Resolve a method name on a value, or raise a type error."""
     table = _METHOD_TABLES.get(receiver.type_name)
     fn = table.get(name) if table else None
     if fn is None:
         hint = None
         if table:
-            hint = f"Available methods on {receiver.type_name}: {', '.join(sorted(table))}"
+            hint = (
+                f"Available methods on {receiver.type_name}: {', '.join(sorted(table))}"
+            )
         raise InthonTypeError_(
             f"{receiver.type_name} has no method '{name}'", span=span, hint=hint
         )
@@ -434,7 +453,10 @@ def get_method(receiver: InthonValue, name: str, span: Span = None) -> InthonBou
 
 
 def _wrap0(fn):
-    return lambda recv, args, kwargs, span: (_arity_method(recv, name="?", args=args, n=0), fn(recv))[1]
+    return lambda recv, args, kwargs, span: (
+        _arity_method(recv, name="?", args=args, n=0),
+        fn(recv),
+    )[1]
 
 
 def _arity_method(recv, name, args, n):
@@ -451,34 +473,72 @@ _STR_METHODS = {
     "upper": _m(lambda r, a, k, s: InthonString(r.value.upper())),
     "lower": _m(lambda r, a, k, s: InthonString(r.value.lower())),
     "strip": _m(lambda r, a, k, s: InthonString(r.value.strip())),
-    "split": _m(lambda r, a, k, s: InthonList([InthonString(p) for p in (r.value.split(a[0].value) if a else r.value.split())])),
-    "replace": _m(lambda r, a, k, s: InthonString(r.value.replace(a[0].value, a[1].value))),
+    "split": _m(
+        lambda r, a, k, s: InthonList(
+            [
+                InthonString(p)
+                for p in (r.value.split(a[0].value) if a else r.value.split())
+            ]
+        )
+    ),
+    "replace": _m(
+        lambda r, a, k, s: InthonString(r.value.replace(a[0].value, a[1].value))
+    ),
     "starts_with": _m(lambda r, a, k, s: bool_value(r.value.startswith(a[0].value))),
     "ends_with": _m(lambda r, a, k, s: bool_value(r.value.endswith(a[0].value))),
     "contains": _m(lambda r, a, k, s: bool_value(a[0].value in r.value)),
     "len": _m(lambda r, a, k, s: InthonInt(len(r.value))),
-    "join": _m(lambda r, a, k, s: InthonString(r.value.join(display(x) for x in a[0].items))),
+    "join": _m(
+        lambda r, a, k, s: InthonString(r.value.join(display(x) for x in a[0].items))
+    ),
 }
 
 _LIST_METHODS = {
     "append": _m(lambda r, a, k, s: (r.items.append(a[0]), r)[1]),
     "push": _m(lambda r, a, k, s: (r.items.append(a[0]), r)[1]),
-    "pop": _m(lambda r, a, k, s: r.items.pop() if r.items else (_ for _ in ()).throw(_err("pop() on empty list"))),
+    "pop": _m(
+        lambda r, a, k, s: (
+            r.items.pop()
+            if r.items
+            else (_ for _ in ()).throw(_err("pop() on empty list"))
+        )
+    ),
     "top": _m(lambda r, a, k, s: InthonList(r.items[: int(a[0].to_python())])),
     "len": _m(lambda r, a, k, s: InthonInt(len(r.items))),
-    "contains": _m(lambda r, a, k, s: bool_value(any(V.values_equal(x, a[0]) for x in r.items))),
-    "join": _m(lambda r, a, k, s: InthonString(a[0].value.join(display(x) for x in r.items))),
+    "contains": _m(
+        lambda r, a, k, s: bool_value(any(V.values_equal(x, a[0]) for x in r.items))
+    ),
+    "join": _m(
+        lambda r, a, k, s: InthonString(a[0].value.join(display(x) for x in r.items))
+    ),
     "map": _m(lambda r, a, k, s: _method_map(r, a, s)),
     "filter": _m(lambda r, a, k, s: _method_filter(r, a, s)),
-    "sorted": _m(lambda r, a, k, s: InthonList(sorted(r.items, key=lambda v: v.to_python() if isinstance(v, (InthonInt, InthonFloat, InthonString)) else display(v)))),
+    "sorted": _m(
+        lambda r, a, k, s: InthonList(
+            sorted(
+                r.items,
+                key=lambda v: (
+                    v.to_python()
+                    if isinstance(v, (InthonInt, InthonFloat, InthonString))
+                    else display(v)
+                ),
+            )
+        )
+    ),
     "reversed": _m(lambda r, a, k, s: InthonList(list(reversed(r.items)))),
 }
 
 _DICT_METHODS = {
     "keys": _m(lambda r, a, k, s: InthonList([V.box(x) for x in r.pairs.keys()])),
     "values": _m(lambda r, a, k, s: InthonList(list(r.pairs.values()))),
-    "items": _m(lambda r, a, k, s: InthonList([InthonList([V.box(x), y]) for x, y in r.pairs.items()])),
-    "get": _m(lambda r, a, k, s: r.pairs.get(a[0].to_python(), a[1] if len(a) > 1 else NONE)),
+    "items": _m(
+        lambda r, a, k, s: InthonList(
+            [InthonList([V.box(x), y]) for x, y in r.pairs.items()]
+        )
+    ),
+    "get": _m(
+        lambda r, a, k, s: r.pairs.get(a[0].to_python(), a[1] if len(a) > 1 else NONE)
+    ),
     "contains": _m(lambda r, a, k, s: bool_value(a[0].to_python() in r.pairs)),
     "len": _m(lambda r, a, k, s: InthonInt(len(r.pairs))),
 }

@@ -74,7 +74,11 @@ class NodeTransformer(NodeVisitor):
             if f.name == "span":
                 continue
             value = getattr(node, f.name)
-            new_value = self.visit(value) if isinstance(value, (nodes.Node, list, tuple)) else value
+            new_value = (
+                self.visit(value)
+                if isinstance(value, (nodes.Node, list, tuple))
+                else value
+            )
             if new_value is not value:
                 updates[f.name] = new_value
         if updates:
@@ -83,4 +87,3 @@ class NodeTransformer(NodeVisitor):
 
 
 ASTVisitor = NodeVisitor
-

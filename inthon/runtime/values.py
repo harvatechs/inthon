@@ -192,7 +192,17 @@ class InthonCallable(InthonValue):
 
     type_name = "fn"
 
-    def __init__(self, decl=None, closure_env=None, ctx_factory=None, name=None, params=None, defaults=None, body=None, closure=None):
+    def __init__(
+        self,
+        decl=None,
+        closure_env=None,
+        ctx_factory=None,
+        name=None,
+        params=None,
+        defaults=None,
+        body=None,
+        closure=None,
+    ):
         if decl is not None:
             self.decl = decl
             self.closure_env = closure_env
@@ -323,6 +333,7 @@ class InthonPyObject(InthonValue):
         obj = self.wrapped
         try:
             import pandas as pd  # optional pretty-printing
+
             if isinstance(obj, pd.DataFrame):
                 return f"DataFrame(shape={obj.shape})"
         except Exception:  # pragma: no cover
@@ -430,4 +441,3 @@ InthonStr = InthonString
 InthonNone = InthonNone_
 to_python = unbox
 from_python = box
-

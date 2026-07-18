@@ -60,9 +60,7 @@ class Transpiler(ASTVisitor):
         if not code:
             return ""
         # Prefix value-producing statements with _last_val assignment
-        if isinstance(
-            stmt, (N.ExprStmt, N.LetDecl, N.ConstDecl, N.AssignStmt)
-        ):
+        if isinstance(stmt, (N.ExprStmt, N.LetDecl, N.ConstDecl, N.AssignStmt)):
             if not code.strip().startswith("_last_val ="):
                 return f"_last_val = {code}"
         return code
@@ -171,7 +169,7 @@ class Transpiler(ASTVisitor):
         cond = f"to_python({self.visit(node.condition)})"
         lines = [f"while {cond}:"]
         self._indent += 1
-        for stmt in (node.body.statements if node.body else []):
+        for stmt in node.body.statements if node.body else []:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -187,7 +185,7 @@ class Transpiler(ASTVisitor):
                 f"ctx.assign_var('{node.var}', from_python(loop_val_{node.var}))"
             )
         )
-        for stmt in (node.body.statements if node.body else []):
+        for stmt in node.body.statements if node.body else []:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -201,7 +199,7 @@ class Transpiler(ASTVisitor):
             f"def user_fn_{node.name}():",
         ]
         self._indent += 1
-        for stmt in (node.body.statements if node.body else []):
+        for stmt in node.body.statements if node.body else []:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 fn_lines.extend(self._add_indent(stmt_code))
@@ -227,7 +225,7 @@ class Transpiler(ASTVisitor):
             stmt_code = self._visit_stmt(imp)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
-        for stmt in (node.plan.statements if node.plan else []):
+        for stmt in node.plan.statements if node.plan else []:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
@@ -370,7 +368,7 @@ def run_transpiled(
 
     trace_data = ctx.tracer.finish(
         result_type=type(result_val).__name__,
-        result_preview=repr(to_python(result_val))
+        result_preview=repr(to_python(result_val)),
     )
     return RunResult(
         ok=True,

@@ -55,9 +55,15 @@ def _operand_text(code: CodeObject, instr) -> str:
         return repr(code.literals[arg].to_python())[:40]
     if hint == "names" and 0 <= arg < len(code.names):
         return code.names[arg]
-    if op in (Op.POP_JUMP_IF_FALSE, Op.POP_JUMP_IF_TRUE, Op.JUMP_FORWARD,
-              Op.JUMP_ABSOLUTE, Op.JUMP_IF_TRUE_OR_POP, Op.JUMP_IF_FALSE_OR_POP,
-              Op.FOR_ITER):
+    if op in (
+        Op.POP_JUMP_IF_FALSE,
+        Op.POP_JUMP_IF_TRUE,
+        Op.JUMP_FORWARD,
+        Op.JUMP_ABSOLUTE,
+        Op.JUMP_IF_TRUE_OR_POP,
+        Op.JUMP_IF_FALSE_OR_POP,
+        Op.FOR_ITER,
+    ):
         return f"-> {arg}"
     if op in (Op.CALL_FUNCTION, Op.CALL_FUNCTION_KW, Op.CALL_TOOL):
         n_pos = arg & 0xFF

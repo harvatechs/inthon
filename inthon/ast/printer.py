@@ -27,7 +27,8 @@ def _label(node: Any) -> str:
         if isinstance(value, nodes.Node):
             continue
         if isinstance(value, (list, tuple)) and any(
-            isinstance(x, nodes.Node) or (isinstance(x, tuple) and any(isinstance(s, nodes.Node) for s in x))
+            isinstance(x, nodes.Node)
+            or (isinstance(x, tuple) and any(isinstance(s, nodes.Node) for s in x))
             for x in value
         ):
             continue
@@ -61,7 +62,9 @@ def _children(node: nodes.Node) -> list:
     return out
 
 
-def _render(node: Any, lines: list[str], prefix: str, is_last: bool, is_root: bool = False) -> None:
+def _render(
+    node: Any, lines: list[str], prefix: str, is_last: bool, is_root: bool = False
+) -> None:
     connector = "" if is_root else ("└── " if is_last else "├── ")
     lines.append(prefix + connector + _label(node))
     if isinstance(node, nodes.Node):

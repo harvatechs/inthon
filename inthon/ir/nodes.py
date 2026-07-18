@@ -3,11 +3,13 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Union
 
+
 @dataclass
 class IRProgram:
     imports: list[IRImport]
     body: list[IRNode]
     metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class IRImport:
@@ -15,14 +17,17 @@ class IRImport:
     path: str
     alias: str | None = None
 
+
 @dataclass
 class IRAssign:
     target: str
     value: IRValue
 
+
 @dataclass
 class IRReturn:
     value: IRValue | None
+
 
 @dataclass
 class IRToolCall:
@@ -30,6 +35,7 @@ class IRToolCall:
     args: list[IRValue]
     kwargs: dict[str, IRValue]
     result_var: str | None = None
+
 
 @dataclass
 class IRPyCall:
@@ -39,6 +45,7 @@ class IRPyCall:
     kwargs: dict[str, IRValue]
     result_var: str | None = None
 
+
 @dataclass
 class IRAgentBlock:
     name: str
@@ -46,16 +53,19 @@ class IRAgentBlock:
     policy: dict[str, Any]
     plan: list[IRNode]
 
+
 @dataclass
 class IRApproval:
     target: str
     action: str
+
 
 @dataclass
 class IRConditional:
     condition: IRValue
     then_branch: list[IRNode]
     else_branch: list[IRNode] | None
+
 
 @dataclass
 class IRLoop:
@@ -65,15 +75,18 @@ class IRLoop:
     condition: IRValue | None
     body: list[IRNode]
 
+
 # ─── IR Values (leaf nodes in expressions) ────────────────────────────────────
 @dataclass
 class IRLiteral:
     value: int | float | str | bool | None
     type_hint: str
 
+
 @dataclass
 class IRVar:
     name: str
+
 
 @dataclass
 class IRBinaryOp:
@@ -81,13 +94,16 @@ class IRBinaryOp:
     left: IRValue
     right: IRValue
 
+
 @dataclass
 class IRList:
     elements: list[IRValue]
 
+
 @dataclass
 class IRDict:
     pairs: list[tuple[IRValue, IRValue]]
+
 
 @dataclass
 class IRCall:
@@ -95,8 +111,21 @@ class IRCall:
     args: list[IRValue]
     kwargs: dict[str, IRValue]
 
-IRValue = Union[IRLiteral, IRVar, IRBinaryOp, IRList, IRDict, IRToolCall, IRPyCall, IRCall]
-IRNode  = Union[IRAssign, IRReturn, IRToolCall, IRPyCall, IRAgentBlock, IRApproval, IRConditional, IRLoop]
+
+IRValue = Union[
+    IRLiteral, IRVar, IRBinaryOp, IRList, IRDict, IRToolCall, IRPyCall, IRCall
+]
+IRNode = Union[
+    IRAssign,
+    IRReturn,
+    IRToolCall,
+    IRPyCall,
+    IRAgentBlock,
+    IRApproval,
+    IRConditional,
+    IRLoop,
+]
+
 
 def _to_dict(obj: Any) -> Any:
     if hasattr(obj, "__dataclass_fields__"):
@@ -113,9 +142,11 @@ def _to_dict(obj: Any) -> Any:
         return [_to_dict(x) for x in obj]
     return obj
 
+
 def ir_to_json(program: IRProgram, indent: int = 2) -> str:
     """Serialize IR to canonical JSON."""
     return json.dumps(_to_dict(program), indent=indent)
+
 
 def _from_dict(d: Any) -> Any:
     if isinstance(d, dict):
@@ -132,6 +163,7 @@ def _from_dict(d: Any) -> Any:
     if isinstance(d, list):
         return [_from_dict(x) for x in d]
     return d
+
 
 def ir_from_json(raw: str) -> IRProgram:
     """Deserialise canonical JSON back to IR. Round-trip safe."""

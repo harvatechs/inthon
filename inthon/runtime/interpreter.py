@@ -85,7 +85,9 @@ class Interpreter:
     # -----------------------------------------------------------------------
     # blocks & statements
     # -----------------------------------------------------------------------
-    def exec_block(self, statements, env: Environment, capture: bool = False) -> InthonValue:
+    def exec_block(
+        self, statements, env: Environment, capture: bool = False
+    ) -> InthonValue:
         """Execute a statement list.  With capture=True the block's value is
         its last statement's value (declarations/assignments yield none)."""
         last: InthonValue = NONE
@@ -98,7 +100,9 @@ class Interpreter:
     def exec_stmt(self, stmt: nodes.Statement, env: Environment) -> InthonValue:
         handler = getattr(self, f"stmt_{type(stmt).__name__}", None)
         if handler is None:  # pragma: no cover - defensive
-            raise InthonSemanticError(f"Unsupported statement {type(stmt).__name__}", span=stmt.span)
+            raise InthonSemanticError(
+                f"Unsupported statement {type(stmt).__name__}", span=stmt.span
+            )
         return handler(stmt, env)
 
     # -- imports ------------------------------------------------------------
@@ -107,7 +111,12 @@ class Interpreter:
         self.ctx.tools.get(path, stmt.span)  # validates existence
         root = path.split(".")[0]
         if not env.is_defined_here(root):
-            env.define(root, InthonToolNamespace(root, self.ctx.tools), mutable=False, span=stmt.span)
+            env.define(
+                root,
+                InthonToolNamespace(root, self.ctx.tools),
+                mutable=False,
+                span=stmt.span,
+            )
         return NONE
 
     def stmt_UsePy(self, stmt: nodes.UsePy, env: Environment):
@@ -148,8 +157,13 @@ class Interpreter:
 
     def _trace_assign(self, name: str, value: InthonValue, span: Optional[Span]):
         if self.ctx.tracer is not None:
-            self.ctx.tracer.emit("assign", span, name=name, type=value.type_name,
-                                 preview=display(value)[:120])
+            self.ctx.tracer.emit(
+                "assign",
+                span,
+                name=name,
+                type=value.type_name,
+                preview=display(value)[:120],
+            )
 
     def stmt_FnDecl(self, stmt: nodes.FnDecl, env: Environment):
         fn = InthonCallable(stmt, env)
@@ -159,11 +173,15 @@ class Interpreter:
     # -- control flow ------------------------------------------------------------------
     def stmt_IfStmt(self, stmt: nodes.IfStmt, env: Environment):
         if truthy(self.eval_expr(stmt.condition, env)):
-            return self.exec_block(stmt.then_block.statements, Environment(env), capture=True)
+            return self.exec_block(
+                stmt.then_block.statements, Environment(env), capture=True
+            )
         if stmt.else_block is not None:
             if isinstance(stmt.else_block, nodes.IfStmt):
                 return self.stmt_IfStmt(stmt.else_block, env)
-            return self.exec_block(stmt.else_block.statements, Environment(env), capture=True)
+            return self.exec_block(
+                stmt.else_block.statements, Environment(env), capture=True
+            )
         return NONE
 
     def stmt_ForStmt(self, stmt: nodes.ForStmt, env: Environment):
@@ -189,7 +207,9 @@ class Interpreter:
         while truthy(self.eval_expr(stmt.condition, env)):
             self.ctx.sandbox.tick(stmt.span)
             try:
-                value = self.exec_block(stmt.body.statements, Environment(env), capture=True)
+                value = self.exec_block(
+                    stmt.body.statements, Environment(env), capture=True
+                )
                 if value is not NONE:
                     result = value
             except ContinueSignal:
@@ -265,7 +285,8 @@ class Interpreter:
             self.ctx.tracer.emit("guard", stmt.span, passed=bool(truthy(value)))
         if not truthy(value):
             raise GuardAssertionError(
-                "Guard condition failed", span=stmt.span,
+                "Guard condition failed",
+                span=stmt.span,
                 hint="The guard expression evaluated to a falsy value; inside retry this triggers a retry.",
             )
         return NONE
@@ -276,25 +297,43 @@ class Interpreter:
         for attempt in range(1, attempts + 1):
             try:
                 if self.ctx.tracer is not None:
-                    self.ctx.tracer.emit("retry", stmt.span, attempt=attempt,
-                                         max_attempts=attempts, backoff=stmt.backoff)
-                return self.exec_block(stmt.body.statements, Environment(env), capture=True)
+                    self.ctx.tracer.emit(
+                        "retry",
+                        stmt.span,
+                        attempt=attempt,
+                        max_attempts=attempts,
+                        backoff=stmt.backoff,
+                    )
+                return self.exec_block(
+                    stmt.body.statements, Environment(env), capture=True
+                )
             except (BreakSignal, ContinueSignal, ReturnSignal):
                 raise
             except InthonError as exc:
                 last_error = exc
                 if self.ctx.tracer is not None:
-                    self.ctx.tracer.emit("retry_failed", stmt.span, attempt=attempt,
-                                         error=exc.code, message=exc.message)
+                    self.ctx.tracer.emit(
+                        "retry_failed",
+                        stmt.span,
+                        attempt=attempt,
+                        error=exc.code,
+                        message=exc.message,
+                    )
                 if attempt < attempts:
                     time.sleep(self._backoff_delay(stmt.backoff, attempt))
         if stmt.catch_body is not None:
             catch_env = Environment(env, kind="catch")
-            err_value = InthonDict({
-                "message": InthonString(getattr(last_error, "message", str(last_error))),
-                "code": InthonString(getattr(last_error, "code", "INTHON_000")),
-            })
-            catch_env.define(stmt.catch_name or "err", err_value, mutable=True, span=stmt.span)
+            err_value = InthonDict(
+                {
+                    "message": InthonString(
+                        getattr(last_error, "message", str(last_error))
+                    ),
+                    "code": InthonString(getattr(last_error, "code", "INTHON_000")),
+                }
+            )
+            catch_env.define(
+                stmt.catch_name or "err", err_value, mutable=True, span=stmt.span
+            )
             return self.exec_block(stmt.catch_body.statements, catch_env, capture=True)
         assert last_error is not None
         raise last_error
@@ -316,14 +355,24 @@ class Interpreter:
                 if stmt.subject == "self":
                     # self-eval preview: no rubric registered → record and pass
                     if self.ctx.tracer is not None:
-                        self.ctx.tracer.emit("eval", stmt.span, rubric=stmt.rubric,
-                                             subject="self", passed=True, note="self-eval preview")
+                        self.ctx.tracer.emit(
+                            "eval",
+                            stmt.span,
+                            rubric=stmt.rubric,
+                            subject="self",
+                            passed=True,
+                            note="self-eval preview",
+                        )
                     return NONE
                 raise InthonSemanticError(
                     f"Unknown rubric '{stmt.rubric}'",
                     span=stmt.span,
-                    hint="Declare it inside the agent: criteria " + stmt.rubric + " { ... }, "
-                         "or pass criteria inline: eval x against " + stmt.rubric + " { ... }.",
+                    hint="Declare it inside the agent: criteria "
+                    + stmt.rubric
+                    + " { ... }, "
+                    "or pass criteria inline: eval x against "
+                    + stmt.rubric
+                    + " { ... }.",
                 )
             criteria = table
         if stmt.subject == "self":
@@ -333,7 +382,10 @@ class Interpreter:
         report = self._evaluate_criteria(subject_value, criteria, stmt, env)
         if self.ctx.tracer is not None:
             self.ctx.tracer.emit(
-                "eval", stmt.span, rubric=stmt.rubric, subject=stmt.subject,
+                "eval",
+                stmt.span,
+                rubric=stmt.rubric,
+                subject=stmt.subject,
                 passed=report.pairs["passed"].value,
                 score=report.pairs["score"].to_python(),
             )
@@ -350,7 +402,9 @@ class Interpreter:
             raise InthonTypeError_(failed_msg, span=stmt.span)
         return report
 
-    def _evaluate_criteria(self, subject: InthonValue, criteria, stmt, env: Environment) -> InthonDict:
+    def _evaluate_criteria(
+        self, subject: InthonValue, criteria, stmt, env: Environment
+    ) -> InthonDict:
         details = []
         passed_count = 0
         subject_map = subject.pairs if isinstance(subject, InthonDict) else {}
@@ -361,20 +415,26 @@ class Interpreter:
                 actual = env.lookup(criterion.name, stmt.span)
             ok = self._criterion_passes(actual, criterion.op, expected)
             passed_count += 1 if ok else 0
-            details.append(InthonDict({
-                "name": InthonString(criterion.name),
-                "op": InthonString(criterion.op),
-                "expected": expected,
-                "actual": actual,
-                "passed": bool_value(ok),
-            }))
+            details.append(
+                InthonDict(
+                    {
+                        "name": InthonString(criterion.name),
+                        "op": InthonString(criterion.op),
+                        "expected": expected,
+                        "actual": actual,
+                        "passed": bool_value(ok),
+                    }
+                )
+            )
         total = len(criteria)
-        return InthonDict({
-            "passed": bool_value(passed_count == total),
-            "score": InthonFloat(passed_count / total if total else 1.0),
-            "total": InthonInt(total),
-            "details": InthonList(details),
-        })
+        return InthonDict(
+            {
+                "passed": bool_value(passed_count == total),
+                "score": InthonFloat(passed_count / total if total else 1.0),
+                "total": InthonInt(total),
+                "details": InthonList(details),
+            }
+        )
 
     @staticmethod
     def _criterion_passes(actual: InthonValue, op: str, expected: InthonValue) -> bool:
@@ -423,11 +483,15 @@ class Interpreter:
             return self._invoke_agent(agent_value, {}, stmt.span)
         return NONE
 
-    def _invoke_agent(self, agent: InthonAgent, kwargs: dict, span: Optional[Span]) -> InthonValue:
+    def _invoke_agent(
+        self, agent: InthonAgent, kwargs: dict, span: Optional[Span]
+    ) -> InthonValue:
         from .agents import invoke_agent
 
         def run_plan(decl, bound_inputs):
-            call_env = Environment(agent.closure_env, kind="agent-call", label=decl.name)
+            call_env = Environment(
+                agent.closure_env, kind="agent-call", label=decl.name
+            )
             for name, value in bound_inputs.items():
                 call_env.define(name, value, mutable=True, span=span)
             try:
@@ -440,12 +504,16 @@ class Interpreter:
     # ---------------------------------------------------------------------------
     # expressions
     # ---------------------------------------------------------------------------
-    def eval_expr(self, expr: Optional[nodes.Expression], env: Environment) -> InthonValue:
+    def eval_expr(
+        self, expr: Optional[nodes.Expression], env: Environment
+    ) -> InthonValue:
         if expr is None:
             return NONE
         handler = getattr(self, f"expr_{type(expr).__name__}", None)
         if handler is None:  # pragma: no cover - defensive
-            raise InthonSemanticError(f"Unsupported expression {type(expr).__name__}", span=expr.span)
+            raise InthonSemanticError(
+                f"Unsupported expression {type(expr).__name__}", span=expr.span
+            )
         return handler(expr, env)
 
     # -- literals --------------------------------------------------------------
@@ -510,7 +578,9 @@ class Interpreter:
         if expr.op == "+":
             if isinstance(operand, (InthonInt, InthonFloat)):
                 return operand
-            raise InthonTypeError_(f"Unary + not supported for {operand.type_name}", span=expr.span)
+            raise InthonTypeError_(
+                f"Unary + not supported for {operand.type_name}", span=expr.span
+            )
         raise InthonSemanticError(f"Unknown unary operator '{expr.op}'", span=expr.span)
 
     def expr_BinaryOp(self, expr: nodes.BinaryOp, env) -> InthonValue:
@@ -540,11 +610,21 @@ class Interpreter:
             return self._compare(left, op, right, expr.span)
         raise InthonSemanticError(f"Unknown operator '{op}'", span=expr.span)
 
-    def _arith(self, left: InthonValue, op: str, right: InthonValue, span) -> InthonValue:
+    def _arith(
+        self, left: InthonValue, op: str, right: InthonValue, span
+    ) -> InthonValue:
         # strings
-        if isinstance(left, InthonString) and isinstance(right, InthonString) and op == "+":
+        if (
+            isinstance(left, InthonString)
+            and isinstance(right, InthonString)
+            and op == "+"
+        ):
             return InthonString(left.value + right.value)
-        if isinstance(left, InthonString) and isinstance(right, InthonInt) and op == "*":
+        if (
+            isinstance(left, InthonString)
+            and isinstance(right, InthonInt)
+            and op == "*"
+        ):
             return InthonString(left.value * right.value)
         if isinstance(left, InthonList) and isinstance(right, InthonList) and op == "+":
             return InthonList(left.items + right.items)
@@ -564,22 +644,27 @@ class Interpreter:
                 return _num_box(a * b, both_int)
             if op == "/":
                 if b == 0:
-                    raise InthonTypeError_("Division by zero", span=span,
-                                           hint="Guard the divisor: guard b != 0")
+                    raise InthonTypeError_(
+                        "Division by zero",
+                        span=span,
+                        hint="Guard the divisor: guard b != 0",
+                    )
                 return InthonFloat(a / b)
             if op == "%":
                 if b == 0:
                     raise InthonTypeError_("Modulo by zero", span=span)
                 return _num_box(a % b, both_int)
             if op == "**":
-                return _num_box(a ** b, both_int)
+                return _num_box(a**b, both_int)
         raise InthonTypeError_(
             f"Operator '{op}' not supported for {left.type_name} and {right.type_name}",
             span=span,
             hint=f"Got {left.display()!r} {op} {right.display()!r}. Convert with str(), int() or float().",
         )
 
-    def _compare(self, left: InthonValue, op: str, right: InthonValue, span) -> InthonValue:
+    def _compare(
+        self, left: InthonValue, op: str, right: InthonValue, span
+    ) -> InthonValue:
         if isinstance(left, (InthonInt, InthonFloat, InthonBool)) and isinstance(
             right, (InthonInt, InthonFloat, InthonBool)
         ):
@@ -611,7 +696,8 @@ class Interpreter:
             from ..errors import ToolNotFoundError
 
             raise ToolNotFoundError(
-                f"Unknown tool '{path}'", span=span,
+                f"Unknown tool '{path}'",
+                span=span,
                 hint=f"Did you declare it? Add 'use tool {path}'. Registered: {', '.join(self.ctx.tools.paths())}",
             )
         if isinstance(obj, InthonPyObject):
@@ -635,7 +721,8 @@ class Interpreter:
                 return obj.items[i]
             except IndexError:
                 raise InthonIndexError(
-                    f"List index {i} out of range (length {len(obj.items)})", span=expr.span
+                    f"List index {i} out of range (length {len(obj.items)})",
+                    span=expr.span,
                 ) from None
         if isinstance(obj, InthonString):
             if not isinstance(index, InthonInt):
@@ -645,7 +732,8 @@ class Interpreter:
                 return InthonString(obj.value[i])
             except IndexError:
                 raise InthonIndexError(
-                    f"String index {i} out of range (length {len(obj.value)})", span=expr.span
+                    f"String index {i} out of range (length {len(obj.value)})",
+                    span=expr.span,
                 ) from None
         if isinstance(obj, InthonDict):
             key = index.to_python()
@@ -653,22 +741,28 @@ class Interpreter:
                 return obj.pairs[key]
             available = ", ".join(map(str, list(obj.pairs.keys())[:5]))
             raise InthonIndexError(
-                f"Key {key!r} not found in dict", span=expr.span,
+                f"Key {key!r} not found in dict",
+                span=expr.span,
                 hint=f"Available keys: {available}{'…' if len(obj.pairs) > 5 else ''}. "
-                     f"Use .get(key, default) to avoid the error.",
+                f"Use .get(key, default) to avoid the error.",
             )
         if isinstance(obj, InthonPyObject):
             return py_index(self.ctx, obj, index, expr.span)
-        raise InthonTypeError_(f"Indexing not supported for {obj.type_name}", span=expr.span)
+        raise InthonTypeError_(
+            f"Indexing not supported for {obj.type_name}", span=expr.span
+        )
 
-    def _set_index(self, container: InthonValue, index: InthonValue, value: InthonValue, span):
+    def _set_index(
+        self, container: InthonValue, index: InthonValue, value: InthonValue, span
+    ):
         if isinstance(container, InthonList):
             if not isinstance(index, InthonInt):
                 raise InthonTypeError_("List index must be an int", span=span)
             i = index.value
             if not -len(container.items) <= i < len(container.items):
                 raise InthonIndexError(
-                    f"List index {i} out of range (length {len(container.items)})", span=span
+                    f"List index {i} out of range (length {len(container.items)})",
+                    span=span,
                 )
             container.items[i] = value
             return
@@ -679,7 +773,9 @@ class Interpreter:
             raise InthonTypeError_(
                 "Item assignment on Python objects is blocked by the sandbox", span=span
             )
-        raise InthonTypeError_(f"Indexed assignment not supported for {container.type_name}", span=span)
+        raise InthonTypeError_(
+            f"Indexed assignment not supported for {container.type_name}", span=span
+        )
 
     def expr_CallExpr(self, expr: nodes.CallExpr, env) -> InthonValue:
         callee = self.eval_expr(expr.callee, env)
@@ -690,7 +786,9 @@ class Interpreter:
     # ---------------------------------------------------------------------------
     # call dispatch (shared with method map/filter)
     # ---------------------------------------------------------------------------
-    def call_value(self, callee: InthonValue, args: list, kwargs: dict, span) -> InthonValue:
+    def call_value(
+        self, callee: InthonValue, args: list, kwargs: dict, span
+    ) -> InthonValue:
         if isinstance(callee, InthonBuiltin):
             return callee.fn(self.ctx, args, kwargs, span)
         if isinstance(callee, InthonBoundMethod):
@@ -704,17 +802,22 @@ class Interpreter:
         if isinstance(callee, InthonPyObject):
             return py_call(self.ctx, callee, args, kwargs, span)
         raise InthonTypeError_(
-            f"Value of type {callee.type_name} is not callable", span=span,
+            f"Value of type {callee.type_name} is not callable",
+            span=span,
             hint="Only functions, agents, tools, builtins and Python callables can be called.",
         )
 
-    def _call_function(self, fn: InthonCallable, args: list, kwargs: dict, span) -> InthonValue:
+    def _call_function(
+        self, fn: InthonCallable, args: list, kwargs: dict, span
+    ) -> InthonValue:
         from .calls import bind_params
 
         decl = fn.decl
         params = list(decl.params)
         bound = bind_params(
-            decl, args, kwargs,
+            decl,
+            args,
+            kwargs,
             eval_default=lambda default: self.eval_expr(default, fn.closure_env),
             span=span,
         )
@@ -749,7 +852,8 @@ class Interpreter:
         if isinstance(iterable, InthonPyObject):
             return list(py_iter(iterable, span))
         raise InthonTypeError_(
-            f"Cannot iterate over {iterable.type_name}", span=span,
+            f"Cannot iterate over {iterable.type_name}",
+            span=span,
             hint="Iterate a list, string, dict (keys), range(...), or a Python iterable.",
         )
 

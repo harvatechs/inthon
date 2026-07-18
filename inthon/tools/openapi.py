@@ -198,13 +198,15 @@ def register_openapi_tools(
 
             params_list = []
             for name, arg_schema in input_schema.items():
-                params_list.append(ToolParam(
-                    name=name,
-                    type=arg_schema.type,
-                    required=arg_schema.required,
-                    default=arg_schema.default,
-                    description=arg_schema.description
-                ))
+                params_list.append(
+                    ToolParam(
+                        name=name,
+                        type=arg_schema.type,
+                        required=arg_schema.required,
+                        default=arg_schema.default,
+                        description=arg_schema.description,
+                    )
+                )
 
             spec = ToolSpec(
                 path=tool_name,

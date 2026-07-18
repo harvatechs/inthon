@@ -11,8 +11,8 @@ from ..errors import Span
 class TokenType(Enum):
     # --- Structural ---
     NEWLINE = auto()
-    INDENT = auto()          # reserved (unused: INTHON uses braces)
-    DEDENT = auto()          # reserved (unused: INTHON uses braces)
+    INDENT = auto()  # reserved (unused: INTHON uses braces)
+    DEDENT = auto()  # reserved (unused: INTHON uses braces)
     EOF = auto()
 
     # --- Literals ---
@@ -120,4 +120,6 @@ class Token:
     span: Span
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
-        return f"Token({self.type.name}, {self.value!r}, {self.span.line}:{self.span.col})"
+        return (
+            f"Token({self.type.name}, {self.value!r}, {self.span.line}:{self.span.col})"
+        )

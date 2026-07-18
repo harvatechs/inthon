@@ -199,7 +199,7 @@ def infer_type(expr: nodes.Expression, scope: Scope) -> str:
             curr_env.parent = TypeEnv()
             curr_env = curr_env.parent
         curr_scope = curr_scope.parent
-        
+
     return infer_expr_type(expr, tenv, {})
 
 

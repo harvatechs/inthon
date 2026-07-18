@@ -14,7 +14,12 @@ class Environment:
 
     __slots__ = ("vars", "consts", "parent", "kind", "label")
 
-    def __init__(self, parent: Optional["Environment"] = None, kind: str = "block", label: str = ""):
+    def __init__(
+        self,
+        parent: Optional["Environment"] = None,
+        kind: str = "block",
+        label: str = "",
+    ):
         self.vars: dict[str, InthonValue] = {}
         self.consts: set[str] = set()
         self.parent = parent
@@ -44,7 +49,13 @@ class Environment:
             env = env.parent
         return False
 
-    def define(self, name: str, value: InthonValue, mutable: bool = True, span: Optional[Span] = None):
+    def define(
+        self,
+        name: str,
+        value: InthonValue,
+        mutable: bool = True,
+        span: Optional[Span] = None,
+    ):
         if name in self.vars:
             if type(self.vars[name]).__name__ == "InthonBuiltin":
                 # Shadowing builtin is allowed

@@ -92,7 +92,11 @@ class TraceLogger:
             "tool_calls": tool_calls,
             "py_calls": py_calls,
             "errors": self.errors,
-            "cost": {"usd": total_cost, "tool_calls": len(tool_calls), "py_calls": len(py_calls)},
+            "cost": {
+                "usd": total_cost,
+                "tool_calls": len(tool_calls),
+                "py_calls": len(py_calls),
+            },
             "result_type": result_type,
             "result_preview": result_preview[:200],
         }

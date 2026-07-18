@@ -56,12 +56,20 @@ class SQLiteMemoryStore(MemoryStore):
         return table
 
     # -- operations -------------------------------------------------------------------
-    def remember(self, namespace: str, key: str, value: InthonValue, text: str) -> MemoryEntry:
+    def remember(
+        self, namespace: str, key: str, value: InthonValue, text: str
+    ) -> MemoryEntry:
         table = self._ensure(namespace)
         entry = MemoryEntry(key=key, _value=value, text=text, embedding=embed(text))
         self._conn.execute(
             f'INSERT OR REPLACE INTO "{table}" (key, text, value, embedding, ts) VALUES (?, ?, ?, ?, ?)',
-            (key, text, json.dumps(value_to_json(value)), json.dumps(entry.embedding), time.time()),
+            (
+                key,
+                text,
+                json.dumps(value_to_json(value)),
+                json.dumps(entry.embedding),
+                time.time(),
+            ),
         )
         self._conn.commit()
         return entry
@@ -100,7 +108,9 @@ class SQLiteMemoryStore(MemoryStore):
         if removed == 0:
             best = self.recall(namespace, text, limit=1)
             if best:
-                cur = self._conn.execute(f'DELETE FROM "{table}" WHERE key = ?', (best[0].key,))
+                cur = self._conn.execute(
+                    f'DELETE FROM "{table}" WHERE key = ?', (best[0].key,)
+                )
                 removed = cur.rowcount
         self._conn.commit()
         return removed

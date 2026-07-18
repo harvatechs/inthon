@@ -133,7 +133,8 @@ class Policy:
             allow_payment=self.allow_payment and child.allow_payment,
             allow_database=self.allow_database and child.allow_database,
             allow_model=self.allow_model and child.allow_model,
-            allow_memory_persist=self.allow_memory_persist and child.allow_memory_persist,
+            allow_memory_persist=self.allow_memory_persist
+            and child.allow_memory_persist,
             max_tool_calls=min(self.max_tool_calls, child.max_tool_calls),
             max_cost_usd=min(self.max_cost_usd, child.max_cost_usd),
             max_runtime_sec=min(self.max_runtime_sec, child.max_runtime_sec),
@@ -173,4 +174,3 @@ class Capability(Enum):
     MEMORY_WRITE = auto()
     DATABASE_WRITE = auto()
     MODEL_DOWNLOAD = auto()
-

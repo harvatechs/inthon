@@ -7,15 +7,29 @@ from typing import Optional, Any
 
 from ..errors import InthonImportError_, InthonPyAttributeError, Span, PyBridgeError
 from ..runtime.values import InthonPyObject
-from .allowlist import BLOCKED_ATTRIBUTES, DEFAULT_ALLOWLIST, HARD_DENYLIST, is_dunder, AllowlistConfig
+from .allowlist import (
+    BLOCKED_ATTRIBUTES,
+    DEFAULT_ALLOWLIST,
+    HARD_DENYLIST,
+    is_dunder,
+    AllowlistConfig,
+)
 
 
 class SafeModuleImporter:
     """Imports Python modules on behalf of INTHON programs, enforcing the
     allowlist/denylist and wrapping every result in an InthonPyObject proxy."""
 
-    def __init__(self, allowlist: Optional[set] = None, tracer=None, config: Optional[AllowlistConfig] = None, ctx=None):
-        self.allowlist = set(allowlist) if allowlist is not None else set(DEFAULT_ALLOWLIST)
+    def __init__(
+        self,
+        allowlist: Optional[set] = None,
+        tracer=None,
+        config: Optional[AllowlistConfig] = None,
+        ctx=None,
+    ):
+        self.allowlist = (
+            set(allowlist) if allowlist is not None else set(DEFAULT_ALLOWLIST)
+        )
         self.tracer = tracer
         self._config = config or AllowlistConfig()
         self._ctx = ctx
@@ -44,13 +58,17 @@ class SafeModuleImporter:
 
         # Update global bypass allowed set
         from .allowlist import GLOBAL_EXTRA_ALLOWED
+
         GLOBAL_EXTRA_ALLOWED.update(self._config.extra_allowed)
 
         self._sandbox_mode = sandbox_mode
         self._subprocess_bridge = None
         if sandbox_mode == "strict":
             from .subprocess_bridge import SubprocessPyBridge
-            self._subprocess_bridge = SubprocessPyBridge(extra_allowed=self._config.extra_allowed)
+
+            self._subprocess_bridge = SubprocessPyBridge(
+                extra_allowed=self._config.extra_allowed
+            )
 
     # -- module import -------------------------------------------------------------
     def import_module(self, dotted: str, span: Optional[Span] = None) -> Any:
@@ -95,7 +113,9 @@ class SafeModuleImporter:
         return InthonPyObject(module, importer=self, path=dotted)
 
     # -- attribute policy -------------------------------------------------------------
-    def check_attribute(self, name: str, span: Optional[Span] = None, owner_path: str = "") -> None:
+    def check_attribute(
+        self, name: str, span: Optional[Span] = None, owner_path: str = ""
+    ) -> None:
         if is_dunder(name):
             raise InthonPyAttributeError(
                 f"Access to attribute '{name}' is denied (is blocked)",
@@ -109,7 +129,9 @@ class SafeModuleImporter:
                 hint=f"'{name}' is on the PyBridge blocked-attribute list.",
             )
 
-    def getattr(self, proxy: InthonPyObject, name: str, span: Optional[Span] = None) -> InthonPyObject:
+    def getattr(
+        self, proxy: InthonPyObject, name: str, span: Optional[Span] = None
+    ) -> InthonPyObject:
         self.check_attribute(name, span, getattr(proxy, "_path", ""))
         obj = proxy.wrapped
         try:
@@ -121,6 +143,7 @@ class SafeModuleImporter:
             ) from None
 
         from .allowlist import is_safe_attribute_access
+
         if not is_safe_attribute_access(obj, name, attr):
             raise InthonPyAttributeError(
                 f"Access to attribute '{name}' is denied (is blocked)",

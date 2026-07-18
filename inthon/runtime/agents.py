@@ -25,7 +25,8 @@ def invoke_agent(
     decl = agent.decl
     if decl.plan is None:
         raise InthonSemanticError(
-            f"Agent '{decl.name}' has no plan block", span=span or decl.span,
+            f"Agent '{decl.name}' has no plan block",
+            span=span or decl.span,
             hint="Every agent needs a plan { ... } body.",
         )
 
@@ -33,7 +34,8 @@ def invoke_agent(
     for key in kwargs:
         if key not in input_names:
             raise InthonTypeError_(
-                f"Agent '{decl.name}' has no input '{key}'", span=span,
+                f"Agent '{decl.name}' has no input '{key}'",
+                span=span,
                 hint=f"Declared inputs: {', '.join(input_names) or '(none)'}",
             )
     bound_inputs: dict[str, InthonValue] = {}
@@ -41,12 +43,18 @@ def invoke_agent(
         if field.name in kwargs:
             value = kwargs[field.name]
             if field.type_annotation is not None:
-                check_value_against_type(value, field.type_annotation, span or decl.span)
+                check_value_against_type(
+                    value, field.type_annotation, span or decl.span
+                )
             bound_inputs[field.name] = value
         else:
             bound_inputs[field.name] = NONE
 
-    policy = Policy.from_entries(decl.policies, span=decl.span) if decl.policies else Policy()
+    policy = (
+        Policy.from_entries(decl.policies, span=decl.span)
+        if decl.policies
+        else Policy()
+    )
     ctx.policy.apply(policy, decl.span, label=decl.name)
 
     store = None
@@ -63,8 +71,13 @@ def invoke_agent(
     ctx.tracer.emit("agent_start", decl.span, agent=decl.name, goal=decl.goal or "")
     try:
         result = run_plan(decl, bound_inputs)
-        ctx.tracer.emit("agent_end", decl.span, agent=decl.name,
-                        result_type=result.type_name, preview=display(result)[:120])
+        ctx.tracer.emit(
+            "agent_end",
+            decl.span,
+            agent=decl.name,
+            result_type=result.type_name,
+            preview=display(result)[:120],
+        )
         if store is not None and mem_token is not None:
             store.commit(mem_token)
         return result

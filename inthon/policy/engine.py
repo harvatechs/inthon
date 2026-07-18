@@ -16,24 +16,25 @@ class PolicyCapsSet(set):
     def add(self, item):
         super().add(item)
         from .model import Capability
+
         p = self.policy_engine.current
         if item == Capability.NETWORK:
-            object.__setattr__(p, 'allow_network', True)
+            object.__setattr__(p, "allow_network", True)
         elif item == Capability.SHELL:
-            object.__setattr__(p, 'allow_shell', True)
+            object.__setattr__(p, "allow_shell", True)
         elif item == Capability.EMAIL_SEND:
-            object.__setattr__(p, 'allow_email', True)
+            object.__setattr__(p, "allow_email", True)
         elif item == Capability.PAYMENT_EXECUTE:
-            object.__setattr__(p, 'allow_payment', True)
+            object.__setattr__(p, "allow_payment", True)
         elif item == Capability.DATABASE_WRITE:
-            object.__setattr__(p, 'allow_database', True)
+            object.__setattr__(p, "allow_database", True)
         elif item == Capability.MODEL_DOWNLOAD:
-            object.__setattr__(p, 'allow_model', True)
+            object.__setattr__(p, "allow_model", True)
         elif item == Capability.FILESYSTEM_READ:
             if p.filesystem == "none":
-                object.__setattr__(p, 'filesystem', 'read_only')
+                object.__setattr__(p, "filesystem", "read_only")
         elif item == Capability.FILESYSTEM_WRITE:
-            object.__setattr__(p, 'filesystem', 'read_write')
+            object.__setattr__(p, "filesystem", "read_write")
 
     def update(self, items):
         for item in items:
@@ -53,7 +54,9 @@ class PolicyEngine:
         no policy block at all still runs under default-deny.
     """
 
-    def __init__(self, base: Optional[Policy] = None, tracer=None, ceiling: bool = False):
+    def __init__(
+        self, base: Optional[Policy] = None, tracer=None, ceiling: bool = False
+    ):
         self.base = base or Policy()
         self.ceiling = ceiling
         self._stack: list[Policy] = [self.base]
@@ -69,7 +72,9 @@ class PolicyEngine:
         return len(self._stack)
 
     # -- stack management ---------------------------------------------------------
-    def apply(self, policy: Policy, span: Optional[Span] = None, label: str = "") -> Policy:
+    def apply(
+        self, policy: Policy, span: Optional[Span] = None, label: str = ""
+    ) -> Policy:
         current = self.current
         if self.ceiling:
             # Programs can only narrow what host granted (SB-13)
@@ -80,9 +85,15 @@ class PolicyEngine:
                 allow_payment=current.allow_payment and policy.allow_payment,
                 allow_database=current.allow_database and policy.allow_database,
                 allow_model=current.allow_model and policy.allow_model,
-                allow_memory_persist=current.allow_memory_persist and policy.allow_memory_persist,
-                filesystem="none" if current.filesystem == "none" or policy.filesystem == "none" else (
-                    "read_only" if current.filesystem == "read_only" or policy.filesystem == "read_only" else "read_write"
+                allow_memory_persist=current.allow_memory_persist
+                and policy.allow_memory_persist,
+                filesystem="none"
+                if current.filesystem == "none" or policy.filesystem == "none"
+                else (
+                    "read_only"
+                    if current.filesystem == "read_only"
+                    or policy.filesystem == "read_only"
+                    else "read_write"
                 ),
                 max_cost_usd=min(current.max_cost_usd, policy.max_cost_usd),
                 max_runtime_sec=min(current.max_runtime_sec, policy.max_runtime_sec),
@@ -107,7 +118,9 @@ class PolicyEngine:
         return self.base
 
     # -- enforcement --------------------------------------------------------------
-    def check(self, permission: str, span: Optional[Span] = None, subject: str = "") -> None:
+    def check(
+        self, permission: str, span: Optional[Span] = None, subject: str = ""
+    ) -> None:
         if not self.current.grants(permission):
             if permission == "network":
                 raise PolicyViolationError(
@@ -126,6 +139,7 @@ class PolicyEngine:
 
     def check_capability(self, cap: object, span: Optional[Span] = None) -> None:
         from .model import Capability
+
         CAP_TO_PERMISSION = {
             Capability.NETWORK: "network",
             Capability.EMAIL_SEND: "email",
@@ -136,7 +150,9 @@ class PolicyEngine:
             Capability.DATABASE_WRITE: "database",
             Capability.FILESYSTEM_READ: "filesystem",
         }
-        perm = CAP_TO_PERMISSION.get(cap, cap.name.lower() if hasattr(cap, "name") else str(cap))
+        perm = CAP_TO_PERMISSION.get(
+            cap, cap.name.lower() if hasattr(cap, "name") else str(cap)
+        )
         if not self.current.grants(perm):
             cap_name = cap.name if hasattr(cap, "name") else str(cap)
             if cap_name == "NETWORK":
@@ -169,6 +185,7 @@ class PolicyEngine:
     @property
     def active_caps(self) -> set:
         from .model import Capability
+
         p = self.last_popped or self.current
         caps = set()
         if p.allow_network:
@@ -189,7 +206,6 @@ class PolicyEngine:
             caps.add(Capability.MODEL_DOWNLOAD)
         caps.add(Capability.MEMORY_WRITE)
         return PolicyCapsSet(self, caps)
-
 
 
 def _hint_for(permission: str) -> str:

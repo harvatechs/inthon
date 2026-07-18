@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional
 @dataclass(frozen=True)
 class ToolParam:
     name: str
-    type: str = "any"           # str|int|float|bool|list|dict|any|str|list (union via '|')
+    type: str = "any"  # str|int|float|bool|list|dict|any|str|list (union via '|')
     required: bool = True
     default: Any = None
     description: str = ""
@@ -47,14 +47,14 @@ class ToolSpec:
 
     path: str
     description: str = ""
-    params: tuple = ()                    # tuple[ToolParam]
+    params: tuple = ()  # tuple[ToolParam]
     returns: str = "any"
-    side_effects: tuple = ()              # e.g. ("network",), ("email_send",)
-    permissions: tuple = ()               # capabilities required, e.g. ("network",)
-    cost_usd: float = 0.0                 # charged per call
-    latency_ms: float = 0.0               # simulated latency recorded in trace
-    handler: Optional[Callable] = None    # real implementation
-    mock: Optional[Callable] = None       # deterministic offline implementation
+    side_effects: tuple = ()  # e.g. ("network",), ("email_send",)
+    permissions: tuple = ()  # capabilities required, e.g. ("network",)
+    cost_usd: float = 0.0  # charged per call
+    latency_ms: float = 0.0  # simulated latency recorded in trace
+    handler: Optional[Callable] = None  # real implementation
+    mock: Optional[Callable] = None  # deterministic offline implementation
     version: str = "1.0"
     requires_approval: bool = False
 
@@ -69,7 +69,7 @@ class ToolSpec:
                 type=p.type,
                 description=p.description,
                 required=p.required,
-                default=p.default
+                default=p.default,
             )
             for p in self.params
         }

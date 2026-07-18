@@ -17,8 +17,19 @@ from ..errors import InthonParseError, InthonTypeSyntaxError, Span
 
 _PRIMITIVE_TYPES = {"str", "int", "float", "bool", "bytes", "none", "any"}
 _AGENT_TYPES = {
-    "Goal", "Plan", "ToolCall", "ToolResult", "Trace", "MemoryRef",
-    "Approval", "Policy", "DataFrame", "Tensor", "Model", "Dataset", "Embedding",
+    "Goal",
+    "Plan",
+    "ToolCall",
+    "ToolResult",
+    "Trace",
+    "MemoryRef",
+    "Approval",
+    "Policy",
+    "DataFrame",
+    "Tensor",
+    "Model",
+    "Dataset",
+    "Embedding",
 }
 _COLLECTION_TYPES = {"list", "dict", "tuple", "set"}
 
@@ -41,7 +52,9 @@ class InthonTransformer(Transformer):
     def __init__(self, filename: str = "<stdin>", expr_parser=None, source: str = ""):
         super().__init__()
         self.filename = filename
-        self.expr_parser = expr_parser  # Lark instance with start="expr" for interpolation
+        self.expr_parser = (
+            expr_parser  # Lark instance with start="expr" for interpolation
+        )
         self.source = source
 
     # -- helpers -------------------------------------------------------------
@@ -88,14 +101,20 @@ class InthonTransformer(Transformer):
     def use_memory_stmt(self, meta: Meta, children):
         ns = children[0]
         args, kwargs = children[1] if len(children) > 1 else ((), ())
-        return nodes.UseMemory(namespace=ns, args=args, kwargs=kwargs, span=self._s(meta))
+        return nodes.UseMemory(
+            namespace=ns, args=args, kwargs=kwargs, span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def call_args(self, meta: Meta, children):
         args, kwargs = (), ()
         if children:
             for child in children[0]:
-                if isinstance(child, tuple) and len(child) == 2 and child[0] == "__kw__":
+                if (
+                    isinstance(child, tuple)
+                    and len(child) == 2
+                    and child[0] == "__kw__"
+                ):
                     kwargs += ((child[1][0], child[1][1]),)
                 else:
                     args += (child,)
@@ -126,7 +145,9 @@ class InthonTransformer(Transformer):
             ann, value = children[1], children[2]
         else:
             ann, value = None, children[1]
-        return nodes.LetDecl(name=name, type_annotation=ann, value=value, span=self._s(meta))
+        return nodes.LetDecl(
+            name=name, type_annotation=ann, value=value, span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def const_stmt(self, meta: Meta, children):
@@ -135,7 +156,9 @@ class InthonTransformer(Transformer):
             ann, value = children[1], children[2]
         else:
             ann, value = None, children[1]
-        return nodes.ConstDecl(name=name, type_annotation=ann, value=value, span=self._s(meta))
+        return nodes.ConstDecl(
+            name=name, type_annotation=ann, value=value, span=self._s(meta)
+        )
 
     def type_annotation(self, children):
         return children[0]
@@ -167,7 +190,9 @@ class InthonTransformer(Transformer):
         args = tuple(children[1:])
         if name == "dict":
             if len(args) != 2:
-                raise self._type_error(f"{name} expects 2 type arguments", self._s(meta))
+                raise self._type_error(
+                    f"{name} expects 2 type arguments", self._s(meta)
+                )
         elif name == "tuple":
             pass
         else:
@@ -195,7 +220,9 @@ class InthonTransformer(Transformer):
             rest = rest[1:]
         if rest:
             body = rest[0]
-        return nodes.FnDecl(name=name, params=params, return_type=ret, body=body, span=self._s(meta))
+        return nodes.FnDecl(
+            name=name, params=params, return_type=ret, body=body, span=self._s(meta)
+        )
 
     def param_list(self, children):
         return list(children)
@@ -248,9 +275,15 @@ class InthonTransformer(Transformer):
                 # plan_block arrives as list of statements
                 plan = nodes.Block(statements=tuple(item), span=self._s(meta))
         return nodes.AgentDecl(
-            name=name, goal=goal, inputs=inputs, outputs=outputs,
-            imports=tuple(imports), policies=tuple(policies), plan=plan,
-            criteria=tuple(criteria), rewriters=tuple(rewriters),
+            name=name,
+            goal=goal,
+            inputs=inputs,
+            outputs=outputs,
+            imports=tuple(imports),
+            policies=tuple(policies),
+            plan=plan,
+            criteria=tuple(criteria),
+            rewriters=tuple(rewriters),
             span=self._s(meta),
         )
 
@@ -274,11 +307,15 @@ class InthonTransformer(Transformer):
 
     @v_args(meta=True)
     def criteria_decl(self, meta: Meta, children):
-        return nodes.CriteriaDecl(name=str(children[0]), criteria=tuple(children[1:]), span=self._s(meta))
+        return nodes.CriteriaDecl(
+            name=str(children[0]), criteria=tuple(children[1:]), span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def rewriter_decl(self, meta: Meta, children):
-        return nodes.RewriterDecl(name=str(children[0]), body=children[1], span=self._s(meta))
+        return nodes.RewriterDecl(
+            name=str(children[0]), body=children[1], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def policy_block(self, meta: Meta, children):
@@ -314,7 +351,9 @@ class InthonTransformer(Transformer):
     # -- control flow ----------------------------------------------------------------------
     @v_args(meta=True)
     def return_stmt(self, meta: Meta, children):
-        return nodes.ReturnStmt(value=children[0] if children else None, span=self._s(meta))
+        return nodes.ReturnStmt(
+            value=children[0] if children else None, span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def break_stmt(self, meta: Meta, children):
@@ -329,28 +368,46 @@ class InthonTransformer(Transformer):
         condition = children[0]
         then_block = children[1]
         else_block = children[2] if len(children) > 2 else None
-        return nodes.IfStmt(condition=condition, then_block=then_block, else_block=else_block, span=self._s(meta))
+        return nodes.IfStmt(
+            condition=condition,
+            then_block=then_block,
+            else_block=else_block,
+            span=self._s(meta),
+        )
 
     @v_args(meta=True)
     def for_stmt(self, meta: Meta, children):
-        return nodes.ForStmt(var=str(children[0]), iterable=children[1], body=children[2], span=self._s(meta))
+        return nodes.ForStmt(
+            var=str(children[0]),
+            iterable=children[1],
+            body=children[2],
+            span=self._s(meta),
+        )
 
     @v_args(meta=True)
     def while_stmt(self, meta: Meta, children):
-        return nodes.WhileStmt(condition=children[0], body=children[1], span=self._s(meta))
+        return nodes.WhileStmt(
+            condition=children[0], body=children[1], span=self._s(meta)
+        )
 
     # -- agent primitives ---------------------------------------------------------------------
     @v_args(meta=True)
     def approve_stmt(self, meta: Meta, children):
-        return nodes.ApproveStmt(tool_path=children[0], action=str(children[1]), span=self._s(meta))
+        return nodes.ApproveStmt(
+            tool_path=children[0], action=str(children[1]), span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def remember_stmt(self, meta: Meta, children):
-        return nodes.RememberStmt(value=children[0], namespace=children[1], span=self._s(meta))
+        return nodes.RememberStmt(
+            value=children[0], namespace=children[1], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def forget_stmt(self, meta: Meta, children):
-        return nodes.ForgetStmt(value=children[0], namespace=children[1], span=self._s(meta))
+        return nodes.ForgetStmt(
+            value=children[0], namespace=children[1], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def guard_stmt(self, meta: Meta, children):
@@ -365,8 +422,12 @@ class InthonTransformer(Transformer):
         if len(children) > 3:
             catch_name, catch_body = children[3]
         return nodes.RetryStmt(
-            count=count, backoff=backoff, body=body,
-            catch_name=catch_name, catch_body=catch_body, span=self._s(meta),
+            count=count,
+            backoff=backoff,
+            body=body,
+            catch_name=catch_name,
+            catch_body=catch_body,
+            span=self._s(meta),
         )
 
     def catch_block(self, children):
@@ -377,14 +438,22 @@ class InthonTransformer(Transformer):
         subject = str(children[0])
         rubric = str(children[1])
         criteria = tuple(children[2:])
-        return nodes.EvalStmt(subject=subject, rubric=rubric, criteria=criteria, span=self._s(meta))
+        return nodes.EvalStmt(
+            subject=subject, rubric=rubric, criteria=criteria, span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def eval_self(self, meta: Meta, children):
         subject = str(children[0])
         rubric = str(children[1])
         rewriter = str(children[2]) if len(children) > 2 else None
-        return nodes.EvalStmt(subject=subject, rubric=rubric, criteria=(), rewriter=rewriter, span=self._s(meta))
+        return nodes.EvalStmt(
+            subject=subject,
+            rubric=rubric,
+            criteria=(),
+            rewriter=rewriter,
+            span=self._s(meta),
+        )
 
     @v_args(meta=True)
     def eval_criterion(self, meta: Meta, children):
@@ -400,11 +469,15 @@ class InthonTransformer(Transformer):
     # -- expressions ---------------------------------------------------------------------------
     @v_args(meta=True)
     def or_op(self, meta: Meta, children):
-        return nodes.BinaryOp(left=children[0], op="or", right=children[1], span=self._s(meta))
+        return nodes.BinaryOp(
+            left=children[0], op="or", right=children[1], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def and_op(self, meta: Meta, children):
-        return nodes.BinaryOp(left=children[0], op="and", right=children[1], span=self._s(meta))
+        return nodes.BinaryOp(
+            left=children[0], op="and", right=children[1], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def unary_not(self, meta: Meta, children):
@@ -412,19 +485,27 @@ class InthonTransformer(Transformer):
 
     @v_args(meta=True)
     def comparison_op(self, meta: Meta, children):
-        return nodes.BinaryOp(left=children[0], op=str(children[1]), right=children[2], span=self._s(meta))
+        return nodes.BinaryOp(
+            left=children[0], op=str(children[1]), right=children[2], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def add_op(self, meta: Meta, children):
-        return nodes.BinaryOp(left=children[0], op=str(children[1]), right=children[2], span=self._s(meta))
+        return nodes.BinaryOp(
+            left=children[0], op=str(children[1]), right=children[2], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def mul_op(self, meta: Meta, children):
-        return nodes.BinaryOp(left=children[0], op=str(children[1]), right=children[2], span=self._s(meta))
+        return nodes.BinaryOp(
+            left=children[0], op=str(children[1]), right=children[2], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def unary_signed(self, meta: Meta, children):
-        return nodes.UnaryOp(op=str(children[0]), operand=children[1], span=self._s(meta))
+        return nodes.UnaryOp(
+            op=str(children[0]), operand=children[1], span=self._s(meta)
+        )
 
     def expr_fragment(self, children):
         return children[0]
@@ -433,7 +514,9 @@ class InthonTransformer(Transformer):
     def power_expr(self, meta: Meta, children):
         if len(children) == 1:
             return children[0]
-        return nodes.BinaryOp(left=children[0], op="**", right=children[1], span=self._s(meta))
+        return nodes.BinaryOp(
+            left=children[0], op="**", right=children[1], span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def call_expr(self, meta: Meta, children):
@@ -447,24 +530,34 @@ class InthonTransformer(Transformer):
                         kwargs += (a[1],)
                     else:
                         args += (a,)
-        return nodes.CallExpr(callee=callee, args=args, kwargs=kwargs, span=self._s(meta))
+        return nodes.CallExpr(
+            callee=callee, args=args, kwargs=kwargs, span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def member_expr(self, meta: Meta, children):
-        return nodes.MemberExpr(object=children[0], name=str(children[1]), span=self._s(meta))
+        return nodes.MemberExpr(
+            object=children[0], name=str(children[1]), span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def index_expr(self, meta: Meta, children):
-        return nodes.IndexExpr(object=children[0], index=children[1], span=self._s(meta))
+        return nodes.IndexExpr(
+            object=children[0], index=children[1], span=self._s(meta)
+        )
 
     # -- primaries --------------------------------------------------------------------------------
     @v_args(meta=True)
     def int_literal(self, meta: Meta, children):
-        return nodes.IntLiteral(value=int(str(children[0]).replace("_", "")), span=self._s(meta))
+        return nodes.IntLiteral(
+            value=int(str(children[0]).replace("_", "")), span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def float_literal(self, meta: Meta, children):
-        return nodes.FloatLiteral(value=float(str(children[0]).replace("_", "")), span=self._s(meta))
+        return nodes.FloatLiteral(
+            value=float(str(children[0]).replace("_", "")), span=self._s(meta)
+        )
 
     @v_args(meta=True)
     def string_literal(self, meta: Meta, children):
@@ -510,7 +603,9 @@ class InthonTransformer(Transformer):
         if len(children) == 1:
             return nodes.ExprStmt(expr=children[0], span=self._s(meta))
         target, value = children[0], children[1]
-        if not isinstance(target, (nodes.Identifier, nodes.MemberExpr, nodes.IndexExpr)):
+        if not isinstance(
+            target, (nodes.Identifier, nodes.MemberExpr, nodes.IndexExpr)
+        ):
             raise InthonParseError(
                 "Invalid assignment target",
                 span=self._s(meta),
@@ -609,7 +704,7 @@ class InthonTransformer(Transformer):
             raise InthonParseError(
                 f"Invalid expression in string interpolation: {exc.message}",
                 span=span,
-                hint="Interpolations accept any INTHON expression, e.g. \"total: {a + b}\".",
+                hint='Interpolations accept any INTHON expression, e.g. "total: {a + b}".',
                 source_line=self._line_at(span),
             )
 
@@ -660,7 +755,15 @@ def _unquote(text: str) -> str:
         body = text
     out: list[str] = []
     i = 0
-    escapes = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "'": "'", "0": "\0"}
+    escapes = {
+        "n": "\n",
+        "t": "\t",
+        "r": "\r",
+        "\\": "\\",
+        '"': '"',
+        "'": "'",
+        "0": "\0",
+    }
     while i < len(body):
         ch = body[i]
         if ch == "\\" and i + 1 < len(body):

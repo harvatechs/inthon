@@ -33,6 +33,7 @@ class RunResult:
     @property
     def trace_json(self) -> str:
         import json
+
         return json.dumps(self.trace)
 
     @property
@@ -57,12 +58,16 @@ def parse(source: str, filename: str = "<stdin>") -> nodes.Program:
     return _parse(source, filename)
 
 
-def check(source: str, filename: str = "<stdin>", ctx: Optional[ExecutionContext] = None) -> nodes.Program:
+def check(
+    source: str, filename: str = "<stdin>", ctx: Optional[ExecutionContext] = None
+) -> nodes.Program:
     """Parse + run the semantic analyzer; raises on any static error."""
     from .semantic.analyzer import SemanticAnalyzer
 
     program = parse(source, filename)
-    analyzer = SemanticAnalyzer(ctx or ExecutionContext(RunOptions(source=source, filename=filename)))
+    analyzer = SemanticAnalyzer(
+        ctx or ExecutionContext(RunOptions(source=source, filename=filename))
+    )
     analyzer.analyze(program)
     return program
 
@@ -84,7 +89,9 @@ def run(source: str, options: Optional[RunOptions] = None, **kwargs) -> RunResul
     return res
 
 
-def run_vm(source: str, filename: str = "<stdin>", mock_tools: bool = True) -> RunResult:
+def run_vm(
+    source: str, filename: str = "<stdin>", mock_tools: bool = True
+) -> RunResult:
     return run(source, filename=filename, mock=mock_tools, backend="vm")
 
 
@@ -97,6 +104,7 @@ def run_file_vm(
     dry_run: bool = False,
 ) -> RunResult:
     from .policy.model import Policy
+
     policy = Policy(max_cost_usd=max_cost_usd, max_runtime_sec=max_runtime_sec)
     return run_file(
         path,
@@ -115,9 +123,9 @@ def run_file_transpiled(
 ) -> RunResult:
     from pathlib import Path
     from .compiler.transpiler import run_transpiled
+
     source = Path(path).read_text(encoding="utf-8")
     return run_transpiled(source, filename=path, mock_tools=mock_tools)
-
 
 
 def run_file(path: str, options: Optional[RunOptions] = None, **kwargs) -> RunResult:
@@ -146,6 +154,7 @@ def _merge_options(options: Optional[RunOptions], overrides: dict) -> RunOptions
 
     if policy_overrides:
         from .policy.model import Policy
+
         base_policy = opts.policy or Policy()
         new_policy = Policy(
             allow_network=base_policy.allow_network,
@@ -157,7 +166,9 @@ def _merge_options(options: Optional[RunOptions], overrides: dict) -> RunOptions
             allow_memory_persist=base_policy.allow_memory_persist,
             filesystem=base_policy.filesystem,
             max_cost_usd=policy_overrides.get("max_cost_usd", base_policy.max_cost_usd),
-            max_runtime_sec=policy_overrides.get("max_runtime_sec", base_policy.max_runtime_sec),
+            max_runtime_sec=policy_overrides.get(
+                "max_runtime_sec", base_policy.max_runtime_sec
+            ),
         )
         opts.policy = new_policy
 
@@ -189,7 +200,9 @@ def _execute(source: str, opts: RunOptions) -> RunResult:
             from .runtime.interpreter import run_program
 
             result = run_program(program, ctx)
-        trace = ctx.tracer.finish(result_type=result.type_name, result_preview=display(result)[:200])
+        trace = ctx.tracer.finish(
+            result_type=result.type_name, result_preview=display(result)[:200]
+        )
         return RunResult(
             ok=True,
             result=result,
@@ -201,7 +214,9 @@ def _execute(source: str, opts: RunOptions) -> RunResult:
         )
     except InthonError as exc:
         ctx.tracer.emit_error(exc.code, exc.message, exc.span)
-        trace = ctx.tracer.finish(result_type="error", result_preview=f"{exc.code}: {exc.message}")
+        trace = ctx.tracer.finish(
+            result_type="error", result_preview=f"{exc.code}: {exc.message}"
+        )
         return RunResult(
             ok=False,
             error=exc,

@@ -8,8 +8,22 @@ from __future__ import annotations
 
 from .ast import nodes
 
-_PREC = {"or": 1, "and": 2, "==": 4, "!=": 4, "<": 4, "<=": 4, ">": 4, ">=": 4,
-         "+": 5, "-": 5, "*": 6, "/": 6, "%": 6, "**": 8}
+_PREC = {
+    "or": 1,
+    "and": 2,
+    "==": 4,
+    "!=": 4,
+    "<": 4,
+    "<=": 4,
+    ">": 4,
+    ">=": 4,
+    "+": 5,
+    "-": 5,
+    "*": 6,
+    "/": 6,
+    "%": 6,
+    "**": 8,
+}
 
 
 def format_source(source: str, filename: str = "<stdin>") -> str:
@@ -34,8 +48,12 @@ def format_program(program: nodes.Program) -> str:
 
 
 def _escape(s: str) -> str:
-    return (s.replace("\\", "\\\\").replace('"', '\\"')
-             .replace("\n", "\\n").replace("\t", "\\t"))
+    return (
+        s.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\t", "\\t")
+    )
 
 
 class _Formatter:
@@ -62,7 +80,9 @@ class _Formatter:
         return [self.IND * lvl + f"use py.{n.module}{alias}"]
 
     def s_UseMemory(self, n: nodes.UseMemory, lvl):
-        args = [self.expr(a) for a in n.args] + [f"{k}={self.expr(v)}" for k, v in n.kwargs]
+        args = [self.expr(a) for a in n.args] + [
+            f"{k}={self.expr(v)}" for k, v in n.kwargs
+        ]
         tail = f"({', '.join(args)})" if args else ""
         return [self.IND * lvl + f"use memory.{n.namespace}{tail}"]
 
@@ -97,19 +117,25 @@ class _Formatter:
         if n.inputs:
             lines.append(self.IND * inner + "inputs {")
             for f in n.inputs:
-                lines.append(self.IND * (inner + 1) + f"{f.name}: {f.type_annotation.render()}")
+                lines.append(
+                    self.IND * (inner + 1) + f"{f.name}: {f.type_annotation.render()}"
+                )
             lines.append(self.IND * inner + "}")
         if n.outputs:
             lines.append(self.IND * inner + "outputs {")
             for f in n.outputs:
-                lines.append(self.IND * (inner + 1) + f"{f.name}: {f.type_annotation.render()}")
+                lines.append(
+                    self.IND * (inner + 1) + f"{f.name}: {f.type_annotation.render()}"
+                )
             lines.append(self.IND * inner + "}")
         for imp in n.imports:
             lines += self.stmt(imp, inner)
         if n.policies:
             lines.append(self.IND * inner + "policy {")
             for p in n.policies:
-                lines.append(self.IND * (inner + 1) + f"{p.key}: {self._literal(p.value)}")
+                lines.append(
+                    self.IND * (inner + 1) + f"{p.key}: {self._literal(p.value)}"
+                )
             lines.append(self.IND * inner + "}")
         for c in n.criteria:
             lines += self.s_CriteriaDecl(c, inner)
@@ -128,7 +154,9 @@ class _Formatter:
             if c.op == ":":
                 lines.append(self.IND * (lvl + 1) + f"{c.name}: {self.expr(c.value)}")
             else:
-                lines.append(self.IND * (lvl + 1) + f"{c.name} {c.op} {self.expr(c.value)}")
+                lines.append(
+                    self.IND * (lvl + 1) + f"{c.name} {c.op} {self.expr(c.value)}"
+                )
         lines.append(self.IND * lvl + "}")
         return lines
 
@@ -204,9 +232,13 @@ class _Formatter:
             lines = [self.IND * lvl + head + " {"]
             for c in n.criteria:
                 if c.op == ":":
-                    lines.append(self.IND * (lvl + 1) + f"{c.name}: {self.expr(c.value)}")
+                    lines.append(
+                        self.IND * (lvl + 1) + f"{c.name}: {self.expr(c.value)}"
+                    )
                 else:
-                    lines.append(self.IND * (lvl + 1) + f"{c.name} {c.op} {self.expr(c.value)}")
+                    lines.append(
+                        self.IND * (lvl + 1) + f"{c.name} {c.op} {self.expr(c.value)}"
+                    )
             lines.append(self.IND * lvl + "}")
         else:
             tail = f" on fail rewrite with {n.rewriter}" if n.rewriter else ""
@@ -264,7 +296,9 @@ class _Formatter:
         return "[" + ", ".join(self.expr(e) for e in n.elements) + "]"
 
     def e_DictExpr(self, n, prec):
-        return "{" + ", ".join(f"{self.expr(k)}: {self.expr(v)}" for k, v in n.pairs) + "}"
+        return (
+            "{" + ", ".join(f"{self.expr(k)}: {self.expr(v)}" for k, v in n.pairs) + "}"
+        )
 
     def e_BinaryOp(self, n: nodes.BinaryOp, prec):
         p = _PREC[n.op]
@@ -280,7 +314,9 @@ class _Formatter:
         return f"({s})" if p < prec else s
 
     def e_CallExpr(self, n: nodes.CallExpr, prec):
-        args = [self.expr(a) for a in n.args] + [f"{k}={self.expr(v)}" for k, v in n.kwargs]
+        args = [self.expr(a) for a in n.args] + [
+            f"{k}={self.expr(v)}" for k, v in n.kwargs
+        ]
         return f"{self.expr(n.callee, 9)}({', '.join(args)})"
 
     def e_MemberExpr(self, n: nodes.MemberExpr, prec):

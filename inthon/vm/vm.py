@@ -61,7 +61,14 @@ class VMFunction(InthonValue):
 
     type_name = "fn"
 
-    def __init__(self, name: str, decl, code: CodeObject, closure_env: Environment, defaults: dict):
+    def __init__(
+        self,
+        name: str,
+        decl,
+        code: CodeObject,
+        closure_env: Environment,
+        defaults: dict,
+    ):
         self.name = name
         self.decl = decl
         self.code = code
@@ -135,7 +142,12 @@ class InthonVM:
                     if env.is_defined_here(code.names[instr.arg]):
                         env.assign(code.names[instr.arg], value, self._span(instr))
                     else:
-                        env.define(code.names[instr.arg], value, mutable=mutable, span=self._span(instr))
+                        env.define(
+                            code.names[instr.arg],
+                            value,
+                            mutable=mutable,
+                            span=self._span(instr),
+                        )
                     self._trace_assign(code.names[instr.arg], value, instr)
                 elif op == Op.DECLARE_CONST:
                     value = stack.pop()
@@ -162,8 +174,14 @@ class InthonVM:
                     stack.append(stack[-1])
 
                 # ---- arithmetic --------------------------------------------
-                elif op in (Op.BINARY_ADD, Op.BINARY_SUB, Op.BINARY_MUL, Op.BINARY_DIV,
-                            Op.BINARY_MOD, Op.BINARY_POW):
+                elif op in (
+                    Op.BINARY_ADD,
+                    Op.BINARY_SUB,
+                    Op.BINARY_MUL,
+                    Op.BINARY_DIV,
+                    Op.BINARY_MOD,
+                    Op.BINARY_POW,
+                ):
                     right = stack.pop()
                     left = stack.pop()
                     stack.append(self._arith(left, op, right, instr))
@@ -233,15 +251,15 @@ class InthonVM:
                 # ---- containers ------------------------------------------------
                 elif op == Op.BUILD_LIST:
                     n = instr.arg
-                    items = stack[len(stack) - n:] if n else []
+                    items = stack[len(stack) - n :] if n else []
                     if n:
-                        del stack[len(stack) - n:]
+                        del stack[len(stack) - n :]
                     stack.append(InthonList(list(items)))
                 elif op == Op.BUILD_DICT:
                     n = instr.arg
-                    flat = stack[len(stack) - 2 * n:] if n else []
+                    flat = stack[len(stack) - 2 * n :] if n else []
                     if n:
-                        del stack[len(stack) - 2 * n:]
+                        del stack[len(stack) - 2 * n :]
                     pairs = {}
                     for i in range(0, len(flat), 2):
                         key = flat[i]
@@ -254,9 +272,9 @@ class InthonVM:
                     stack.append(InthonDict(pairs))
                 elif op == Op.BUILD_STRING:
                     n = instr.arg
-                    parts = stack[len(stack) - n:] if n else []
+                    parts = stack[len(stack) - n :] if n else []
                     if n:
-                        del stack[len(stack) - n:]
+                        del stack[len(stack) - n :]
                     stack.append(InthonString("".join(display(p) for p in parts)))
 
                 # ---- calls -------------------------------------------------------
@@ -266,12 +284,12 @@ class InthonVM:
                     kwargs = {}
                     if op == Op.CALL_FUNCTION_KW:
                         kw_names = stack.pop()
-                        kw_vals = stack[len(stack) - n_kw:]
-                        del stack[len(stack) - n_kw:]
+                        kw_vals = stack[len(stack) - n_kw :]
+                        del stack[len(stack) - n_kw :]
                         kwargs = dict(zip(kw_names, kw_vals))
-                    args = stack[len(stack) - n_pos:] if n_pos else []
+                    args = stack[len(stack) - n_pos :] if n_pos else []
                     if n_pos:
-                        del stack[len(stack) - n_pos:]
+                        del stack[len(stack) - n_pos :]
                     callee = stack.pop()
                     stack.append(self._call(callee, list(args), kwargs, instr))
                 elif op == Op.CALL_TOOL:
@@ -280,18 +298,24 @@ class InthonVM:
                     kwargs = {}
                     if n_kw:
                         kw_names = stack.pop()
-                        kw_vals = stack[len(stack) - n_kw:]
-                        del stack[len(stack) - n_kw:]
+                        kw_vals = stack[len(stack) - n_kw :]
+                        del stack[len(stack) - n_kw :]
                         kwargs = dict(zip(kw_names, kw_vals))
-                    args = stack[len(stack) - n_pos:] if n_pos else []
+                    args = stack[len(stack) - n_pos :] if n_pos else []
                     if n_pos:
-                        del stack[len(stack) - n_pos:]
+                        del stack[len(stack) - n_pos :]
                     path = stack.pop()
-                    stack.append(ctx.tools.invoke(ctx, path, list(args), kwargs, self._span(instr)))
+                    stack.append(
+                        ctx.tools.invoke(
+                            ctx, path, list(args), kwargs, self._span(instr)
+                        )
+                    )
                 elif op == Op.MAKE_FUNCTION:
                     meta = stack.pop()
                     decl = meta["decl"]
-                    fn = VMFunction(decl.name, decl, meta["body"], env, meta["defaults"])
+                    fn = VMFunction(
+                        decl.name, decl, meta["body"], env, meta["defaults"]
+                    )
                     if env.is_defined_here(fn.name):
                         env.assign(fn.name, fn, self._span(instr))
                     else:
@@ -317,25 +341,37 @@ class InthonVM:
                 elif op == Op.AGENT_REMEMBER:
                     ns = code.meta[instr.arg]
                     value = stack.pop()
-                    ctx.policy.check("memory_persist", self._span(instr), subject="remember")
+                    ctx.policy.check(
+                        "memory_persist", self._span(instr), subject="remember"
+                    )
                     ctx.check_memory_declared(ns, self._span(instr))
                     memory_ops.memory_remember(ctx, ns, value, self._span(instr))
                 elif op == Op.AGENT_RECALL:
                     ns = code.meta[instr.arg]
                     query = stack.pop()
-                    ctx.policy.check("memory_persist", self._span(instr), subject="recall")
+                    ctx.policy.check(
+                        "memory_persist", self._span(instr), subject="recall"
+                    )
                     ctx.check_memory_declared(ns, self._span(instr))
-                    stack.append(memory_ops.memory_recall(ctx, ns, display(query), self._span(instr)))
+                    stack.append(
+                        memory_ops.memory_recall(
+                            ctx, ns, display(query), self._span(instr)
+                        )
+                    )
                 elif op == Op.AGENT_FORGET:
                     ns = code.meta[instr.arg]
                     value = stack.pop()
-                    ctx.policy.check("memory_persist", self._span(instr), subject="forget")
+                    ctx.policy.check(
+                        "memory_persist", self._span(instr), subject="forget"
+                    )
                     ctx.check_memory_declared(ns, self._span(instr))
                     memory_ops.memory_forget(ctx, ns, value, self._span(instr))
                 elif op == Op.GUARD_ASSERT:
                     cond = stack.pop()
                     if ctx.tracer is not None:
-                        ctx.tracer.emit("guard", self._span(instr), passed=bool(truthy(cond)))
+                        ctx.tracer.emit(
+                            "guard", self._span(instr), passed=bool(truthy(cond))
+                        )
                     if not truthy(cond):
                         raise GuardAssertionError(
                             "Guard condition failed", span=self._span(instr)
@@ -349,16 +385,25 @@ class InthonVM:
                         frame.handlers.pop()
                 elif op == Op.EVAL_RUBRIC:
                     rubric, count = code.meta[instr.arg]
-                    flat = stack[len(stack) - 3 * count:] if count else []
+                    flat = stack[len(stack) - 3 * count :] if count else []
                     if count:
-                        del stack[len(stack) - 3 * count:]
+                        del stack[len(stack) - 3 * count :]
                     subject = stack.pop()
-                    criteria = [(flat[i], flat[i + 1], flat[i + 2]) for i in range(0, len(flat), 3)]
+                    criteria = [
+                        (flat[i], flat[i + 1], flat[i + 2])
+                        for i in range(0, len(flat), 3)
+                    ]
                     stack.append(self._eval_rubric(subject, criteria, rubric, instr))
                 elif op == Op.SELF_EVAL:
                     rubric, rewriter = code.meta[instr.arg]
-                    ctx.tracer.emit("eval", self._span(instr), rubric=rubric,
-                                    subject="self", passed=True, note="self-eval preview")
+                    ctx.tracer.emit(
+                        "eval",
+                        self._span(instr),
+                        rubric=rubric,
+                        subject="self",
+                        passed=True,
+                        note="self-eval preview",
+                    )
                     stack.append(NONE)
 
                 # ---- imports ----------------------------------------------------------
@@ -367,8 +412,12 @@ class InthonVM:
                     ctx.tools.get(path, self._span(instr))
                     root = path.split(".")[0]
                     if not env.is_defined_here(root):
-                        env.define(root, InthonToolNamespace(root, ctx.tools),
-                                   mutable=False, span=self._span(instr))
+                        env.define(
+                            root,
+                            InthonToolNamespace(root, ctx.tools),
+                            mutable=False,
+                            span=self._span(instr),
+                        )
                 elif op == Op.IMPORT_PY:
                     module, alias = code.meta[instr.arg]
                     proxy = ctx.importer.import_module(module, self._span(instr))
@@ -383,7 +432,9 @@ class InthonVM:
                     ctx.declare_memory(full)
                     ctx.declare_memory(ns)
                 elif op == Op.CHECK_TYPE:
-                    check_value_against_type(stack[-1], code.meta[instr.arg], self._span(instr))
+                    check_value_against_type(
+                        stack[-1], code.meta[instr.arg], self._span(instr)
+                    )
                 elif op == Op.INTROSPECT_TRACE:
                     stack.append(box(ctx.tracer.to_json()))
                 else:  # pragma: no cover
@@ -411,8 +462,11 @@ class InthonVM:
             if handler["attempt"] < handler["count"]:
                 if self.ctx.tracer is not None:
                     self.ctx.tracer.emit(
-                        "retry_failed", self._span(instr),
-                        attempt=handler["attempt"], error=exc.code, message=exc.message,
+                        "retry_failed",
+                        self._span(instr),
+                        attempt=handler["attempt"],
+                        error=exc.code,
+                        message=exc.message,
                     )
                 time.sleep(_backoff_delay(handler["backoff"], handler["attempt"]))
                 frame.ip = handler["body_ip"]
@@ -420,10 +474,12 @@ class InthonVM:
             # exhausted
             frame.handlers.pop()
             if handler.get("catch_name") and handler["catch_ip"] != handler["end_ip"]:
-                err_value = InthonDict({
-                    "message": InthonString(getattr(exc, "message", str(exc))),
-                    "code": InthonString(getattr(exc, "code", "INTHON_000")),
-                })
+                err_value = InthonDict(
+                    {
+                        "message": InthonString(getattr(exc, "message", str(exc))),
+                        "code": InthonString(getattr(exc, "code", "INTHON_000")),
+                    }
+                )
                 frame.env.set_local(handler["catch_name"], err_value)
                 frame.ip = handler["catch_ip"]
                 return True
@@ -436,13 +492,20 @@ class InthonVM:
 
     def _trace_assign(self, name: str, value: InthonValue, instr):
         if self.ctx.tracer is not None:
-            self.ctx.tracer.emit("assign", self._span(instr), name=name,
-                                 type=value.type_name, preview=display(value)[:120])
+            self.ctx.tracer.emit(
+                "assign",
+                self._span(instr),
+                name=name,
+                type=value.type_name,
+                preview=display(value)[:120],
+            )
 
     # ------------------------------------------------------------------
     # call dispatch
     # ------------------------------------------------------------------
-    def _call(self, callee: InthonValue, args: list, kwargs: dict, instr) -> InthonValue:
+    def _call(
+        self, callee: InthonValue, args: list, kwargs: dict, instr
+    ) -> InthonValue:
         span = self._span(instr)
         if isinstance(callee, InthonBuiltin):
             return callee.fn(self.ctx, args, kwargs, span)
@@ -460,11 +523,14 @@ class InthonVM:
         if isinstance(callee, InthonPyObject):
             return py_call(self.ctx, callee, args, kwargs, span)
         raise InthonTypeError_(
-            f"Value of type {callee.type_name} is not callable", span=span,
+            f"Value of type {callee.type_name} is not callable",
+            span=span,
             hint="Only functions, agents, tools, builtins and Python callables can be called.",
         )
 
-    def _call_vmfunction(self, fn: VMFunction, args: list, kwargs: dict, instr) -> InthonValue:
+    def _call_vmfunction(
+        self, fn: VMFunction, args: list, kwargs: dict, instr
+    ) -> InthonValue:
         span = self._span(instr)
         decl = fn.decl
 
@@ -519,7 +585,9 @@ class InthonVM:
 
     def _invoke_agent(self, agent: InthonAgent, kwargs: dict, span) -> InthonValue:
         def run_plan(decl, bound_inputs):
-            call_env = Environment(agent.closure_env, kind="agent-call", label=decl.name)
+            call_env = Environment(
+                agent.closure_env, kind="agent-call", label=decl.name
+            )
             for name, value in bound_inputs.items():
                 call_env.define(name, value, mutable=True, span=span)
             frame = Frame(agent.vm_plan_code, call_env)
@@ -560,7 +628,8 @@ class InthonVM:
             return
         if isinstance(obj, InthonPyObject):
             raise InthonTypeError_(
-                "Attribute assignment on Python objects is blocked by the sandbox", span=span
+                "Attribute assignment on Python objects is blocked by the sandbox",
+                span=span,
             )
         raise InthonTypeError_(
             f"Cannot assign member '{name}' on {obj.type_name}", span=span
@@ -577,7 +646,8 @@ class InthonVM:
                 return obj.items[index.value]
             except IndexError:
                 raise InthonIndexError(
-                    f"List index {index.value} out of range (length {len(obj.items)})", span=span
+                    f"List index {index.value} out of range (length {len(obj.items)})",
+                    span=span,
                 ) from None
         if isinstance(obj, InthonString):
             if not isinstance(index, InthonInt):
@@ -586,7 +656,8 @@ class InthonVM:
                 return InthonString(obj.value[index.value])
             except IndexError:
                 raise InthonIndexError(
-                    f"String index {index.value} out of range (length {len(obj.value)})", span=span
+                    f"String index {index.value} out of range (length {len(obj.value)})",
+                    span=span,
                 ) from None
         if isinstance(obj, InthonDict):
             key = index.to_python()
@@ -594,14 +665,17 @@ class InthonVM:
                 return obj.pairs[key]
             available = ", ".join(map(str, list(obj.pairs.keys())[:5]))
             raise InthonIndexError(
-                f"Key {key!r} not found in dict", span=span,
+                f"Key {key!r} not found in dict",
+                span=span,
                 hint=f"Available keys: {available}. Use .get(key, default) to avoid the error.",
             )
         if isinstance(obj, InthonPyObject):
             return py_index(self.ctx, obj, index, span)
         raise InthonTypeError_(f"Indexing not supported for {obj.type_name}", span=span)
 
-    def _set_index(self, obj: InthonValue, index: InthonValue, value: InthonValue, instr):
+    def _set_index(
+        self, obj: InthonValue, index: InthonValue, value: InthonValue, instr
+    ):
         span = self._span(instr)
         if isinstance(obj, InthonList):
             if not isinstance(index, InthonInt):
@@ -627,19 +701,41 @@ class InthonVM:
     # ------------------------------------------------------------------
     # operators
     # ------------------------------------------------------------------
-    def _arith(self, left: InthonValue, op: int, right: InthonValue, instr) -> InthonValue:
+    def _arith(
+        self, left: InthonValue, op: int, right: InthonValue, instr
+    ) -> InthonValue:
         span = self._span(instr)
         op_str = {
-            Op.BINARY_ADD: "+", Op.BINARY_SUB: "-", Op.BINARY_MUL: "*",
-            Op.BINARY_DIV: "/", Op.BINARY_MOD: "%", Op.BINARY_POW: "**",
+            Op.BINARY_ADD: "+",
+            Op.BINARY_SUB: "-",
+            Op.BINARY_MUL: "*",
+            Op.BINARY_DIV: "/",
+            Op.BINARY_MOD: "%",
+            Op.BINARY_POW: "**",
         }[op]
-        if isinstance(left, InthonString) and isinstance(right, InthonString) and op_str == "+":
+        if (
+            isinstance(left, InthonString)
+            and isinstance(right, InthonString)
+            and op_str == "+"
+        ):
             return InthonString(left.value + right.value)
-        if isinstance(left, InthonString) and isinstance(right, InthonInt) and op_str == "*":
+        if (
+            isinstance(left, InthonString)
+            and isinstance(right, InthonInt)
+            and op_str == "*"
+        ):
             return InthonString(left.value * right.value)
-        if isinstance(left, InthonList) and isinstance(right, InthonList) and op_str == "+":
+        if (
+            isinstance(left, InthonList)
+            and isinstance(right, InthonList)
+            and op_str == "+"
+        ):
             return InthonList(left.items + right.items)
-        if isinstance(left, InthonList) and isinstance(right, InthonInt) and op_str == "*":
+        if (
+            isinstance(left, InthonList)
+            and isinstance(right, InthonInt)
+            and op_str == "*"
+        ):
             return InthonList(left.items * right.value)
         if isinstance(left, (InthonInt, InthonFloat, InthonBool)) and isinstance(
             right, (InthonInt, InthonFloat, InthonBool)
@@ -654,21 +750,26 @@ class InthonVM:
                 return _num_box(a * b, both_int)
             if op_str == "/":
                 if b == 0:
-                    raise InthonTypeError_("Division by zero", span=span,
-                                           hint="Guard the divisor: guard b != 0")
+                    raise InthonTypeError_(
+                        "Division by zero",
+                        span=span,
+                        hint="Guard the divisor: guard b != 0",
+                    )
                 return InthonFloat(a / b)
             if op_str == "%":
                 if b == 0:
                     raise InthonTypeError_("Modulo by zero", span=span)
                 return _num_box(a % b, both_int)
             if op_str == "**":
-                return _num_box(a ** b, both_int)
+                return _num_box(a**b, both_int)
         raise InthonTypeError_(
             f"Operator '{op_str}' not supported for {left.type_name} and {right.type_name}",
             span=span,
         )
 
-    def _compare(self, left: InthonValue, op: str, right: InthonValue, instr) -> InthonValue:
+    def _compare(
+        self, left: InthonValue, op: str, right: InthonValue, instr
+    ) -> InthonValue:
         span = self._span(instr)
         if op == "==":
             return bool_value(values_equal(left, right))
@@ -682,7 +783,8 @@ class InthonVM:
             a, b = left.value, right.value
         else:
             raise InthonTypeError_(
-                f"Cannot compare {left.type_name} with {right.type_name} using '{op}'", span=span
+                f"Cannot compare {left.type_name} with {right.type_name} using '{op}'",
+                span=span,
             )
         return bool_value({"<": a < b, "<=": a <= b, ">": a > b, ">=": a >= b}[op])
 
@@ -698,11 +800,14 @@ class InthonVM:
         if isinstance(iterable, InthonPyObject):
             return py_iter(iterable, span)
         raise InthonTypeError_(
-            f"Cannot iterate over {iterable.type_name}", span=span,
+            f"Cannot iterate over {iterable.type_name}",
+            span=span,
             hint="Iterate a list, string, dict (keys), range(...), or a Python iterable.",
         )
 
-    def _eval_rubric(self, subject: InthonValue, criteria: list, rubric: str, instr) -> InthonDict:
+    def _eval_rubric(
+        self, subject: InthonValue, criteria: list, rubric: str, instr
+    ) -> InthonDict:
         span = self._span(instr)
         details = []
         passed_count = 0
@@ -713,23 +818,31 @@ class InthonVM:
             actual = subject_map.get(name, NONE)
             ok = _criterion_passes(actual, op, expected)
             passed_count += 1 if ok else 0
-            details.append(InthonDict({
-                "name": InthonString(name),
-                "op": InthonString(op),
-                "expected": expected,
-                "actual": actual,
-                "passed": bool_value(ok),
-            }))
+            details.append(
+                InthonDict(
+                    {
+                        "name": InthonString(name),
+                        "op": InthonString(op),
+                        "expected": expected,
+                        "actual": actual,
+                        "passed": bool_value(ok),
+                    }
+                )
+            )
         total = len(criteria)
-        report = InthonDict({
-            "passed": bool_value(passed_count == total),
-            "score": InthonFloat(passed_count / total if total else 1.0),
-            "total": InthonInt(total),
-            "details": InthonList(details),
-        })
+        report = InthonDict(
+            {
+                "passed": bool_value(passed_count == total),
+                "score": InthonFloat(passed_count / total if total else 1.0),
+                "total": InthonInt(total),
+                "details": InthonList(details),
+            }
+        )
         if self.ctx.tracer is not None:
             self.ctx.tracer.emit(
-                "eval", span, rubric=rubric,
+                "eval",
+                span,
+                rubric=rubric,
                 passed=report.pairs["passed"].value,
                 score=report.pairs["score"].to_python(),
             )

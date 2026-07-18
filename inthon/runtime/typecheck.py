@@ -40,7 +40,9 @@ _AGENT_TYPE_CHECKS = {
     "MemoryRef": lambda v: isinstance(v, (InthonString, InthonDict)),
     "Approval": lambda v: isinstance(v, InthonBool),
     "Policy": lambda v: isinstance(v, InthonDict),
-    "DataFrame": lambda v: isinstance(v, InthonPyObject) and type(v.wrapped).__name__ == "DataFrame",
+    "DataFrame": lambda v: (
+        isinstance(v, InthonPyObject) and type(v.wrapped).__name__ == "DataFrame"
+    ),
     "Tensor": lambda v: isinstance(v, InthonPyObject),
     "Model": lambda v: isinstance(v, InthonPyObject),
     "Dataset": lambda v: isinstance(v, (InthonPyObject, InthonList)),
@@ -83,7 +85,8 @@ def value_matches(value: InthonValue, type_expr: nodes.TypeExpr) -> bool:
             key_t, val_t = type_expr.args[0], type_expr.args[1]
             sample = list(value.pairs.items())[:50]
             return all(
-                value_matches(_box_key(k), key_t) and value_matches(v, val_t) for k, v in sample
+                value_matches(_box_key(k), key_t) and value_matches(v, val_t)
+                for k, v in sample
             )
         return True
     if isinstance(type_expr, nodes.FnType):
@@ -97,7 +100,9 @@ def _box_key(k) -> InthonValue:
     return box(k)
 
 
-def check_value_against_type(value: InthonValue, type_expr: nodes.TypeExpr, span: Optional[Span]) -> None:
+def check_value_against_type(
+    value: InthonValue, type_expr: nodes.TypeExpr, span: Optional[Span]
+) -> None:
     if not value_matches(value, type_expr):
         raise InthonTypeError_(
             f"Type mismatch: expected {type_expr.render()}, got {value.type_name} "

@@ -31,7 +31,8 @@ def bind_params(
             raise InthonTypeError_(f"fn '{decl.name}' got '{key}' twice", span=span)
         if key not in names:
             raise InthonTypeError_(
-                f"fn '{decl.name}' has no parameter '{key}'", span=span,
+                f"fn '{decl.name}' has no parameter '{key}'",
+                span=span,
                 hint=f"Parameters: {', '.join(names)}",
             )
         bound[key] = value
@@ -41,6 +42,7 @@ def bind_params(
                 bound[param.name] = eval_default(param.default)
             else:
                 raise InthonTypeError_(
-                    f"fn '{decl.name}' missing required argument '{param.name}'", span=span
+                    f"fn '{decl.name}' missing required argument '{param.name}'",
+                    span=span,
                 )
     return bound

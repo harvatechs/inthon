@@ -2,7 +2,13 @@
 
 from .embed import DEFAULT_DIMS, cosine, embed
 from .sqlite_store import SQLiteMemoryStore
-from .store import InMemoryStore, MemoryEntry, MemoryStore, value_from_json, value_to_json
+from .store import (
+    InMemoryStore,
+    MemoryEntry,
+    MemoryStore,
+    value_from_json,
+    value_to_json,
+)
 
 __all__ = [
     "MemoryStore",

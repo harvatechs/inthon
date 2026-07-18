@@ -117,7 +117,9 @@ def parse(source: str, filename: str = "<stdin>") -> nodes.Program:
     except UnexpectedEOF as exc:
         raise _convert_eof_error(exc, source, filename, parser) from exc
     except UnexpectedInput as exc:  # pragma: no cover - safety net
-        span = Span(filename, getattr(exc, "line", 1) or 1, getattr(exc, "column", 1) or 1)
+        span = Span(
+            filename, getattr(exc, "line", 1) or 1, getattr(exc, "column", 1) or 1
+        )
         raise InthonParseError(
             "Unexpected input", span=span, source_line=_line_text(source, span.line)
         ) from exc
@@ -155,7 +157,9 @@ def parse_expression_fragment(src: str, filename: str, span: Span) -> nodes.Expr
     return result
 
 
-def _convert_token_error(exc: UnexpectedToken, source: str, filename: str, parser: Lark) -> InthonParseError:
+def _convert_token_error(
+    exc: UnexpectedToken, source: str, filename: str, parser: Lark
+) -> InthonParseError:
     token = exc.token
     value = str(token)
     line = getattr(exc, "line", None) or getattr(token, "line", 1) or 1
@@ -167,9 +171,7 @@ def _convert_token_error(exc: UnexpectedToken, source: str, filename: str, parse
     else:
         message = f"Unexpected token {value!r}"
 
-    expected = sorted(
-        {_friendly_terminal(parser, t) for t in (exc.expected or set())}
-    )
+    expected = sorted({_friendly_terminal(parser, t) for t in (exc.expected or set())})
     hint = None
     if value:
         hint = _did_you_mean(value)
@@ -183,7 +185,9 @@ def _convert_token_error(exc: UnexpectedToken, source: str, filename: str, parse
     )
 
 
-def _convert_char_error(exc: UnexpectedCharacters, source: str, filename: str, parser: Lark) -> InthonParseError:
+def _convert_char_error(
+    exc: UnexpectedCharacters, source: str, filename: str, parser: Lark
+) -> InthonParseError:
     line = exc.line or 1
     col = exc.column or 1
     span = Span(filename, line, col)
@@ -202,20 +206,22 @@ def _convert_char_error(exc: UnexpectedCharacters, source: str, filename: str, p
     )
 
 
-def _convert_eof_error(exc: UnexpectedEOF, source: str, filename: str, parser: Lark) -> InthonParseError:
+def _convert_eof_error(
+    exc: UnexpectedEOF, source: str, filename: str, parser: Lark
+) -> InthonParseError:
     lines = source.splitlines()
     line = len(lines) if lines else 1
     col = len(lines[-1]) + 1 if lines else 1
     span = Span(filename, line, col)
-    expected = sorted(
-        {_friendly_terminal(parser, t) for t in (exc.expected or set())}
-    )
+    expected = sorted({_friendly_terminal(parser, t) for t in (exc.expected or set())})
     hint = "The file ended unexpectedly."
     if expected:
         hint += " Expected " + ", ".join(expected[:6]) + "."
     if "'}'" in expected:
         hint += " Did you forget a closing brace?"
     return InthonParseError(
-        "Unexpected end of file", span=span, hint=hint,
+        "Unexpected end of file",
+        span=span,
+        hint=hint,
         source_line=lines[-1] if lines else None,
     )

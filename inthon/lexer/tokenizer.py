@@ -118,7 +118,9 @@ class Lexer:
             if ch == "\n":
                 line, col, off = self.line, self.col, self.pos
                 self._advance()
-                self.tokens.append(Token(TokenType.NEWLINE, "\n", self._span(line, col, off)))
+                self.tokens.append(
+                    Token(TokenType.NEWLINE, "\n", self._span(line, col, off))
+                )
                 continue
             if ch == "/" and self._peek(1) == "/":
                 self._skip_line_comment()
@@ -140,14 +142,20 @@ class Lexer:
                 line, col, off = self.line, self.col, self.pos
                 self._advance()
                 self._advance()
-                self.tokens.append(Token(_TWO_CHAR_OPS[two], two, self._span(line, col, off)))
+                self.tokens.append(
+                    Token(_TWO_CHAR_OPS[two], two, self._span(line, col, off))
+                )
                 continue
             if ch in _ONE_CHAR_OPS:
                 line, col, off = self.line, self.col, self.pos
                 self._advance()
-                self.tokens.append(Token(_ONE_CHAR_OPS[ch], ch, self._span(line, col, off)))
+                self.tokens.append(
+                    Token(_ONE_CHAR_OPS[ch], ch, self._span(line, col, off))
+                )
                 continue
-            raise self._error(f"Unexpected character {ch!r}", self.line, self.col, self.pos)
+            raise self._error(
+                f"Unexpected character {ch!r}", self.line, self.col, self.pos
+            )
 
         eof_span = Span(self.filename, self.line, self.col, offset=self.pos, length=1)
         self.tokens.append(Token(TokenType.EOF, None, eof_span))
@@ -186,8 +194,13 @@ class Lexer:
             self._advance()
             while self._peek() and (self._peek().isdigit() or self._peek() == "_"):
                 self._advance()
-        if self._peek() in ("e", "E") and self._peek(1) and (
-            self._peek(1).isdigit() or (self._peek(1) in "+-" and self._peek(2) and self._peek(2).isdigit())
+        if (
+            self._peek() in ("e", "E")
+            and self._peek(1)
+            and (
+                self._peek(1).isdigit()
+                or (self._peek(1) in "+-" and self._peek(2) and self._peek(2).isdigit())
+            )
         ):
             is_float = True
             self._advance()
@@ -195,12 +208,16 @@ class Lexer:
                 self._advance()
             while self._peek() and self._peek().isdigit():
                 self._advance()
-        text = self.source[start:self.pos].replace("_", "")
+        text = self.source[start : self.pos].replace("_", "")
         try:
             value = float(text) if is_float else int(text)
         except ValueError:  # pragma: no cover - defensive
             raise self._error(f"Invalid numeric literal {text!r}", line, col, off)
-        return Token(TokenType.FLOAT if is_float else TokenType.INT, value, self._span(line, col, off))
+        return Token(
+            TokenType.FLOAT if is_float else TokenType.INT,
+            value,
+            self._span(line, col, off),
+        )
 
     # -- strings ---------------------------------------------------------------
     def _string(self) -> Token:
@@ -225,12 +242,16 @@ class Lexer:
                 else:
                     raise self._error(
                         f"Unknown escape sequence '\\{esc}'",
-                        self.line, self.col, self.pos,
+                        self.line,
+                        self.col,
+                        self.pos,
                     )
                 continue
             chars.append(ch)
             self._advance()
-        return Token(TokenType.STRING, quote + "".join(chars) + quote, self._span(line, col, off))
+        return Token(
+            TokenType.STRING, quote + "".join(chars) + quote, self._span(line, col, off)
+        )
 
     # -- identifiers / keywords -------------------------------------------------
     def _identifier(self) -> Token:
@@ -238,7 +259,7 @@ class Lexer:
         start = self.pos
         while self._peek() and (self._peek().isalnum() or self._peek() == "_"):
             self._advance()
-        text = self.source[start:self.pos]
+        text = self.source[start : self.pos]
         kw = KEYWORDS.get(text)
         if kw is not None:
             if kw == "BOOL":
