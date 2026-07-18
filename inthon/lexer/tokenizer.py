@@ -186,28 +186,39 @@ class Lexer:
     def _number(self) -> Token:
         line, col, off = self.line, self.col, self.pos
         start = self.pos
-        while self._peek() and (self._peek().isdigit() or self._peek() == "_"):
+        pk = self._peek()
+        while pk and (pk.isdigit() or pk == "_"):
             self._advance()
+            pk = self._peek()
         is_float = False
-        if self._peek() == "." and self._peek(1) and self._peek(1).isdigit():
+        pk_dot = self._peek()
+        pk_dot1 = self._peek(1)
+        if pk_dot == "." and pk_dot1 is not None and pk_dot1.isdigit():
             is_float = True
             self._advance()
-            while self._peek() and (self._peek().isdigit() or self._peek() == "_"):
+            pk = self._peek()
+            while pk and (pk.isdigit() or pk == "_"):
                 self._advance()
+                pk = self._peek()
+        pk_e = self._peek()
+        pk_e1 = self._peek(1)
+        pk_e2 = self._peek(2)
         if (
-            self._peek() in ("e", "E")
-            and self._peek(1)
+            pk_e in ("e", "E")
+            and pk_e1 is not None
             and (
-                self._peek(1).isdigit()
-                or (self._peek(1) in "+-" and self._peek(2) and self._peek(2).isdigit())
+                pk_e1.isdigit()
+                or (pk_e1 in "+-" and pk_e2 is not None and pk_e2.isdigit())
             )
         ):
             is_float = True
             self._advance()
             if self._peek() in "+-":
                 self._advance()
-            while self._peek() and self._peek().isdigit():
+            pk = self._peek()
+            while pk and pk.isdigit():
                 self._advance()
+                pk = self._peek()
         text = self.source[start : self.pos].replace("_", "")
         try:
             value = float(text) if is_float else int(text)
@@ -218,6 +229,24 @@ class Lexer:
             value,
             self._span(line, col, off),
         )
+
+    # -- identifiers / keywords -------------------------------------------------
+    def _identifier(self) -> Token:
+        line, col, off = self.line, self.col, self.pos
+        start = self.pos
+        pk = self._peek()
+        while pk and (pk.isalnum() or pk == "_"):
+            self._advance()
+            pk = self._peek()
+        text = self.source[start : self.pos]
+        kw = KEYWORDS.get(text)
+        if kw is not None:
+            if kw == "BOOL":
+                return Token(TokenType.BOOL, text == "true", self._span(line, col, off))
+            if kw == "NONE":
+                return Token(TokenType.NONE, None, self._span(line, col, off))
+            return Token(TokenType[kw], text, self._span(line, col, off))
+        return Token(TokenType.IDENT, text, self._span(line, col, off))
 
     # -- strings ---------------------------------------------------------------
     def _string(self) -> Token:
@@ -252,22 +281,6 @@ class Lexer:
         return Token(
             TokenType.STRING, quote + "".join(chars) + quote, self._span(line, col, off)
         )
-
-    # -- identifiers / keywords -------------------------------------------------
-    def _identifier(self) -> Token:
-        line, col, off = self.line, self.col, self.pos
-        start = self.pos
-        while self._peek() and (self._peek().isalnum() or self._peek() == "_"):
-            self._advance()
-        text = self.source[start : self.pos]
-        kw = KEYWORDS.get(text)
-        if kw is not None:
-            if kw == "BOOL":
-                return Token(TokenType.BOOL, text == "true", self._span(line, col, off))
-            if kw == "NONE":
-                return Token(TokenType.NONE, None, self._span(line, col, off))
-            return Token(TokenType[kw], text, self._span(line, col, off))
-        return Token(TokenType.IDENT, text, self._span(line, col, off))
 
 
 def tokenize(source: str, filename: str = "<stdin>") -> List[Token]:
