@@ -43,3 +43,20 @@ def test_transpiler_for_loops():
     """
     res = run_transpiled(source)
     assert res.output == 10
+
+
+def test_transpiler_if_else_and_indexing():
+    source = """
+    let list = [10, 20, 30]
+    let first = list[0]
+    let result = 0
+    if first == 10 {
+        result = 100
+    } else {
+        result = 200
+    }
+    result
+    """
+    res = run_transpiled(source)
+    assert res.output == 100
+

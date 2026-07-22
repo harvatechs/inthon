@@ -655,11 +655,12 @@ class Interpreter(ASTVisitor):
     @staticmethod
     def _is_truthy(val: InthonValue) -> bool:
         if isinstance(val, InthonBool):
-            return val.v
+            return val.value
         if isinstance(val, InthonNone):
             return False
         if isinstance(val, InthonInt):
-            return val.v != 0
+            return val.value != 0
         if isinstance(val, InthonStr):
-            return bool(val.v)
+            return bool(val.value)
         return True
+

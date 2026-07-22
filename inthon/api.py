@@ -72,11 +72,12 @@ def check(
     return program
 
 
-def compile_ir(source: str, filename: str = "<stdin>") -> dict:
+def compile_ir(source: str, filename: str = "<stdin>") -> Any:
     from .ir.builder import build_ir
 
     program = check(source, filename)
     return build_ir(program, source=source, filename=filename)
+
 
 
 def run(source: str, options: Optional[RunOptions] = None, **kwargs) -> RunResult:
@@ -90,14 +91,14 @@ def run(source: str, options: Optional[RunOptions] = None, **kwargs) -> RunResul
 
 
 def run_vm(
-    source: str, filename: str = "<stdin>", mock_tools: bool = True
+    source: str, filename: str = "<stdin>", mock_tools: bool = False
 ) -> RunResult:
     return run(source, filename=filename, mock=mock_tools, backend="vm")
 
 
 def run_file_vm(
     path: str,
-    mock_tools: bool = True,
+    mock_tools: bool = False,
     max_cost_usd: float = 1.0,
     max_runtime_sec: float = 300.0,
     persist_memory: bool = False,
@@ -117,10 +118,11 @@ def run_file_vm(
 
 def run_file_transpiled(
     path: str,
-    mock_tools: bool = True,
+    mock_tools: bool = False,
     max_cost_usd: float = 1.0,
     max_runtime_sec: float = 300.0,
 ) -> RunResult:
+
     from pathlib import Path
     from .compiler.transpiler import run_transpiled
 

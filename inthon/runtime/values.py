@@ -357,6 +357,8 @@ class InthonAgent(InthonValue):
     def __init__(self, decl, closure_env):
         self.decl = decl
         self.closure_env = closure_env
+        self.vm_plan_code: Any = None
+
 
     def to_python(self):
         return f"<agent {self.decl.name}>"

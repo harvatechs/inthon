@@ -67,10 +67,9 @@ def run_repl(use_vm: bool = False, mock_tools: bool = True) -> None:
                     )
                     continue
                 elif cmd == "trace":
-                    import json
-
-                    print(json.dumps(ctx.to_trace_summary(), indent=2))
+                    print(ctx.tracer.to_json_str())
                     continue
+
                 elif cmd == "vars":
                     if ctx._scope_stack:
                         py_vars = {

@@ -102,15 +102,16 @@ CMD ["python", "-m", "inthon", "run", "/app/{prog_name}", "--trace-out", "/app/t
             # Return success with parsed stdout
             # Note: For production use we can parse output and trace file logs.
             # We return output as stdout string.
-            import json
 
             return RunResult(
-                output=stdout.strip(),
-                trace_json=json.dumps({"container_execution": True, "stdout": stdout}),
-                cost_usd=0.0,
-                duration_ms=0.0,
-                errors=[],
+                ok=True,
+                result_python=stdout.strip(),
+                result_display=stdout.strip(),
+                trace={"container_execution": True, "stdout": stdout},
+                stdout=stdout,
+                backend="container",
             )
+
         finally:
             # Clean up the built Docker image
             subprocess.run(

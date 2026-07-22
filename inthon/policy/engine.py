@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
+
 
 from ..errors import PolicyViolationError, Span
 from .model import Policy
@@ -62,6 +63,8 @@ class PolicyEngine:
         self._stack: list[Policy] = [self.base]
         self.tracer = tracer
         self.last_popped: Optional[Policy] = None
+        self.approval_gate: Optional[Any] = None
+
 
     @property
     def current(self) -> Policy:

@@ -4,9 +4,10 @@ Canonical style: 4-space indents, one statement per line, no semicolons,
 single blank line between top-level declarations.
 """
 
-from __future__ import annotations
+from typing import Optional
 
 from .ast import nodes
+
 
 _PREC = {
     "or": 1,
@@ -64,13 +65,14 @@ class _Formatter:
         m = getattr(self, f"s_{type(n).__name__}")
         return m(n, lvl)
 
-    def _block(self, b: nodes.Block, lvl: int) -> list[str]:
-        if not b.statements:
+    def _block(self, b: Optional[nodes.Block], lvl: int) -> list[str]:
+        if b is None or not getattr(b, "statements", None):
             return [self.IND * lvl + "pass"]
         out: list[str] = []
         for s in b.statements:
             out.extend(self.stmt(s, lvl))
         return out
+
 
     def s_UseTool(self, n: nodes.UseTool, lvl):
         return [self.IND * lvl + f"use tool {n.path}"]

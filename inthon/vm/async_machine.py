@@ -298,10 +298,11 @@ class AsyncInthonVM(InthonVM):
                     "INTHON_RUNTIME_GUARD: Guard condition failed"
                 )
         elif op == OpCode.APPLY_POLICY:
-            from ..ast.nodes import PolicyBlock, PolicyEntry
+            from ..policy.model import Policy
 
-            entries = tuple(PolicyEntry(key=k, value=v) for k, v in arg.items())
-            self._ctx.policy.apply(PolicyBlock(entries=entries))
+            p = Policy(**arg) if isinstance(arg, dict) else arg
+            self._ctx.policy.apply(p)
+
         elif op == OpCode.MAKE_FUNCTION:
             child_co = frame.pop()
             param_names = child_co.param_names

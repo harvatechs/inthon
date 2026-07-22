@@ -55,7 +55,7 @@ class Transpiler(ASTVisitor):
         indent_str = "    " * self._indent
         return [indent_str + line for line in code.splitlines()]
 
-    def _visit_stmt(self, stmt: N.Stmt) -> str:
+    def _visit_stmt(self, stmt: Any) -> str:
         code = self.visit(stmt)
         if not code:
             return ""
@@ -107,11 +107,11 @@ class Transpiler(ASTVisitor):
         return f"from_python({node.op} {operand})"
 
     def visit_MemberExpr(self, node: N.MemberExpr) -> str:
-        obj = self.visit(node.obj)
-        return f"ctx.safe_getattr({obj}, '{node.attr}')"
+        obj = self.visit(node.object)
+        return f"ctx.safe_getattr({obj}, '{node.name}')"
 
     def visit_IndexExpr(self, node: N.IndexExpr) -> str:
-        obj = self.visit(node.obj)
+        obj = self.visit(node.object)
         idx = self.visit(node.index)
         return f"ctx.safe_getitem({obj}, {idx})"
 
@@ -142,28 +142,31 @@ class Transpiler(ASTVisitor):
         return self.visit(node.expr)
 
     def visit_ReturnStmt(self, node: N.ReturnStmt) -> str:
-        val = self.visit(node.value) if node.value else "InthonNone()"
+        val = self.visit(node.value) if node.value is not None else "InthonNone()"
         return f"raise ReturnSignal({val})"
 
     def visit_IfStmt(self, node: N.IfStmt) -> str:
         cond = f"to_python({self.visit(node.condition)})"
         lines = [f"if {cond}:"]
         self._indent += 1
-        for stmt in node.then_branch:
+        then_stmts = node.then_block.statements if hasattr(node.then_block, "statements") else []
+        for stmt in then_stmts:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
                 lines.extend(self._add_indent(stmt_code))
         self._indent -= 1
 
-        if node.else_branch:
+        if node.else_block:
             lines.append("else:")
             self._indent += 1
-            for stmt in node.else_branch:
+            else_stmts = node.else_block.statements if hasattr(node.else_block, "statements") else ([node.else_block] if isinstance(node.else_block, N.IfStmt) else [])
+            for stmt in else_stmts:
                 stmt_code = self._visit_stmt(stmt)
                 if stmt_code:
                     lines.extend(self._add_indent(stmt_code))
             self._indent -= 1
         return "\n".join(lines)
+
 
     def visit_WhileStmt(self, node: N.WhileStmt) -> str:
         cond = f"to_python({self.visit(node.condition)})"
@@ -347,11 +350,12 @@ def run_transpiled(
 
         raise IntHonRuntimeError(f"Object is not callable: {callee}")
 
-    ctx.safe_getattr = safe_getattr
-    ctx.safe_getitem = safe_getitem
-    ctx.safe_call = safe_call
-    ctx.assign_const = ctx.set_var
-    ctx.assign_target_expression = lambda target, val: None
+    setattr(ctx, "safe_getattr", safe_getattr)
+    setattr(ctx, "safe_getitem", safe_getitem)
+    setattr(ctx, "safe_call", safe_call)
+    setattr(ctx, "assign_const", ctx.set_var)
+    setattr(ctx, "assign_target_expression", lambda target, val: None)
+
 
     transpiler = Transpiler()
     py_code = transpiler.transpile(program)

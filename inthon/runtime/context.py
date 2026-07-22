@@ -22,7 +22,8 @@ _SESSION_NAMESPACES = {"session", "default", "scratch", "tmp"}
 class RunOptions:
     """How to execute an INTHON program."""
 
-    mock: bool = True  # use mock tool implementations
+    mock: bool = False  # default to real execution; mock=True for offline testing
+
     backend: str = "tree"  # "tree" (interpreter) | "vm" (bytecode)
     trace: bool = True
     policy: Optional[Policy] = None  # base policy (host-level); program may narrow

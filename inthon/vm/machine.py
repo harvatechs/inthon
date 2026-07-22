@@ -458,14 +458,14 @@ class InthonVM:
                 ctx.current_agent = None
 
             elif op == OpCode.APPLY_POLICY:
-                from ..ast.nodes import PolicyBlock, PolicyEntry
+                from ..policy.model import Policy
 
-                entries = tuple(PolicyEntry(key=k, value=v) for k, v in arg.items())
-                policy_block = PolicyBlock(entries=entries)
-                ctx.policy.apply(policy_block)
-                ctx.sandbox.max_tool_calls = ctx.policy.max_tool_calls
-                ctx.sandbox.max_runtime_sec = ctx.policy.max_runtime_sec
-                ctx.sandbox.max_cost_usd = ctx.policy.max_cost_usd
+                p = Policy(**arg) if isinstance(arg, dict) else arg
+                ctx.policy.apply(p)
+                ctx.sandbox.max_tool_calls = ctx.policy.current.max_tool_calls
+                ctx.sandbox.max_runtime_sec = ctx.policy.current.max_runtime_sec
+                ctx.sandbox.max_cost_usd = ctx.policy.current.max_cost_usd
+
 
             elif op == OpCode.AGENT_REMEMBER:
                 namespace = arg
@@ -716,7 +716,7 @@ class InthonVM:
     def _coerce(val: Any) -> Any:
         """Convert InthonValue wrappers to plain Python values."""
         if isinstance(val, (InthonInt, InthonFloat, InthonStr, InthonBool)):
-            return val.v
+            return val.value
         if isinstance(val, InthonNone):
             return None
         if isinstance(val, InthonList):
@@ -731,7 +731,7 @@ class InthonVM:
     def _unwrap(val: Any) -> Any:
         """Unwrap one layer of InthonValue (for attribute/index access)."""
         if isinstance(val, (InthonInt, InthonFloat, InthonStr, InthonBool)):
-            return val.v
+            return val.value
         if isinstance(val, InthonNone):
             return None
         if isinstance(val, InthonPyObject):
@@ -742,16 +742,17 @@ class InthonVM:
     def _is_truthy(val: Any) -> bool:
         """Evaluate truthiness of any INTHON or Python value."""
         if isinstance(val, InthonBool):
-            return val.v
+            return val.value
         if isinstance(val, InthonNone):
             return False
         if isinstance(val, InthonInt):
-            return val.v != 0
+            return val.value != 0
         if isinstance(val, InthonStr):
-            return bool(val.v)
+            return bool(val.value)
         if isinstance(val, InthonList):
             return bool(val.items)
         if isinstance(val, InthonDict):
             return bool(val.pairs)
         # Raw Python
         return bool(val)
+

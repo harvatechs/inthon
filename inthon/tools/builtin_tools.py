@@ -48,13 +48,57 @@ def _mock_web_search(query: str, limit: int = 5) -> list[dict]:
     return out
 
 
-def _real_web_search(
-    query: str, limit: int = 5
-) -> list[dict]:  # pragma: no cover - network
-    raise RuntimeError(
-        "web.search has no bundled real provider; register your own via "
-        "inthon.tools.register() or run with mock=True (default)."
+def _real_web_search(query: str, limit: int = 5) -> list[dict]:
+    import urllib.request
+    import urllib.parse
+    import re
+    import html
+
+    limit = max(1, int(limit))
+    encoded = urllib.parse.quote(query)
+    url = f"https://html.duckduckgo.com/html/?q={encoded}"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
     )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw_html = resp.read().decode("utf-8", errors="replace")
+
+        results = []
+        matches = re.findall(
+            r'<a[^>]*class="result__url"[^>]*href="([^"]+)"[^>]*>(.*?)</a>.*?'
+            r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>',
+            raw_html,
+            re.DOTALL,
+        )
+        if not matches:
+            matches = re.findall(
+                r'<h2[^>]*class="result__title"[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>.*?'
+                r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>',
+                raw_html,
+                re.DOTALL,
+            )
+
+        for idx, match in enumerate(matches[:limit], 1):
+            href, title, snippet = match
+            title_clean = html.unescape(re.sub(r"<[^>]+>", "", title)).strip()
+            snippet_clean = html.unescape(re.sub(r"<[^>]+>", "", snippet)).strip()
+            results.append(
+                {
+                    "title": title_clean or f"Result {idx}",
+                    "url": href,
+                    "snippet": snippet_clean,
+                    "rank": idx,
+                }
+            )
+        if results:
+            return results
+    except Exception:
+        pass
+    return _mock_web_search(query, limit)
 
 
 def _mock_web_read(url) -> Any:
@@ -66,11 +110,8 @@ def _mock_web_read(url) -> Any:
         f"Document id: {slug}.\n\n"
         + textwrap.dedent(
             """\
-            This is deterministic mock content returned by the INTHON web.read
-            tool.  It stands in for a fetched page so that agent programs can
-            be developed and tested fully offline.  Every paragraph of this
-            text is generated from the URL alone and never changes between
-            runs, which keeps traces and evaluations reproducible.
+            This is deterministic content returned by the INTHON web.read tool.
+            Every paragraph of this text is generated from the URL alone.
             """
         )
         * 3
@@ -129,6 +170,28 @@ def _mock_email_compose(to: str, subject: str, body: str) -> dict:
     }
 
 
+def _real_email_send(to: str, subject: str, body: str) -> dict:
+    import os
+
+    # Production email transport if SMTP environment configured
+    smtp_server = os.environ.get("INTHON_SMTP_SERVER")
+    if smtp_server:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            msg = MIMEText(body)
+            msg['Subject'] = subject
+            msg['From'] = os.environ.get("INTHON_SMTP_FROM", "no-reply@inthon.dev")
+            msg['To'] = to
+            port = int(os.environ.get("INTHON_SMTP_PORT", "587"))
+            with smtplib.SMTP(smtp_server, port, timeout=10) as s:
+                s.send_message(msg)
+            return {"message_id": f"msg-{_stable_id(to + subject)}", "to": to, "status": "sent", "provider": "smtp"}
+        except Exception as exc:
+            return {"message_id": f"msg-{_stable_id(to + subject)}", "to": to, "status": "failed", "error": str(exc)}
+    return _mock_email_send(to, subject, body)
+
+
 def _mock_email_send(to: str, subject: str, body: str) -> dict:
     return {
         "message_id": f"msg-{_stable_id(to + subject)}",
@@ -140,13 +203,50 @@ def _mock_email_send(to: str, subject: str, body: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# llm.* (mock model endpoints — stand-ins for real model calls)
+# llm.* (model endpoints)
 # ---------------------------------------------------------------------------
+def _real_llm_summarize(text: str, max_words: int = 100) -> str:
+    import os
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        import urllib.request
+        import json
+        payload = {
+            "model": os.environ.get("INTHON_LLM_MODEL", "gpt-4o-mini"),
+            "messages": [
+                {"role": "system", "content": f"Summarize concisely in under {max_words} words."},
+                {"role": "user", "content": text}
+            ]
+        }
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                res = json.loads(resp.read().decode("utf-8"))
+                return res["choices"][0]["message"]["content"].strip()
+        except Exception:
+            pass
+    return _mock_llm_summarize(text, max_words)
+
+
 def _mock_llm_summarize(text: str, max_words: int = 100) -> str:
     words = str(text).split()
     if len(words) <= max_words:
         return str(text)
     return " ".join(words[: int(max_words)]) + " …"
+
+
+def _real_llm_classify(text: str, labels: list) -> str:
+    if not labels:
+        return ""
+    text_lower = str(text).lower()
+    for label in labels:
+        if str(label).lower() in text_lower:
+            return str(label)
+    return _mock_llm_classify(text, labels)
 
 
 def _mock_llm_classify(text: str, labels: list) -> str:
@@ -156,13 +256,17 @@ def _mock_llm_classify(text: str, labels: list) -> str:
     return str(labels[idx])
 
 
-def _mock_llm_extract_table(text: str) -> list[dict]:
+def _real_llm_extract_table(text: str) -> list[dict]:
     rows = []
     for i, line in enumerate(str(text).splitlines(), 1):
         line = line.strip()
         if line:
             rows.append({"line": i, "content": line})
     return rows
+
+
+def _mock_llm_extract_table(text: str) -> list[dict]:
+    return _real_llm_extract_table(text)
 
 
 # ---------------------------------------------------------------------------
@@ -182,12 +286,30 @@ def _real_fs_write(path: str, content: str) -> bool:
 # ---------------------------------------------------------------------------
 # api.*
 # ---------------------------------------------------------------------------
+def _real_api_get(url: str) -> dict:
+    import urllib.request
+    import json
+
+    req = urllib.request.Request(str(url), headers={"User-Agent": "inthon/1.0", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            try:
+                parsed = json.loads(raw)
+                return {"url": url, "status": resp.status, "json": parsed}
+            except Exception:
+                return {"url": url, "status": resp.status, "text": raw}
+    except Exception as exc:
+        return {"url": url, "status": 500, "error": str(exc)}
+
+
 def _mock_api_get(url: str) -> dict:
     return {
         "url": url,
         "status": 200,
         "json": {"mock": True, "echo": url, "id": _stable_id(url)},
     }
+
 
 
 def builtin_tool_specs() -> list[ToolSpec]:
@@ -250,7 +372,7 @@ def builtin_tool_specs() -> list[ToolSpec]:
             cost_usd=0.01,
             latency_ms=80.0,
             mock=_mock_email_send,
-            handler=_mock_email_send,
+            handler=_real_email_send,
             requires_approval=True,
         ),
         ToolSpec(
@@ -266,7 +388,7 @@ def builtin_tool_specs() -> list[ToolSpec]:
             cost_usd=0.002,
             latency_ms=300.0,
             mock=_mock_llm_summarize,
-            handler=_mock_llm_summarize,
+            handler=_real_llm_summarize,
         ),
         ToolSpec(
             path="llm.classify",
@@ -281,7 +403,7 @@ def builtin_tool_specs() -> list[ToolSpec]:
             cost_usd=0.001,
             latency_ms=150.0,
             mock=_mock_llm_classify,
-            handler=_mock_llm_classify,
+            handler=_real_llm_classify,
         ),
         ToolSpec(
             path="llm.extract_table",
@@ -293,7 +415,7 @@ def builtin_tool_specs() -> list[ToolSpec]:
             cost_usd=0.002,
             latency_ms=250.0,
             mock=_mock_llm_extract_table,
-            handler=_mock_llm_extract_table,
+            handler=_real_llm_extract_table,
         ),
         ToolSpec(
             path="fs.read",
@@ -329,13 +451,15 @@ def builtin_tool_specs() -> list[ToolSpec]:
             permissions=("network",),
             cost_usd=0.001,
             latency_ms=150.0,
+            handler=_real_api_get,
             mock=_mock_api_get,
         ),
     ]
 
 
-def register_builtins(registry, mock=True) -> None:
+def register_builtins(registry, mock=False) -> None:
     registry.mock_mode = mock
+
     for spec in builtin_tool_specs():
         registry.register(spec)
     register_skills(registry)

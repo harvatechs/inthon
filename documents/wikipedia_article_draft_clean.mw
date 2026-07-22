@@ -1,0 +1,20 @@
+{{Infobox programming language
+| name = Inthon
+| paradigm = [[Agent-oriented programming|Agent-oriented]]
+| designer = Harsha Vardhan
+| developer = HarVa DeepLabs
+| released = 2026
+| typing = [[Gradual typing|Gradual]]
+| license = [[Apache License]] 2.0
+| website = {{URL|https://harvatechs.github.io/inthon/}}
+| influenced_by = [[Python (programming language)|Python]]
+| file_ext = .inth
+}}
+
+'''Inthon''' is a [[domain-specific language]] designed for executing autonomous artificial intelligence agents in sandboxed environments. It was created in 2026 by Harsha Vardhan at HarVa DeepLabs. The language compiles to Python code or JSON execution plans, and is implemented as a Python-hosted layer.<ref name="Esolangs">{{cite web |url=https://esolangs.org/wiki/Inthon |title=Inthon |publisher=Esolang Wiki |date=June 2026 |access-date=2026-07-18}}</ref>
+
+== Design ==
+Inthon restricts operations using a capability-based security model. Its PyBridge interface intercepts module imports via Python's <code>sys.meta_path</code> import hook, blocking access to system shells, local filesystems, and network libraries by default. Permitted modules are wrapped in proxy objects (<code>InthonPyObject</code>) that override attribute access (<code>__getattribute__</code>, <code>__setattr__</code>). This prevents programs from accessing private module properties or traversing namespaces to execute shell commands.<ref name="InthonPaper">{{cite techreport |author=INTHON Research Group |title=INTHON: An Agent-Level Language for AI-Native Execution, Tool Orchestration, and Machine-Speed Workflows |institution=HarVa DeepLabs |date=June 2026}}</ref>
+
+== Syntax ==
+The language utilizes lexical block scoping with variables declared via <code>let</code> and constants via <code>const</code>. It supports standard primitive data types alongside agent-specific types including Goal, Plan, ToolCall, and Trace. Programs can define agent containers that specify execution goals, typed interfaces, and tool invocation limits. The language also provides primitives for human-in-the-loop approval gates, semantic memory queries, and retry loops with exponential backoff.

@@ -17,8 +17,9 @@ class PermissionAnalyzer(ASTVisitor):
     def analyze(self, program: N.Program) -> None:
         self.visit(program)
 
-    def visit_UseToolStmt(self, node: N.UseToolStmt) -> None:
-        self.used_tools.add(node.tool_path)
+    def visit_UseTool(self, node: N.UseTool) -> None:
+        self.used_tools.add(node.path)
 
-    def visit_UsePyStmt(self, node: N.UsePyStmt) -> None:
-        self.used_py_modules.add(node.module_path)
+    def visit_UsePy(self, node: N.UsePy) -> None:
+        self.used_py_modules.add(node.module)
+
