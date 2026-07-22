@@ -663,4 +663,3 @@ class Interpreter(ASTVisitor):
         if isinstance(val, InthonStr):
             return bool(val.value)
         return True
-

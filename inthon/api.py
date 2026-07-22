@@ -79,7 +79,6 @@ def compile_ir(source: str, filename: str = "<stdin>") -> Any:
     return build_ir(program, source=source, filename=filename)
 
 
-
 def run(source: str, options: Optional[RunOptions] = None, **kwargs) -> RunResult:
     """Execute INTHON source text.  Keyword args override RunOptions fields."""
     opts = _merge_options(options, kwargs)

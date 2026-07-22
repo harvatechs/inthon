@@ -59,4 +59,3 @@ def test_transpiler_if_else_and_indexing():
     """
     res = run_transpiled(source)
     assert res.output == 100
-

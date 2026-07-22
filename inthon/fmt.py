@@ -73,7 +73,6 @@ class _Formatter:
             out.extend(self.stmt(s, lvl))
         return out
 
-
     def s_UseTool(self, n: nodes.UseTool, lvl):
         return [self.IND * lvl + f"use tool {n.path}"]
 

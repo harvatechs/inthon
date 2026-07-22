@@ -236,7 +236,10 @@ def run_inthon(code_str):
         logs.append(f"[Runtime] Execution completed. Result: {res}")
         
         for event in tracer.logs:
-            logs.append(f"[Trace] Event '{event['type']}':\n{json.dumps(event['data'], indent=2)}")
+            evt_type = event.get("type", "")
+            evt_data = json.dumps(event.get("data"), indent=2)
+            logs.append(f"[Trace] Event '{evt_type}':\n{evt_data}")
+
             
         return json.dumps({"success": True, "logs": logs, "result": str(res)})
     except SemanticError as e:

@@ -22,4 +22,3 @@ class PermissionAnalyzer(ASTVisitor):
 
     def visit_UsePy(self, node: N.UsePy) -> None:
         self.used_py_modules.add(node.module)
-

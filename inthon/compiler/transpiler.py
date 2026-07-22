@@ -149,7 +149,9 @@ class Transpiler(ASTVisitor):
         cond = f"to_python({self.visit(node.condition)})"
         lines = [f"if {cond}:"]
         self._indent += 1
-        then_stmts = node.then_block.statements if hasattr(node.then_block, "statements") else []
+        then_stmts = (
+            node.then_block.statements if hasattr(node.then_block, "statements") else []
+        )
         for stmt in then_stmts:
             stmt_code = self._visit_stmt(stmt)
             if stmt_code:
@@ -159,14 +161,19 @@ class Transpiler(ASTVisitor):
         if node.else_block:
             lines.append("else:")
             self._indent += 1
-            else_stmts = node.else_block.statements if hasattr(node.else_block, "statements") else ([node.else_block] if isinstance(node.else_block, N.IfStmt) else [])
+            else_stmts = (
+                node.else_block.statements
+                if hasattr(node.else_block, "statements")
+                else (
+                    [node.else_block] if isinstance(node.else_block, N.IfStmt) else []
+                )
+            )
             for stmt in else_stmts:
                 stmt_code = self._visit_stmt(stmt)
                 if stmt_code:
                     lines.extend(self._add_indent(stmt_code))
             self._indent -= 1
         return "\n".join(lines)
-
 
     def visit_WhileStmt(self, node: N.WhileStmt) -> str:
         cond = f"to_python({self.visit(node.condition)})"
@@ -355,7 +362,6 @@ def run_transpiled(
     setattr(ctx, "safe_call", safe_call)
     setattr(ctx, "assign_const", ctx.set_var)
     setattr(ctx, "assign_target_expression", lambda target, val: None)
-
 
     transpiler = Transpiler()
     py_code = transpiler.transpile(program)

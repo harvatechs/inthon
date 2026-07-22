@@ -179,16 +179,27 @@ def _real_email_send(to: str, subject: str, body: str) -> dict:
         try:
             import smtplib
             from email.mime.text import MIMEText
+
             msg = MIMEText(body)
-            msg['Subject'] = subject
-            msg['From'] = os.environ.get("INTHON_SMTP_FROM", "no-reply@inthon.dev")
-            msg['To'] = to
+            msg["Subject"] = subject
+            msg["From"] = os.environ.get("INTHON_SMTP_FROM", "no-reply@inthon.dev")
+            msg["To"] = to
             port = int(os.environ.get("INTHON_SMTP_PORT", "587"))
             with smtplib.SMTP(smtp_server, port, timeout=10) as s:
                 s.send_message(msg)
-            return {"message_id": f"msg-{_stable_id(to + subject)}", "to": to, "status": "sent", "provider": "smtp"}
+            return {
+                "message_id": f"msg-{_stable_id(to + subject)}",
+                "to": to,
+                "status": "sent",
+                "provider": "smtp",
+            }
         except Exception as exc:
-            return {"message_id": f"msg-{_stable_id(to + subject)}", "to": to, "status": "failed", "error": str(exc)}
+            return {
+                "message_id": f"msg-{_stable_id(to + subject)}",
+                "to": to,
+                "status": "failed",
+                "error": str(exc),
+            }
     return _mock_email_send(to, subject, body)
 
 
@@ -207,21 +218,29 @@ def _mock_email_send(to: str, subject: str, body: str) -> dict:
 # ---------------------------------------------------------------------------
 def _real_llm_summarize(text: str, max_words: int = 100) -> str:
     import os
+
     api_key = os.environ.get("OPENAI_API_KEY")
     if api_key:
         import urllib.request
         import json
+
         payload = {
             "model": os.environ.get("INTHON_LLM_MODEL", "gpt-4o-mini"),
             "messages": [
-                {"role": "system", "content": f"Summarize concisely in under {max_words} words."},
-                {"role": "user", "content": text}
-            ]
+                {
+                    "role": "system",
+                    "content": f"Summarize concisely in under {max_words} words.",
+                },
+                {"role": "user", "content": text},
+            ],
         }
         req = urllib.request.Request(
             "https://api.openai.com/v1/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
         )
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
@@ -290,7 +309,9 @@ def _real_api_get(url: str) -> dict:
     import urllib.request
     import json
 
-    req = urllib.request.Request(str(url), headers={"User-Agent": "inthon/1.0", "Accept": "application/json"})
+    req = urllib.request.Request(
+        str(url), headers={"User-Agent": "inthon/1.0", "Accept": "application/json"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
@@ -309,7 +330,6 @@ def _mock_api_get(url: str) -> dict:
         "status": 200,
         "json": {"mock": True, "echo": url, "id": _stable_id(url)},
     }
-
 
 
 def builtin_tool_specs() -> list[ToolSpec]:

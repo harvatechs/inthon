@@ -466,7 +466,6 @@ class InthonVM:
                 ctx.sandbox.max_runtime_sec = ctx.policy.current.max_runtime_sec
                 ctx.sandbox.max_cost_usd = ctx.policy.current.max_cost_usd
 
-
             elif op == OpCode.AGENT_REMEMBER:
                 namespace = arg
                 ctx.policy.check_capability(Capability.MEMORY_WRITE)
@@ -755,4 +754,3 @@ class InthonVM:
             return bool(val.pairs)
         # Raw Python
         return bool(val)
-

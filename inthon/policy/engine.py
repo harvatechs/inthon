@@ -65,7 +65,6 @@ class PolicyEngine:
         self.last_popped: Optional[Policy] = None
         self.approval_gate: Optional[Any] = None
 
-
     @property
     def current(self) -> Policy:
         return self._stack[-1]
